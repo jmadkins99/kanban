@@ -13,6 +13,9 @@ const { openApp, settle } = require('../lib');
     try {
         assert.strictEqual(await page.$$eval('.add-board, .del-board', (els) => els.length), 0, 'no add/delete board');
         assert.strictEqual(await page.$$eval('.config .load-board', (els) => els.length), 1, 'menu lists the one board');
+        assert.strictEqual(await page.evaluate(() => cloudSync.ready), 'off', 'off the live site, sync stays off');
+        assert.ok(await page.evaluate(() => typeof firebase == 'undefined' && $('.config .sync-in').css('display') == 'none'),
+            'no Firebase SDK and no sign-in item unless opted in');
 
         const before = await page.evaluate(() => ({ id: NB.board.id, lists: NB.board.lists.length }));
         fs.writeFileSync(file, JSON.stringify({

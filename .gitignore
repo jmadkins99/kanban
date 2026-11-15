@@ -3,3 +3,6 @@ CLAUDE.md
 .claude/
 
 tests/node_modules/
+
+# Firebase emulator logs
+*-debug.log

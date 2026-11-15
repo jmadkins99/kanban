@@ -1666,6 +1666,8 @@
 				<input class=imp-board-select type="file" accept=".nbx">
 
 			<a href=# class=auto-backup>Auto-backup...</a>
+			<a href=# class=sync-in style='display:none'>Sign in to sync...</a>
+			<a href=# class=sync-out style='display:none'>Sign out of sync</a>
 
 			<div class="section ui-prefs break">
 				<a href=# class=title>UI preferences<u>...</u></a>
@@ -3389,6 +3391,8 @@
 
 		updateUndoRedo();
 		updateBoardIndex();
+
+		if (window.cloudSync) cloudSync.boardChanged();
 	}
 
 	//
@@ -3488,6 +3492,8 @@
 		updateUndoRedo();
 		updateBoardIndex();
 		setupListScrolling();
+
+		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
 	}
 
 	/*
@@ -5121,6 +5127,8 @@
 			return;
 		}
 
+		if (window.cloudSync) cloudSync.dayChanged(entry);
+
 		showView('history');
 	}
 
@@ -5216,10 +5224,14 @@
 			return e.day != day;
 		}));
 
+		if (window.cloudSync) cloudSync.dayDeleted(day);
+
 		renderHistory();
 		return false;
 	});
 
 </script>
+
+<script src="sync.js"></script>
 
 </html>

@@ -18,7 +18,7 @@ jobs:
   # The check the "protect main" ruleset requires.
   test:
     runs-on: ubuntu-latest # ships Google Chrome at /usr/bin/google-chrome
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -27,6 +27,13 @@ jobs:
       - name: Run tests
         working-directory: tests
         run: bash run.sh
+      - uses: actions/setup-java@v4 # the Firestore emulator runs on Java
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Sync tests (Firebase emulators)
+        working-directory: tests
+        run: bash sync.sh
 
   deploy:
     needs: test
