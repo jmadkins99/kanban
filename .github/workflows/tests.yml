@@ -1,0 +1,48 @@
+# CI/CD: the headless end-to-end suite, then a deploy to GitHub Pages on main.
+# GitLab equivalent: a .gitlab-ci.yml with `stages: [test, deploy]` and a
+# `pages` job limited to the default branch.
+name: tests
+
+on:
+  push:
+    branches: ['**'] # every branch, so a branch is green before its PR opens
+  workflow_dispatch:
+
+# A newer push to a branch cancels the run it makes stale. Never on main,
+# where cancelling could stop a deploy halfway.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # The check the "protect main" ruleset requires.
+  test:
+    runs-on: ubuntu-latest # ships Google Chrome at /usr/bin/google-chrome
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Run tests
+        working-directory: tests
+        run: bash run.sh
+
+  deploy:
+    needs: test
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - uses: actions/deploy-pages@v4
+        id: deploy

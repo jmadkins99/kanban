@@ -1,0 +1,5 @@
+# LLM / AI assistant files (local only, not shared)
+CLAUDE.md
+.claude/
+
+tests/node_modules/

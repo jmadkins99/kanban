@@ -1,0 +1,11 @@
+{
+  "name": "kanban-tests",
+  "private": true,
+  "description": "Headless end-to-end tests for the kanban board",
+  "scripts": {
+    "test": "bash run.sh"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^22.0.0"
+  }
+}
