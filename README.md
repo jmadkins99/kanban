@@ -18,18 +18,29 @@ It's Nullboard with a few changes:
   the ≡ menu; the board's name there goes back to the board.
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
+- **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board
+  and History in Firestore, live across devices (`sync.js`). Signed out,
+  everything stays in the browser's `localStorage`, as in Nullboard.
 
-Everything else (drag and drop, undo/redo, export) is Nullboard's. Data
-stays in the browser's `localStorage`.
+Everything else (drag and drop, undo/redo, export) is Nullboard's.
 
 ## Development
 
-Needs Python, Node and Chrome.
+Needs Python, Node and Chrome; the sync tests also need Java 21+.
 
 ```bash
 python -m http.server 8003   # then open http://localhost:8003/
 cd tests && bash run.sh      # end-to-end tests; installs puppeteer-core
+cd tests && bash sync.sh     # sync tests against the Firebase emulators
 ```
+
+Only the live site talks to the real Firebase project (`jmadkins-kanban`).
+To try sign-in and sync locally, run `bash tests/emulators.sh`, then in the
+page's console run `localStorage.setItem('nullboard.firebaseDev', 'true')`
+and reload: it signs in with fake accounts against the local emulators.
+
+Security rules live in `firestore.rules`; deploy them with
+`firebase deploy --only firestore`.
 
 ## License
 
