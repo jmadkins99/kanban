@@ -1,8 +1,13 @@
 # Kanban
 
+> **Credit:** this is built on [Nullboard](https://github.com/apankrat/nullboard)
+> by Alexander Pankratov ([nullboard.io](https://nullboard.io)). The board
+> itself (lists, notes, drag and drop, undo, export) is his work, used under
+> Nullboard's license, see [LICENSE](LICENSE).
+
 A personal kanban board. Live at https://jmadkins99.github.io/kanban/
 
-It's [Nullboard](https://github.com/apankrat/nullboard) with a few changes:
+It's Nullboard with a few changes:
 
 - **Colors**: always dark, using gym-tracker's palette and its daily accent
   rotation (`accentColor.js` is a straight copy), so both apps show the same
