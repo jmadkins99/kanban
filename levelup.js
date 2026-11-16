@@ -1,5 +1,5 @@
 /* LevelUp: a self-contained level-up celebration.
- * window.LevelUp.play({ level, rankName, insigniaSvg, sound = true }) -> Promise
+ * window.LevelUp.play({ level, rankName, insigniaSvg }) -> Promise (silent: no sound)
  * No dependencies. Injects its CSS (and a Google Fonts link) once, on load.
  */
 (function () {
@@ -117,107 +117,6 @@
     st.id = 'lu-style';
     st.textContent = CSS;
     document.head.append(font, st);
-  }
-
-  // ---------- sound: synthesised, no files ----------
-  var ac, verb, noise;
-  function makeSound() {
-    var Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return null;
-    ac = ac || new Ctx();
-    if (ac.state === 'suspended') ac.resume();
-    var sr = ac.sampleRate, i, c;
-    if (!verb) {
-      // shared reverb: decaying stereo noise impulse
-      var len = sr * 2.6 | 0, ir = ac.createBuffer(2, len, sr);
-      for (c = 0; c < 2; c++) {
-        var d = ir.getChannelData(c);
-        for (i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
-      }
-      noise = ac.createBuffer(1, sr, sr);
-      var nd = noise.getChannelData(0);
-      for (i = 0; i < sr; i++) nd[i] = Math.random() * 2 - 1;
-      var comp = ac.createDynamicsCompressor();
-      comp.connect(ac.destination);
-      verb = ac.createConvolver();
-      verb.buffer = ir;
-      var wet = ac.createGain();
-      wet.gain.value = 0.4;
-      verb.connect(wet).connect(comp);
-      verb._out = comp;
-    }
-    var master = ac.createGain();
-    master.gain.value = 0.5;
-    master.connect(verb._out);
-    master.connect(verb);
-    var t0 = ac.currentTime + 0.03;
-
-    function osc(type, f, t, dur, dest) {
-      var o = ac.createOscillator();
-      o.type = type;
-      o.frequency.setValueAtTime(f, t);
-      o.connect(dest);
-      o.start(t);
-      o.stop(t + dur + 0.1);
-      return o;
-    }
-    function env(t, peak, a, d) {
-      var g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(peak, t + a);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
-      g.connect(master);
-      return g;
-    }
-    // celesta-like bell: fundamental plus soft, slightly stretched overtones
-    function bell(f, t, v, d) {
-      [[1, 1, 1], [2, 0.3, 0.6], [3.98, 0.12, 0.3]].forEach(function (p) {
-        osc('sine', f * p[0], t, d * p[2], env(t, v * p[1], 0.005, d * p[2]));
-      });
-    }
-    // brassy swell: detuned saws through an opening low-pass
-    function brass(f, t, dur, v) {
-      var lp = ac.createBiquadFilter(), g = ac.createGain();
-      lp.type = 'lowpass';
-      lp.Q.value = 1.4;
-      lp.frequency.setValueAtTime(260, t);
-      lp.frequency.exponentialRampToValueAtTime(2800, t + 0.14);
-      lp.frequency.exponentialRampToValueAtTime(900, t + dur);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(v, t + 0.05);
-      g.gain.setTargetAtTime(v * 0.5, t + 0.15, 0.35);
-      g.gain.setTargetAtTime(0.0001, t + dur - 0.7, 0.25);
-      lp.connect(g).connect(master);
-      [-8, 8].forEach(function (dt) { osc('sawtooth', f, t, dur, lp).detune.value = dt; });
-    }
-
-    // beat 1: whoosh rising with the pillar
-    var ns = ac.createBufferSource(), bp = ac.createBiquadFilter();
-    ns.buffer = noise;
-    bp.type = 'bandpass';
-    bp.Q.value = 2;
-    bp.frequency.setValueAtTime(300, t0);
-    bp.frequency.exponentialRampToValueAtTime(5000, t0 + 0.65);
-    ns.connect(bp).connect(env(t0, 0.25, 0.4, 0.45));
-    ns.start(t0);
-    ns.stop(t0 + 1);
-    // beat 2: rising C-major arpeggio into the burst
-    [392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach(function (f, k) { bell(f, t0 + 0.05 + k * 0.085, 0.16, 1.4); });
-    bell(1567.98, t0 + T.burst / 1000, 0.12, 2);
-    bell(2093, t0 + T.burst / 1000 + 0.04, 0.08, 2);
-    // beat 3: the slam: boom + brass chord + bell triad
-    var s = t0 + T.slam / 1000;
-    var boom = osc('sine', 150, s, 1.2, env(s, 0.7, 0.01, 1.1));
-    boom.frequency.exponentialRampToValueAtTime(38, s + 0.6);
-    [130.81, 261.63, 329.63, 392, 523.25].forEach(function (f, k) { brass(f, s, 3.4, k ? 0.07 : 0.1); });
-    [1046.5, 1318.5, 1567.98].forEach(function (f) { bell(f, s, 0.1, 2.4); });
-    // beat 4: sparkle glissando with the insignia shine
-    [2093, 2637, 3136, 4186].forEach(function (f, k) { bell(f, t0 + T.shine / 1000 + k * 0.055, 0.05, 1.2); });
-
-    return function stop() {
-      master.gain.setTargetAtTime(0.0001, ac.currentTime, 0.08);
-      setTimeout(function () { master.disconnect(); }, 600);
-    };
   }
 
   // ---------- canvas: god-rays, embers, sparks, gold flakes ----------
@@ -402,8 +301,6 @@
       var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       ov.style.setProperty('--cy', cy + 'px');
       var stopParticles = particles(q('.lu-cv'), cx, cy, rgbOf(ov, 'var(--accent-hi, #a48bff)', '164,139,255'), calm);
-      var stopSound = null;
-      if (o.sound !== false) try { stopSound = makeSound(); } catch (e) { /* audio unavailable: stay silent */ }
       if (navigator.vibrate) try { navigator.vibrate(calm ? 60 : [40, 80, 40, 1060, 180]); } catch (e) { /* ignore */ }
 
       var born = performance.now(), ending = false, timer = setTimeout(function () { end(T.fade); }, T.out);
@@ -422,7 +319,6 @@
         if (e.type === 'keydown' && !/^(Escape|Enter| )$/.test(e.key)) return;
         if (performance.now() - born < 250) return;
         e.preventDefault();
-        if (stopSound) stopSound();
         if (navigator.vibrate) try { navigator.vibrate(0); } catch (x) { /* ignore */ }
         end(450);
       }
