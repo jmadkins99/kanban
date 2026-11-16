@@ -1784,7 +1784,8 @@
 		display: block;
 	}
 
-	.board .list.wip-list .note.editing .wip-timer {
+	.board .list.wip-list .note.editing .wip-timer,
+	.board .note.editing .cm-panel {
 		display: none;
 	}
 
@@ -3359,7 +3360,7 @@
 			$note = $notes.find('.note').last();
 		}
 
-		$note.find('.text').click();
+		startEditing($note.find('.text'));
 	}
 
 	function deleteNote($note)
@@ -4402,7 +4403,7 @@
 		if ($sibl.length)
 		{
 			stopEditing($this, false, false);
-			$sibl.find('.text').click();
+			startEditing($sibl.find('.text'));
 		}
 	}
 
@@ -4608,11 +4609,14 @@
 
 				drag.org_loc = noteLocation($note);
 				drag.from_done = $note.closest('.list').hasClass('done-list');
+				$note.removeClass('cm-open cm-moving'); // the card menu closes for the drag
 				if ($note.hasClass('collapsed'))
 					drag.$drag.addClass('collapsed');
 			}
 			else
 			{
+				$note[0].cmDragEnd = Date.now(); // see cardmenu.js
+
 				if (this.org_loc != noteLocation($note))
 				{
 					noteMoved($note, this.from_done);
@@ -4806,6 +4810,9 @@
 		}
 
 		NB.noteDrag.cancelPriming();
+
+		if ($(this).closest('.note').length) // notes: a click opens the card menu, whose Edit edits
+			return;
 
 		startEditing($(this), ev);
 		return false;
@@ -5028,8 +5035,8 @@
 	});
 
 	//
-	$('.wrap').on('mousedown', '.board .note .text', function(ev){
-		NB.noteDrag.prime(this.parentNode, ev);
+	$('.wrap').on('mousedown', '.board .note .text, .board .note .cm-panel', function(ev){
+		NB.noteDrag.prime($(this).closest('.note')[0], ev);
 	});
 
 
@@ -5462,8 +5469,33 @@
 		return false;
 	});
 
+	/*
+	 *	Card menu (cardmenu.js): hover a note, or tap it on a phone, for
+	 *	Move / Edit / Delete. Move steps it one list left or right.
+	 */
+	$(function(){
+		CardMenu.attach('.wrap', {
+			onMove: function(note, dir){
+				var $note = $(note), $list = $note.closest('.list');
+				var $to = dir < 0 ? $list.prev('.list') : $list.next('.list');
+				if (! $to.length) return;
+				var fromDone = $list.hasClass('done-list');
+				$to.find('.notes').append($note);
+				noteMoved($note, fromDone);
+				saveBoard();
+			},
+			onEdit: function(note){
+				startEditing($(note).find('.text'));
+			},
+			onDelete: function(note){
+				deleteNote($(note));
+			}
+		});
+	});
+
 </script>
 
+<script src="cardmenu.js"></script>
 <script src="celebrate.js"></script>
 <script src="ranks.js"></script>
 <script src="levelup.js"></script>
