@@ -4,10 +4,11 @@ const assert = require('assert');
 const { openApp } = require('../lib');
 
 (async () => {
-    // One older entry, 8 days back, so it always lands in an earlier week.
+    // One older entry, 7 days back: the same weekday last week, so always
+    // exactly one week earlier (8 days back is two weeks earlier on a Monday).
     const app = await openApp(() => {
         if (localStorage.getItem('nullboard.history')) return; // seed only on the first load
-        const d = new Date(); d.setDate(d.getDate() - 8);
+        const d = new Date(); d.setDate(d.getDate() - 7);
         const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         localStorage.setItem('nullboard.history', JSON.stringify([{
             day, title: 'Old board', submittedAt: d.toISOString(),
