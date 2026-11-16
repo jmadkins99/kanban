@@ -65,7 +65,14 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         // and its own History day goes up.
         const bBefore = await firstNote(b.page);
         await signIn(b, 'alice');
-        await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'from A before sign-in');
+        await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'from A before sign-in').catch(async (e) => {
+            const diag = await b.page.evaluate(async () => {
+                const s = await firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board').get({ source: 'server' });
+                return { uid: firebase.auth().currentUser.uid, cloud: s.exists ? s.data().lists[0].notes[0].text : null, local: NB.board.lists[0].notes[0].text, editing: $('.wrap .board .editing').length };
+            });
+            const aUid = await a.page.evaluate(() => firebase.auth().currentUser.uid);
+            throw new Error("B never got A's board: " + JSON.stringify({ aUid, ...diag }) + ' ' + e.message);
+        });
         const undoTo = await b.page.evaluate(() => {
             const hist = NB.storage.getBoardIndex().get(NB.board.id).history; // newest first
             return NB.storage.loadBoard(NB.board.id, hist[1]).lists[0].notes[0].text;

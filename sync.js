@@ -192,9 +192,18 @@
 			{
 				if (snap.metadata.fromCache) // a cold cache knows nothing yet
 					return;
-				known = true; // the cloud is empty: this device's board goes up
-				synced = null;
-				pushBoard();
+
+				// The cloud is empty: this device's board goes up, but only if
+				// it's still empty when the write lands. Another device signing
+				// in at the same moment may get there first; then its board
+				// arrives through this listener instead of being overwritten.
+				known = true;
+				synced = canon(NB.board);
+				var data = JSON.parse(synced);
+				data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+				db.runTransaction(function (t) {
+					return t.get(boardRef).then(function (d) { if (! d.exists) t.set(boardRef, data); });
+				}).catch(warn('first board upload'));
 				return;
 			}
 
