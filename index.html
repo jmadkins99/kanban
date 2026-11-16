@@ -2681,7 +2681,7 @@
 
 			// load history
 
-			var re = new RegExp('^nullboard\.board\.' + board_id + '\.(\\d+)$');
+			var re = new RegExp('^nullboard\\.board\\.' + board_id + '\\.(\\d+)$');
 			var revs = new Array();
 
 			for (var i=0; i<localStorage.length; i++)
@@ -4297,7 +4297,7 @@
 		{
 			var xmmm = /`(.*?)`/mg;
 			text = text.replace(xmmm, function(full, text){
-				link = 'file:///' + text.replace('\\', '/');
+				link = 'file:///' + text.replace(/\\/g, '/'); // every backslash, not just the first
 				return '`<a href="' + link + '" target=_blank>' + text + '</a>`';
 			});
 		}
