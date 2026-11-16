@@ -1487,12 +1487,61 @@
 		right: 0;
 		bottom: calc(16px + var(--xp-height) + env(safe-area-inset-bottom, 0px));
 		z-index: 4;
-		text-align: center;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 12px;
+		padding: 0 16px;
 		pointer-events: none;
+	}
+
+	/* Level, rank and insignia, beside Submit Day */
+	.level-badge {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px 6px 8px;
+		border-radius: 12px;
+		background: rgba(13, 13, 26, 0.92);
+		border: 1px solid #2a2a3a;
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+		pointer-events: auto;
+		white-space: nowrap;
+	}
+
+	.level-insignia {
+		display: block;
+		width: 34px;
+		height: 34px;
+	}
+
+	.level-insignia svg {
+		width: 100%;
+		height: 100%;
+	}
+
+	.level-text {
+		display: flex;
+		flex-direction: column;
+		line-height: 1.15;
+	}
+
+	.level-num {
+		color: #e6e6f2;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.level-rank {
+		color: var(--accent-pale);
+		font-size: 11px;
+		letter-spacing: 0.02em;
 	}
 
 	.submit-day {
 		pointer-events: auto;
+		flex: 0 1 280px;
+		min-width: 120px;
 		width: 280px;
 		max-width: calc(100% - 32px);
 		padding: 13px;
@@ -1799,6 +1848,10 @@
 
 	<!-- Kanban view only: saves today's board into History. -->
 	<div class=submit-bar>
+		<div class=level-badge>
+			<span class=level-insignia></span>
+			<span class=level-text><b class=level-num></b><span class=level-rank></span></span>
+		</div>
 		<button class=submit-day>Submit Day</button>
 	</div>
 
@@ -5451,6 +5504,8 @@
 </script>
 
 <script src="celebrate.js"></script>
+<script src="ranks.js"></script>
+<script src="levelup.js"></script>
 <script src="xp.js"></script>
 <script src="sync.js"></script>
 
