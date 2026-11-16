@@ -37,6 +37,8 @@ It's Nullboard with a few changes:
   Edit and Delete (`cardmenu.js`), and moving off the card closes it; Move
   steps it one list left or right.
   Drag and drop still works: hold anywhere on the card.
+- **Big screens**: everything scales up from a 1080p baseline (about 1.35x
+  on a 3440x1440 ultrawide); a font size set in UI preferences still wins.
 - **Starter board**: a first visit starts with four empty lists, Backlog,
   To-Do, WIP and Done.
 - **One board**: no adding, deleting or switching boards. Import replaces the
