@@ -3343,6 +3343,14 @@
 		});
 	}
 
+	// After a note was moved (dragged, for now) and the board saved: a note
+	// that arrived in Done from another list gets celebrated.
+	function noteMoved($note, fromDone)
+	{
+		if (! fromDone && $note.closest('.list').hasClass('done-list') && window.Celebrate)
+			Celebrate.done($note[0], 2500);
+	}
+
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
 	function formatTimer(ms)
 	{
@@ -4504,13 +4512,17 @@
 				$drag.find('.text').html( $note.find('.text').html() );
 
 				drag.org_loc = noteLocation($note);
+				drag.from_done = $note.closest('.list').hasClass('done-list');
 				if ($note.hasClass('collapsed'))
 					drag.$drag.addClass('collapsed');
 			}
 			else
 			{
 				if (this.org_loc != noteLocation($note))
+				{
 					saveBoard();
+					noteMoved($note, this.from_done);
+				}
 			}
 		}
 	}
@@ -5357,6 +5369,7 @@
 
 </script>
 
+<script src="celebrate.js"></script>
 <script src="sync.js"></script>
 
 </html>
