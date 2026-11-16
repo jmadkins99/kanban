@@ -1,5 +1,6 @@
-// The card menu: hovering a note slides a panel over it with Move, Edit and
-// Delete. Move offers left/right arrows, greyed out at the board's ends, and
+// The card menu: clicking a note (tapping on a phone) slides a panel over it
+// with Move, Edit and Delete; moving the mouse off the card closes it, and
+// hovering alone opens nothing. Move offers left/right arrows, greyed out at the board's ends, and
 // a move into Done counts like a drag (XP + celebration). A click on a note
 // opens the menu rather than editing; Edit edits; Delete deletes.
 const assert = require('assert');
@@ -15,14 +16,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     const note = (l, i) => `.wrap .board .list:nth-child(${l + 1}) .note:nth-child(${i + 1})`;
     const counts = () => page.evaluate(() => NB.board.lists.map((l) => l.notes.length));
-    const hover = async (sel) => { await page.hover(sel + ' .text'); await sleep(450); };
+    const clickOpen = async (sel) => { await page.click(sel + ' .text'); await sleep(450); };
     const press = (sel, cm) => page.evaluate((sel, cm) => $(sel).find(`[data-cm=${cm}]`).click(), sel, cm);
 
     try {
         await page.evaluate(() => { setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done'); saveBoard(); });
 
-        // Hover: the panel covers the card, with exactly the three options.
-        await hover(note(0, 0));
+        // Hovering alone opens nothing.
+        await page.hover(note(0, 0) + ' .text');
+        await sleep(450);
+        assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), note(0, 0)), false, 'hover does not open the menu');
+
+        // A click: the panel covers the card, with exactly the three options.
+        await clickOpen(note(0, 0));
         const open = await page.evaluate((sel) => {
             const n = $(sel)[0], p = $(sel).find('.cm-panel')[0];
             const a = n.getBoundingClientRect(), b = p.getBoundingClientRect();
@@ -32,6 +38,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             };
         }, note(0, 0));
         assert.deepStrictEqual(open, { covers: true, options: ['move', 'edit', 'delete'] });
+
+        // Moving off the card closes it; a click opens it again.
+        await page.mouse.move(5, 5);
+        await sleep(100);
+        assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), note(0, 0)), false, 'leaving the card closes the menu');
+        await clickOpen(note(0, 0));
 
         // Move: in the first list, left is greyed out; right moves it over.
         await press(note(0, 0), 'move');

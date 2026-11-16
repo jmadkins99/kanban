@@ -66,7 +66,7 @@
     '<button type="button" data-cm="right" aria-label="Move right">➡️</button></div>' +
     '</div></div>';
 
-  var injected = false, lastTouch = 0;
+  var injected = false;
 
   function setup() {
     if (injected) return;
@@ -76,10 +76,8 @@
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap">',
       $('<style id="cardmenu-css">').text(CSS));
-    // Tapping elsewhere (or on another card) hides open panels; also remembers touch so
-    // the compat mouseenter a tap fires doesn't count as hover.
+    // Tapping elsewhere (or on another card) hides open panels.
     document.addEventListener('pointerdown', function (e) {
-      if (e.pointerType !== 'mouse') lastTouch = Date.now();
       $('.note.cm-open').each(function () { if (!this.contains(e.target)) close(this); });
     }, true);
   }
@@ -101,7 +99,7 @@
   function attach(containerSelector, cb) {
     setup();
     $(containerSelector)
-      .on('mouseenter', '.note', function () { if (Date.now() - lastTouch > 800) open(this); })
+      // A click (a tap on a phone) opens the menu; on desktop, moving off the card closes it.
       .on('mouseleave', '.note', function () { close(this); })
       .on('click', '.note', function (e) { if (!$(e.target).closest('.cm-panel').length) open(this); })
       .on('click', '.cm-panel button', function (e) {
