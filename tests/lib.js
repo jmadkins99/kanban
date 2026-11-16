@@ -44,10 +44,15 @@ function serve() {
     return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
+// Nullboard's old demo board (3 lists, 30 notes), which most cases are
+// written against. A first visit now starts with 4 empty lists instead.
+const DEMO = require('./fixtures/demo-board.json');
+
 // Opens the app. `seed` (optional) runs before the app's own scripts on every
 // load, e.g. to put History entries into localStorage. confirm() dialogs are
-// accepted, as a user clicking OK would.
-async function openApp(seed) {
+// accepted, as a user clicking OK would. Then the demo board replaces the
+// first-visit board, unless `demo: false`.
+async function openApp(seed, { demo = true } = {}) {
     const server = await serve();
     const browser = await puppeteer.launch({
         executablePath: findChrome(),
@@ -62,6 +67,14 @@ async function openApp(seed) {
     const url = `http://127.0.0.1:${server.address().port}/index.html`;
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForSelector('.wrap .board');
+    if (demo) {
+        await page.evaluate((b) => {
+            b.id = NB.board.id;
+            b.revision = NB.board.revision;
+            NB.storage.saveBoard(b);
+            openBoard(b.id);
+        }, JSON.parse(JSON.stringify(DEMO)));
+    }
     return {
         page,
         errors,

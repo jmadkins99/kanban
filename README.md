@@ -33,6 +33,8 @@ It's Nullboard with a few changes:
   insignia are original SVGs modelled on real US military rank insignia
   (`ranks.js`), not the game's art. Reaching a new level by finishing a note
   plays a WoW-inspired level-up (`levelup.js`).
+- **Starter board**: a first visit starts with four empty lists, Backlog,
+  To-Do, WIP and Done.
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
 - **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board
