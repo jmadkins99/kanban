@@ -10,12 +10,16 @@
  *	- Submit Day banks the Done notes' XP before clearing them. The bank is
  *	  keyed by xpId, so an Undo that brings banked notes back can't count
  *	  them twice, and syncing the bank is a plain merge.
- *	A level is 4.6 cards' worth: 2500 XP a card, 11500 a level.
+ *	A level is 4.6 cards' worth: 2500 XP a card, 11500 a level. On top of
+ *	that, each whole minute of the note's last visit to WIP adds 0.5% of a
+ *	level (57.5 XP), up to 8 hours.
  */
 (function () {
 
 	var PER_CARD  = 2500;
 	var PER_LEVEL = PER_CARD * 4.6;
+	var PER_WIP_MINUTE = PER_LEVEL * 0.005;
+	var WIP_CAP_MS = 8 * 3600 * 1000;
 
 	function bank() { return NB.storage.getJson('xpBank') || {}; } // xpId -> XP
 
@@ -119,10 +123,14 @@
 		render: render,
 
 		// A note just moved into Done: give it its XP, return the amount.
+		// Its WIP time is the visit still running (straight from WIP) or the
+		// last one it finished.
 		award: function (meta)
 		{
 			gaining = true;
-			meta.xp = PER_CARD;
+			var wipMs = meta.wip ? Date.now() - meta.wip : (meta.wipMs || 0);
+			var minutes = Math.floor(Math.min(wipMs, WIP_CAP_MS) / 60000);
+			meta.xp = Math.round(PER_CARD + minutes * PER_WIP_MINUTE);
 			meta.xpId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 			return meta.xp;
 		},

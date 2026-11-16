@@ -24,9 +24,10 @@ It's Nullboard with a few changes:
   Dragging a note into Done plays gym-tracker's PR celebration on the card
   with a "+2500 XP" badge and a screen flash (`celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
-  recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, a
-  level is 4.6 notes; XP leaves with a note that leaves Done, and Submit Day
-  banks it. "XP bars" in UI preferences sets the number of bubbles (20).
+  recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, plus
+  57.5 XP (0.5% of a level) per whole minute of its last WIP visit, up to 8
+  hours; a level is 11500 XP. XP leaves with a note that leaves Done, and
+  Submit Day banks it. "XP bars" in UI preferences sets the number of bubbles (20).
 - **Levels and ranks**: beside Submit Day, your level with a rank name and
   insignia. The 70 rank names follow Call of Duty: Modern Warfare 2; the
   insignia are original SVGs modelled on real US military rank insignia
