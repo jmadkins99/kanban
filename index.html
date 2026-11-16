@@ -4635,14 +4635,16 @@
 	 */
 	/*
 	 *	Big screens: everything scales up from a 1080p baseline (1 on a
-	 *	1920x1080 screen, about 1.35 on a 3440x1440 ultrawide, at most 2).
-	 *	It drives Nullboard's font size (unless one is set in UI preferences),
-	 *	which sizes the board, lists and menus, and --ui, which zooms the
-	 *	fixed-size parts (Submit Day, XP bar, History, timers, card menu).
+	 *	1080-tall screen, 1.33 on a 3440x1440 ultrawide, at most 2). It goes
+	 *	by the screen, not the window, so a half-screen window reads the same
+	 *	as a full-screen one. It drives Nullboard's font size (unless one is
+	 *	set in UI preferences), which sizes the board, lists and menus, and
+	 *	--ui, which zooms the fixed-size parts (Submit Day, XP bar, History,
+	 *	timers, card menu).
 	 */
 	function applyUiScale()
 	{
-		var ui = Math.max(1, Math.min(2, window.innerWidth / 1920, window.innerHeight / 950));
+		var ui = Math.max(1, Math.min(2, screen.height / 1080));
 		var $html = $('html');
 
 		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-nops': (8 * ui).toFixed(2) });
