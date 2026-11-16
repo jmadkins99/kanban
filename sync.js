@@ -136,7 +136,12 @@
 				lists: (b.lists || []).map(function (l) {
 					return {
 						title: l.title || '',
-						notes: (l.notes || []).map(function (n) { return { text: n.text || '', raw: !! n.raw, min: !! n.min }; })
+						notes: (l.notes || []).map(function (n) {
+							var o = { text: n.text || '', raw: !! n.raw, min: !! n.min };
+							// plus any per-note state (WIP timer, XP), in a fixed key order
+							Object.keys(n).sort().forEach(function (k) { if (! (k in o) && n[k] != null) o[k] = n[k]; });
+							return o;
+						})
 					};
 				})
 			});
