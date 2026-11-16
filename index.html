@@ -1637,6 +1637,37 @@
 		font-weight: 600;
 	}
 
+	/* A list named "wip", in any case, shows a live timer on each note. */
+	.board .list.wip-list .note .text {
+		padding-right: 72px;
+	}
+
+	.board .note .wip-timer {
+		display: none;
+		position: absolute;
+		right: 6px;
+		top: 50%;
+		transform: translateY(-50%);
+		padding: 1px 7px;
+		border-radius: 9px;
+		background: rgba(var(--accent-rgb), 0.45);
+		border: 1px solid var(--accent-hi);
+		color: var(--accent-pale);
+		font-size: 11px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		pointer-events: none;
+	}
+
+	.board .list.wip-list .note .wip-timer:not(:empty) {
+		display: block;
+	}
+
+	.board .list.wip-list .note.editing .wip-timer {
+		display: none;
+	}
+
 	/* A list named "done", in any case, strikes through its notes. */
 	.board .list.done-list .note .text,
 	.history-list.done-list .history-note {
@@ -1764,6 +1795,7 @@
 			</div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
+			<span class=wip-timer></span>
 		</div>
 
 		<a href=# class=load-board></a>
@@ -3269,10 +3301,63 @@
 		return (title || '').trim().toLowerCase() == 'done';
 	}
 
-	function markDoneLists()
+	function isWipTitle(title)
+	{
+		return (title || '').trim().toLowerCase() == 'wip';
+	}
+
+	function markLists()
 	{
 		$('.wrap .board .list').each(function(){
-			$(this).toggleClass('done-list', isDoneTitle( getText($(this).find('.head .text')) ));
+			var title = getText($(this).find('.head .text'));
+			$(this).toggleClass('done-list', isDoneTitle(title))
+			       .toggleClass('wip-list',  isWipTitle(title));
+		});
+	}
+
+	/*
+	 *	Per-note state beyond text/raw/min (e.g. wip: when it entered WIP)
+	 *	rides on the note element as .data('meta') and is saved as extra
+	 *	fields on the note.
+	 */
+	function noteMeta($note)
+	{
+		var m = $note.data('meta');
+		if (! m) $note.data('meta', m = {});
+		return m;
+	}
+
+	// A note entering a WIP list starts its timer; leaving stops it, keeping
+	// how long that visit lasted (wipMs). Coming back starts over from 0.
+	function trackWip()
+	{
+		var now = Date.now();
+
+		$('.wrap .board .list').each(function(){
+			var wip = $(this).hasClass('wip-list');
+			$(this).find('.note').each(function(){
+				var m = noteMeta($(this));
+				if (wip && ! m.wip) { m.wip = now; }
+				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
+			});
+		});
+	}
+
+	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
+	function formatTimer(ms)
+	{
+		var s = Math.max(0, Math.floor(ms / 1000));
+		var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+		return (h ? h + 'h ' : '') + m + 'm ' + (s % 60) + 's';
+	}
+
+	// Recomputed from the timestamp each tick, so a sleeping laptop is right on waking.
+	function tickWipTimers()
+	{
+		var now = Date.now();
+		$('.wrap .board .list.wip-list .note').each(function(){
+			var m = noteMeta($(this));
+			$(this).find('.wip-timer').text(m.wip ? formatTimer(now - m.wip) : '');
 		});
 	}
 
@@ -3387,6 +3472,9 @@
 
 	function saveBoard()
 	{
+		markLists();
+		trackWip();
+
 		var $board = $('.wrap .board');
 		var board = Object.assign(new Board(), NB.board); // id, revision & title
 
@@ -3401,6 +3489,7 @@
 				var n = l.addNote( getText($note.find('.text')) );
 				n.raw = $note.hasClass('raw');
 				n.min = $note.hasClass('collapsed');
+				Object.assign(n, noteMeta($note));
 			});
 		});
 
@@ -3409,7 +3498,8 @@
 
 		updateUndoRedo();
 		updateBoardIndex();
-		markDoneLists();
+		markLists();
+		tickWipTimers();
 
 		if (window.cloudSync) cloudSync.boardChanged();
 	}
@@ -3493,6 +3583,9 @@
 				setText( $n.find('.text'), n.text );
 				if (n.raw) $n.addClass('raw');
 				if (n.min) $n.addClass('collapsed');
+				var meta = Object.assign({}, n);
+				delete meta.text; delete meta.raw; delete meta.min;
+				$n.data('meta', meta);
 				$l_notes.append($n);
 			});
 
@@ -3511,7 +3604,8 @@
 		updateUndoRedo();
 		updateBoardIndex();
 		setupListScrolling();
-		markDoneLists();
+		markLists();
+		tickWipTimers();
 
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
 	}
@@ -5082,6 +5176,7 @@
 
 	//
 	setInterval(adjustListScroller, 100);
+	setInterval(tickWipTimers, 250); // often enough that the seconds turn over on time
 
 	setupListScrolling();
 
