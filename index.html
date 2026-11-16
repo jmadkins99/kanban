@@ -1465,7 +1465,7 @@
 	 *	Values follow gym-tracker's css/styles.css.
 	 */
 	body {
-		padding-bottom: 80px; /* clears the fixed Submit Day button */
+		padding-bottom: 96px; /* clears the fixed Submit Day button and XP bar */
 	}
 
 	.theme-dark .board .list {
@@ -1485,7 +1485,7 @@
 		position: fixed;
 		left: 0;
 		right: 0;
-		bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+		bottom: calc(16px + var(--xp-height) + env(safe-area-inset-bottom, 0px));
 		z-index: 4;
 		text-align: center;
 		pointer-events: none;
@@ -1637,6 +1637,77 @@
 		font-weight: 600;
 	}
 
+	/*
+	 *	XP bar: World of Warcraft classic's experience bar, recreated in CSS
+	 *	(colours read from Blizzard's own values and classic's bar texture).
+	 */
+	:root {
+		--xp-height: 16px;
+	}
+
+	.xp-bar {
+		--xp-bubbles: 20;
+		--xp-pct: 0%;
+		--xp-color: #94008c;          /* Blizzard's normal (not rested) XP: 0.58, 0, 0.55 */
+		--xp-track: #03030a;
+		--xp-frame: #5e5b55;
+		--xp-frame-hi: #959390;
+		--xp-divider: #9a9b9a;
+		--xp-divider-edge: rgba(0, 0, 0, 0.7);
+
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: env(safe-area-inset-bottom, 0px);
+		z-index: 5;
+		height: var(--xp-height);
+		background: var(--xp-track);
+		overflow: hidden;
+	}
+
+	.xp-bar__fill {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: var(--xp-pct);
+		background: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), transparent 45%, rgba(0, 0, 0, 0.25)), var(--xp-color);
+		transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+	}
+
+	/* the bubbles' dividers and the bevelled frame, over the fill */
+	.xp-bar::after {
+		--cell: calc(100% / var(--xp-bubbles));
+		content: "";
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		border-top: 1px solid var(--xp-frame);
+		box-shadow: inset 0 1px 0 var(--xp-frame-hi), inset 0 2px 0 rgba(0, 0, 0, 0.53), inset 0 -1px 0 rgba(8, 8, 7, 0.59);
+		background-image: repeating-linear-gradient(to right,
+			transparent 0 calc(var(--cell) - 3px),
+			var(--xp-divider-edge) 0 calc(var(--cell) - 2px),
+			var(--xp-divider) 0 calc(var(--cell) - 1px),
+			var(--xp-divider-edge) 0 var(--cell));
+	}
+
+	.xp-bar__text {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		font: 600 12px/1 "Arial Narrow", "Roboto Condensed", "Liberation Sans Narrow", Arial, sans-serif;
+		font-stretch: condensed;
+		color: #fff;
+		text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000;
+		white-space: nowrap;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.xp-bar__fill { transition: none; }
+	}
+
 	/* A list named "wip", in any case, shows a live timer on each note. */
 	.board .list.wip-list .note .text {
 		padding-right: 72px;
@@ -1714,6 +1785,7 @@
 						<tr class='ui-fs'><td class=name>Font size:</td>  <td><a href=# class=less>&lt;</a></td><td class=val></td><td><a href=# class=more>&gt;</a></td></tr>
 						<tr class='ui-lh'><td class=name>Line height:</td><td><a href=# class=less>&lt;</a></td><td class=val></td><td><a href=# class=more>&gt;</a></td></tr>
 						<tr class='ui-lw'><td class=name>List width:</td> <td><a href=# class=less>&lt;</a></td><td class=val></td><td><a href=# class=more>&gt;</a></td></tr>
+						<tr class='ui-xp'><td class=name>XP bars:</td>    <td><a href=# class=less>&lt;</a></td><td class=val></td><td><a href=# class=more>&gt;</a></td></tr>
 						</table>
 					</div>
 				</div>
@@ -3329,26 +3401,32 @@
 
 	// A note entering a WIP list starts its timer; leaving stops it, keeping
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
-	function trackWip()
+	// A note that isn't in Done (any more) holds no XP.
+	function trackNotes()
 	{
 		var now = Date.now();
 
 		$('.wrap .board .list').each(function(){
-			var wip = $(this).hasClass('wip-list');
+			var wip  = $(this).hasClass('wip-list');
+			var done = $(this).hasClass('done-list');
 			$(this).find('.note').each(function(){
 				var m = noteMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
+				if (! done && m.xp) { delete m.xp; delete m.xpId; }
 			});
 		});
 	}
 
-	// After a note was moved (dragged, for now) and the board saved: a note
-	// that arrived in Done from another list gets celebrated.
+	// A note was just moved (dragged, for now); call before saving. One that
+	// arrived in Done from another list earns its XP and gets celebrated.
 	function noteMoved($note, fromDone)
 	{
-		if (! fromDone && $note.closest('.list').hasClass('done-list') && window.Celebrate)
-			Celebrate.done($note[0], 2500);
+		if (fromDone || ! $note.closest('.list').hasClass('done-list'))
+			return;
+
+		var xp = XP.award(noteMeta($note));
+		if (window.Celebrate) Celebrate.done($note[0], xp);
 	}
 
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
@@ -3481,7 +3559,7 @@
 	function saveBoard()
 	{
 		markLists();
-		trackWip();
+		trackNotes();
 
 		var $board = $('.wrap .board');
 		var board = Object.assign(new Board(), NB.board); // id, revision & title
@@ -3508,6 +3586,7 @@
 		updateBoardIndex();
 		markLists();
 		tickWipTimers();
+		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged();
 	}
@@ -3614,6 +3693,7 @@
 		setupListScrolling();
 		markLists();
 		tickWipTimers();
+		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
 	}
@@ -4520,8 +4600,8 @@
 			{
 				if (this.org_loc != noteLocation($note))
 				{
-					saveBoard();
 					noteMoved($note, this.from_done);
+					saveBoard();
 				}
 			}
 		}
@@ -5264,6 +5344,7 @@
 
 		if (window.cloudSync) cloudSync.dayChanged(entry);
 
+		XP.bankNotes( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
 		$done.each(function(){ clearList($(this), true); }); // after the snapshot, which keeps them
 
 		showView('history');
@@ -5370,6 +5451,7 @@
 </script>
 
 <script src="celebrate.js"></script>
+<script src="xp.js"></script>
 <script src="sync.js"></script>
 
 </html>
