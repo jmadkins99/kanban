@@ -92,6 +92,12 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         await waitFor(a.page, (day) => ! loadHistory().some((e) => e.day == day), today);
         assert.ok(await a.page.evaluate((day) => loadHistory().some((e) => e.day == day), oldDay), 'other days untouched');
 
+        // XP banked on one device reaches the other (the bank merges, never overwrites).
+        await a.page.evaluate(() => XP.bankNotes([{ xp: 2500, xpId: 'from-a' }]));
+        await b.page.evaluate(() => XP.bankNotes([{ xp: 2500, xpId: 'from-b' }]));
+        await waitFor(a.page, () => 'from-b' in XP.bank() && 'from-a' in XP.bank());
+        await waitFor(b.page, () => 'from-a' in XP.bank() && 'from-b' in XP.bank());
+
         // Rules: another account's data is off limits, and signed out sees nothing.
         const uid = await a.page.evaluate(() => firebase.auth().currentUser.uid);
         assert.strictEqual(await deniedRead(a.page, 'users/someone-else/kanban/board'), 'permission-denied');

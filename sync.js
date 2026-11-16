@@ -36,7 +36,7 @@
 	function warn(what) { return function (e) { console.warn('[sync] ' + what + ' failed:', e && (e.code || e.message)); }; }
 	function plain(x) { return JSON.parse(JSON.stringify(x)); } // Firestore takes plain objects only
 
-	var sync = window.cloudSync = { boardChanged: noop, dayChanged: noop, dayDeleted: noop };
+	var sync = window.cloudSync = { boardChanged: noop, dayChanged: noop, dayDeleted: noop, bankXp: noop };
 
 	// Resolves to 'off', 'signed-out' or 'signed-in'.
 	sync.ready = (LIVE || DEV) ? init() : Promise.resolve('off');
@@ -219,6 +219,21 @@
 			synced = c;
 			applyBoard(c);
 		}, warn('board listener'));
+
+		/*
+		 *	XP bank (xpId -> XP, see xp.js): a merge both ways, so repeating
+		 *	it is harmless and two devices' banks simply add up.
+		 */
+		var xpRef = userDoc.collection('kanban').doc('xp');
+
+		sync.bankXp = function (add) { xpRef.set({ bank: add }, { merge: true }).catch(warn('XP write')); };
+
+		if (window.XP && Object.keys(XP.bank()).length)
+			sync.bankXp(XP.bank());
+
+		xpRef.onSnapshot(function (snap) {
+			if (snap.exists && window.XP) XP.mergeBank(snap.data().bank);
+		}, warn('XP listener'));
 
 		/*
 		 *	History

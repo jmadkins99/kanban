@@ -23,6 +23,10 @@ It's Nullboard with a few changes:
   Submit Day snapshots the board with them, then clears that list.
   Dragging a note into Done plays gym-tracker's PR celebration on the card
   with a "+2500 XP" badge and a screen flash (`celebrate.js`).
+- **XP bar**: World of Warcraft classic's experience bar along the bottom,
+  recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, a
+  level is 4.6 notes; XP leaves with a note that leaves Done, and Submit Day
+  banks it. "XP bars" in UI preferences sets the number of bubbles (20).
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
 - **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board
