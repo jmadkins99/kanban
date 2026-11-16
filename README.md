@@ -27,6 +27,11 @@ It's Nullboard with a few changes:
   recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, a
   level is 4.6 notes; XP leaves with a note that leaves Done, and Submit Day
   banks it. "XP bars" in UI preferences sets the number of bubbles (20).
+- **Levels and ranks**: beside Submit Day, your level with a rank name and
+  insignia. The 70 rank names follow Call of Duty: Modern Warfare 2; the
+  insignia are original SVGs modelled on real US military rank insignia
+  (`ranks.js`), not the game's art. Reaching a new level by finishing a note
+  plays a WoW-inspired level-up (`levelup.js`).
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
 - **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board

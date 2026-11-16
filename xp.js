@@ -47,7 +47,8 @@
 	 *	the bar
 	 */
 	var BUBBLES = { min: 1, max: 40, def: 20 };
-	var shown = null; // what the bar last showed, to animate from
+	var shown = null;    // what the bar last showed, to animate from
+	var gaining = false; // the next render follows a note moved into Done here
 
 	function bubbles()
 	{
@@ -90,6 +91,21 @@
 		else
 			$bar.css('--xp-pct', pct);
 
+		// The level badge beside Submit Day: insignia, level, rank (ranks.js).
+		var rank = Ranks.forLevel(p.level);
+		if (! shown || shown.level != p.level)
+		{
+			$('.level-badge .level-insignia').html(rank.svg);
+			$('.level-badge .level-num').text('Lvl ' + p.level);
+			$('.level-badge .level-rank').text(rank.name);
+		}
+
+		// A level reached by moving a note into Done gets the full show, just
+		// after the card's +XP celebration has had a moment.
+		if (gaining && shown && p.level > shown.level && window.LevelUp)
+			setTimeout(function () { LevelUp.play({ level: p.level, rankName: rank.name, insigniaSvg: rank.svg }); }, 900);
+		gaining = false;
+
 		var was = shown;
 		shown = p;
 		return { before: was, now: p };
@@ -105,6 +121,7 @@
 		// A note just moved into Done: give it its XP, return the amount.
 		award: function (meta)
 		{
+			gaining = true;
 			meta.xp = PER_CARD;
 			meta.xpId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 			return meta.xp;
