@@ -3126,6 +3126,8 @@
 			var have = drag.item;
 			var $have = $(have);
 			var $want = $have.clone();
+			if ($have.data('meta')) // the note's WIP start and XP, as its own copy
+				$want.data('meta', Object.assign({}, $have.data('meta')));
 
 			$want.css({ display: 'none' });
 
@@ -3149,6 +3151,7 @@
 			}
 
 			drag.item = $want[0];
+			$have.addClass('swap-out'); // on its way out; saves must skip it while it animates away
 
 			if (! drag.swapAnimMs)
 			{
@@ -3467,7 +3470,7 @@
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
-			$(this).find('.note').each(function(){
+			$(this).find('.note').not('.swap-out').each(function(){
 				var m = noteMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
@@ -3628,7 +3631,7 @@
 			var $list = $(this);
 			var l = board.addList( getText($list.find('.head .text')) );
 
-			$list.find('.note').each(function(){
+			$list.find('.note').not('.swap-out').each(function(){
 				var $note = $(this)
 				var n = l.addNote( getText($note.find('.text')) );
 				n.raw = $note.hasClass('raw');
