@@ -1,21 +1,34 @@
 // Cloud sync against the Firebase emulators (run via sync.sh). Two browsers
-// sign in as the same Google account:
+// sign in as the owner's account (the uid firestore.rules allows):
 // - the first one's local board goes up to an empty cloud;
 // - the second one gets it (as a new revision, so Undo still has its own),
 //   and its local History days get imported;
 // - board and History changes then show up live on the other browser;
-// - the rules keep each account to its own data.
+// - the rules let only the owner in, and only to the documents the app uses.
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const { openApp } = require('../lib');
+
+const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8'))[1];
+
+// The auth emulator takes unsigned custom tokens, so a test can be any uid.
+function token(uid) {
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const now = Math.floor(Date.now() / 1000);
+    return b64({ alg: 'none', typ: 'JWT' }) + '.' + b64({
+        iss: 'firebase-auth-emulator@example.com', sub: 'firebase-auth-emulator@example.com',
+        aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+        iat: now, exp: now + 3600, uid,
+    }) + '.';
+}
 
 const devOptIn = () => localStorage.setItem('nullboard.firebaseDev', 'true');
 
 const ready = (page) => page.evaluate(() => cloudSync.ready);
 
-async function signIn(app, sub) {
-    // The auth emulator takes an unsigned Google ID token as a credential.
-    await app.page.evaluate((sub) => firebase.auth().signInWithCredential(
-        firebase.auth.GoogleAuthProvider.credential(JSON.stringify({ sub, email: sub + '@example.com', email_verified: true }))), sub);
+async function signIn(app, uid) {
+    await app.page.evaluate((t) => firebase.auth().signInWithCustomToken(t), token(uid));
     await app.reload();
     assert.strictEqual(await ready(app.page), 'signed-in');
 }
@@ -33,6 +46,9 @@ const cloudBoard = (page) => page.evaluate(() => firebase.firestore()
     .then((s) => (s.exists ? s.data() : null)));
 
 const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().doc(path).get({ source: 'server' })
+    .then(() => 'allowed', (e) => e.code), path);
+
+const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore().doc(path).set({ x: 1 })
     .then(() => 'allowed', (e) => e.code), path);
 
 (async () => {
@@ -55,7 +71,7 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
 
         // A's local edit goes up to the empty cloud on first sign-in.
         await editFirstNote(a.page, 'from A before sign-in');
-        await signIn(a, 'alice');
+        await signIn(a, OWNER);
         assert.ok(await a.page.evaluate(() => $('.config .sync-out').css('display') != 'none'), 'menu offers sign-out');
         assert.strictEqual(await a.page.evaluate(() => $('.firebase-emulator-warning').filter(':visible').length), 0, 'no emulator banner over the XP bar');
         for (let i = 0; i < 50 && ((await cloudBoard(a.page)) || { lists: [] }).lists[0]?.notes[0]?.text != 'from A before sign-in'; i++)
@@ -65,7 +81,7 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         // B signs in to the same account: gets A's board as a new revision,
         // and its own History day goes up.
         const bBefore = await firstNote(b.page);
-        await signIn(b, 'alice');
+        await signIn(b, OWNER);
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'from A before sign-in').catch(async (e) => {
             const diag = await b.page.evaluate(async () => {
                 const s = await firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board').get({ source: 'server' });
@@ -99,9 +115,13 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         await waitFor(a.page, () => 'from-b' in XP.bank() && 'from-a' in XP.bank());
         await waitFor(b.page, () => 'from-a' in XP.bank() && 'from-b' in XP.bank());
 
-        // Rules: another account's data is off limits, and signed out sees nothing.
+        // Rules: only the owner, only the app's documents; signed out sees nothing.
         const uid = await a.page.evaluate(() => firebase.auth().currentUser.uid);
+        assert.strictEqual(uid, OWNER);
         assert.strictEqual(await deniedRead(a.page, 'users/someone-else/kanban/board'), 'permission-denied');
+        assert.strictEqual(await deniedWrite(a.page, 'users/someone-else/kanban/board'), 'permission-denied', "can't write someone else's data");
+        assert.strictEqual(await deniedWrite(a.page, 'users/' + OWNER + '/junk/x'), 'permission-denied', 'only the documents the app uses');
+        assert.strictEqual(await deniedWrite(a.page, 'users/' + OWNER + '/kanban/other'), 'permission-denied');
         await Promise.all([
             b.page.waitForNavigation({ waitUntil: 'load' }),
             b.page.evaluate(() => { $('.config .sync-out').click(); }),
@@ -109,6 +129,11 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         assert.strictEqual(await ready(b.page), 'signed-out');
         assert.strictEqual(await deniedRead(b.page, 'users/' + uid + '/kanban/board'), 'permission-denied');
         assert.strictEqual(await firstNote(b.page), 'live from A', 'signed out, B keeps its local copy');
+
+        // Any other account, even signed in, gets nothing, not even its own tree.
+        await b.page.evaluate((t) => firebase.auth().signInWithCustomToken(t), token('stranger'));
+        assert.strictEqual(await deniedWrite(b.page, 'users/stranger/kanban/board'), 'permission-denied', 'strangers get nothing');
+        assert.strictEqual(await deniedRead(b.page, 'users/' + OWNER + '/kanban/board'), 'permission-denied');
 
         assert.deepStrictEqual([...a.errors, ...b.errors], [], 'no page errors');
     } finally {
