@@ -22,6 +22,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             return [c(n), [r.left + r.width / 2, r.top + 4]]; // drop at the top of the target list
         }, list, index, to);
         await page.mouse.move(from[0], from[1]);
+        await sleep(500); // the card menu slides open on hover; grab it once it's open
         await page.mouse.down();
         await sleep(600); // Nullboard starts a drag after a 500 ms hold
         for (let i = 1; i <= 15; i++) {

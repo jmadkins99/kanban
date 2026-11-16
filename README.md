@@ -33,6 +33,9 @@ It's Nullboard with a few changes:
   insignia are original SVGs modelled on real US military rank insignia
   (`ranks.js`), not the game's art. Reaching a new level by finishing a note
   plays a WoW-inspired level-up (`levelup.js`).
+- **Card menu**: hovering a note (tapping it on a phone) slides down Move,
+  Edit and Delete (`cardmenu.js`); Move steps it one list left or right.
+  Drag and drop still works: hold anywhere on the card.
 - **Starter board**: a first visit starts with four empty lists, Backlog,
   To-Do, WIP and Done.
 - **One board**: no adding, deleting or switching boards. Import replaces the
