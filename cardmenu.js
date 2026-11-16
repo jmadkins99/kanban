@@ -25,7 +25,7 @@
 
     '.cm-panel button { flex: 1 1 0; min-width: 0; min-height: 0; max-height: 40px; margin: 0; border: 0; border-radius: 6px;',
     '  padding: 0 .4em 0 calc(.4em + .26em); background: transparent; color: #b8b8d0; cursor: pointer;',
-    "  font: 500 11px/1 'Jost', 'Century Gothic', 'Segoe UI', sans-serif; letter-spacing: .26em; text-transform: uppercase;",
+    "  font: 500 calc(11px * var(--ui, 1))/1 'Jost', 'Century Gothic', 'Segoe UI', sans-serif; letter-spacing: .26em; text-transform: uppercase;",
     '  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative;',
     '  opacity: 0; transform: translateY(-4px); transition: color .18s, background-color .18s, opacity .3s, transform .3s; }',
     '.cm-open .cm-panel button { opacity: 1; transform: none; }',
@@ -47,12 +47,12 @@
     /* short cards: options can't stack, so lay them out in a row sized to the card */
     '@container (max-height: 96px) {',
     '  .cm-main { flex-direction: row; padding: 3px; }',
-    '  .cm-main button { max-height: none; font-size: clamp(10px, 34cqh, 11px); letter-spacing: .18em;',
+    '  .cm-main button { max-height: none; font-size: clamp(10px, 34cqh, calc(11px * var(--ui, 1))); letter-spacing: .18em;',
     '    padding: 0 .3em 0 calc(.3em + .18em); }',
     '  .cm-main button::after { bottom: 14%; }',
     '  .cm-arrows button { max-height: none; }',
     '  .cm-arrows { padding: 3px; }',
-    '  .cm-arrows button { font-size: clamp(13px, 55cqh, 20px); }',
+    '  .cm-arrows button { font-size: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); }',
     '}'
   ].join('\n');
 

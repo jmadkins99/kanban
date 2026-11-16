@@ -79,6 +79,7 @@
 	/* Gym-tracker's system font stack. Sizes are nullboard's Segoe UI ones,
 	   which is what this stack resolves to on Windows. */
 	html {
+		--ui: 1;                         /* screen-size scale, see applyUiScale() */
 		--ff: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 
 		--fs: 11;                        /* font-size   */
@@ -1465,7 +1466,7 @@
 	 *	Values follow gym-tracker's css/styles.css.
 	 */
 	body {
-		padding-bottom: 96px; /* clears the fixed Submit Day button and XP bar */
+		padding-bottom: calc(96px * var(--ui)); /* clears the fixed Submit Day button and XP bar */
 	}
 
 	.theme-dark .board .list {
@@ -1486,6 +1487,7 @@
 		left: 0;
 		right: 0;
 		bottom: calc(16px + var(--xp-height) + env(safe-area-inset-bottom, 0px));
+		zoom: var(--ui);
 		z-index: 4;
 		display: flex;
 		justify-content: center;
@@ -1567,6 +1569,7 @@
 
 	/***/
 	.history {
+		zoom: var(--ui);
 		display: none;
 		max-width: 720px;
 		margin: 0 auto;
@@ -1710,6 +1713,7 @@
 		bottom: env(safe-area-inset-bottom, 0px);
 		z-index: 5;
 		height: var(--xp-height);
+		zoom: var(--ui);
 		background: var(--xp-track);
 		overflow: hidden;
 	}
@@ -1759,7 +1763,7 @@
 
 	/* A list named "wip", in any case, shows a live timer on each note. */
 	.board .list.wip-list .note .text {
-		padding-right: 72px;
+		padding-right: calc(72px * var(--ui));
 	}
 
 	.board .note .wip-timer {
@@ -1773,7 +1777,7 @@
 		background: rgba(var(--accent-rgb), 0.45);
 		border: 1px solid var(--accent-hi);
 		color: var(--accent-pale);
-		font-size: 11px;
+		font-size: calc(11px * var(--ui));
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
@@ -4629,9 +4633,33 @@
 	/*
 	 *	font size prefs (the font itself is fixed: gym-tracker's system stack)
 	 */
+	/*
+	 *	Big screens: everything scales up from a 1080p baseline (1 on a
+	 *	1080-tall screen, 1.33 on a 3440x1440 ultrawide, at most 2). It goes
+	 *	by the screen, not the window, so a half-screen window reads the same
+	 *	as a full-screen one. It drives Nullboard's font size (unless one is
+	 *	set in UI preferences), which sizes the board, lists and menus, and
+	 *	--ui, which zooms the fixed-size parts (Submit Day, XP bar, History,
+	 *	timers, card menu).
+	 */
+	function applyUiScale()
+	{
+		var ui = Math.max(1, Math.min(2, screen.height / 1080));
+		var $html = $('html');
+
+		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-nops': (8 * ui).toFixed(2) });
+		if (! $html.hasClass('fs-set'))
+			$html.css('--fs', (11 * ui).toFixed(2));
+
+		updateVarsAndLayout();
+	}
+
 	function initFonts()
 	{
 		var conf = NB.storage.getConfig();
+
+		applyUiScale();
+		$(window).on('resize', applyUiScale);
 
 		if (conf.fontSize)
 			setFontSize(conf.fontSize);
@@ -4739,7 +4767,7 @@
 	function resetFontSize()
 	{
 		$('html').css('--fs', '').removeClass('fs-set');
-		updateVarsAndLayout();
+		applyUiScale();
 		return updateFontSize();
 	}
 
