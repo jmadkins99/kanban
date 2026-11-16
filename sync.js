@@ -63,7 +63,9 @@
 
 				if (DEV)
 				{
-					firebase.auth().useEmulator('http://127.0.0.1:9099');
+					// No "Running in emulator mode" banner: it covers the XP bar, and
+					// these are fake accounts on this PC, never production ones.
+					firebase.auth().useEmulator('http://127.0.0.1:9099', { disableWarnings: true });
 					db.useEmulator('127.0.0.1', 8080);
 				}
 

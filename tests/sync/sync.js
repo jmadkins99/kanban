@@ -57,6 +57,7 @@ const deniedRead = (page, path) => page.evaluate((path) => firebase.firestore().
         await editFirstNote(a.page, 'from A before sign-in');
         await signIn(a, 'alice');
         assert.ok(await a.page.evaluate(() => $('.config .sync-out').css('display') != 'none'), 'menu offers sign-out');
+        assert.strictEqual(await a.page.evaluate(() => $('.firebase-emulator-warning').filter(':visible').length), 0, 'no emulator banner over the XP bar');
         for (let i = 0; i < 50 && ((await cloudBoard(a.page)) || { lists: [] }).lists[0]?.notes[0]?.text != 'from A before sign-in'; i++)
             await new Promise((r) => setTimeout(r, 200));
         assert.strictEqual((await cloudBoard(a.page)).lists[0].notes[0].text, 'from A before sign-in', 'local board uploaded');
