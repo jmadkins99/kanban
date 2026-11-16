@@ -1637,6 +1637,12 @@
 		font-weight: 600;
 	}
 
+	/* A list named "done", in any case, strikes through its notes. */
+	.board .list.done-list .note .text,
+	.history-list.done-list .history-note {
+		text-decoration: line-through;
+	}
+
 </style>
 
 </head>
@@ -3258,7 +3264,19 @@
 		setupListScrolling();
 	}
 
-	function clearList($list)
+	function isDoneTitle(title)
+	{
+		return (title || '').trim().toLowerCase() == 'done';
+	}
+
+	function markDoneLists()
+	{
+		$('.wrap .board .list').each(function(){
+			$(this).toggleClass('done-list', isDoneTitle( getText($(this).find('.head .text')) ));
+		});
+	}
+
+	function clearList($list, sure)
 	{
 		var $notes = $list.find('.note');
 		var empty = true;
@@ -3267,7 +3285,7 @@
 			empty &= ($(this).html().length == 0);
 		});
 
-		if (! $notes.length || (! empty && ! confirm("Clear all notes from this list? The list itself stays.")))
+		if (! $notes.length || (! sure && ! empty && ! confirm("Clear all notes from this list? The list itself stays.")))
 			return;
 
 		// promise() fires once for the whole set, so the board saves once
@@ -3391,6 +3409,7 @@
 
 		updateUndoRedo();
 		updateBoardIndex();
+		markDoneLists();
 
 		if (window.cloudSync) cloudSync.boardChanged();
 	}
@@ -3492,6 +3511,7 @@
 		updateUndoRedo();
 		updateBoardIndex();
 		setupListScrolling();
+		markDoneLists();
 
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
 	}
@@ -5108,7 +5128,15 @@
 		var hist = loadHistory();
 		var i = hist.findIndex(function(e){ return e.day == day; });
 
-		if (i >= 0 && ! confirm("Today is already submitted. Replace it with the board as it is now?"))
+		var $done = $('.wrap .board .list.done-list');
+		var done = $done.find('.note').length;
+		var msg = (i >= 0) ? "Today is already submitted. Replace it with a snapshot of the board exactly as it is now" : "";
+
+		if (done)
+			msg = (msg || "Save a snapshot of the board exactly as it is now") +
+				", then clear the " + done + (done == 1 ? " note" : " notes") + " in the Done list";
+
+		if (msg && ! confirm(msg + "?"))
 			return;
 
 		var entry = {
@@ -5128,6 +5156,8 @@
 		}
 
 		if (window.cloudSync) cloudSync.dayChanged(entry);
+
+		$done.each(function(){ clearList($(this), true); }); // after the snapshot, which keeps them
 
 		showView('history');
 	}
@@ -5176,7 +5206,7 @@
 			var $lists = $('<div class=history-lists>').appendTo($item);
 
 			e.lists.forEach(function(l){
-				var $l = $('<div class=history-list>').appendTo($lists);
+				var $l = $('<div class=history-list>').toggleClass('done-list', isDoneTitle(l.title)).appendTo($lists);
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
 				l.notes.forEach(function(n){
 					$('<div class=history-note>').toggleClass('raw', !! n.raw).text(n.text).appendTo($l);

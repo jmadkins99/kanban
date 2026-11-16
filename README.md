@@ -16,6 +16,8 @@ It's Nullboard with a few changes:
 - **Submit Day**: saves a snapshot of the whole board to **History**, which
   shows past days one week at a time. Entries can be deleted. History is in
   the ≡ menu; the board's name there goes back to the board.
+- **Done list**: a list named "done" (any case) strikes through its notes.
+  Submit Day snapshots the board with them, then clears that list.
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
 - **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board
