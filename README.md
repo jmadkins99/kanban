@@ -10,7 +10,7 @@ A personal kanban board. Live at https://jmadkins99.github.io/kanban/
 It's Nullboard with a few changes:
 
 - **Colors**: always dark, using gym-tracker's palette and its daily accent
-  rotation (`accentColor.js` is a straight copy), so both apps show the same
+  rotation (`js/accentColor.js` is a straight copy), so both apps show the same
   color on the same day.
 - **Clear**: a list menu option that empties a list's notes but keeps the list.
 - **Submit Day**: saves a snapshot of the whole board to **History**, which
@@ -22,9 +22,9 @@ It's Nullboard with a few changes:
 - **Done list**: a list named "done" (any case) strikes through its notes.
   Submit Day snapshots the board with them, then clears that list.
   Dragging a note into Done plays gym-tracker's PR celebration on the card
-  with a "+2500 XP" badge and a screen flash (`celebrate.js`).
+  with a "+2500 XP" badge and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
-  recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, plus
+  recreated in CSS (`js/xp.js`). Each note moved into Done earns 2500 XP, plus
   57.5 XP per whole minute of its last WIP visit, up to 8 hours. Level 1
   takes 11500 XP and each level after costs 2% more than the last (44209 XP
   for 69 to 70). XP leaves with a note that leaves Done, and
@@ -32,10 +32,10 @@ It's Nullboard with a few changes:
 - **Levels and ranks**: beside Submit Day, your level with a rank name and
   insignia. The 70 rank names follow Call of Duty: Modern Warfare 2; the
   insignia are original SVGs modelled on real US military rank insignia
-  (`ranks.js`), not the game's art. Reaching a new level by finishing a note
-  plays a WoW-inspired level-up (`levelup.js`).
+  (`js/ranks.js`), not the game's art. Reaching a new level by finishing a note
+  plays a WoW-inspired level-up (`js/levelup.js`).
 - **Card menu**: clicking a note (tapping it on a phone) slides down Move,
-  Edit and Delete (`cardmenu.js`), and moving off the card closes it; Move
+  Edit and Delete (`js/cardmenu.js`), and moving off the card closes it; Move
   steps it one list left or right.
   Drag and drop still works: hold anywhere on the card.
 - **Big screens**: everything scales with the screen's height from a 1080p
@@ -46,7 +46,7 @@ It's Nullboard with a few changes:
 - **One board**: no adding, deleting or switching boards. Import replaces the
   board (Undo brings the old one back).
 - **Sync** (optional): "Sign in to sync..." in the ≡ menu keeps the board
-  and History in Firestore, live across devices (`sync.js`). Signed out,
+  and History in Firestore, live across devices (`js/sync.js`). Signed out,
   everything stays in the browser's `localStorage`, as in Nullboard.
 
 Everything else (drag and drop, undo/redo, export) is Nullboard's.
