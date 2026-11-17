@@ -25,8 +25,9 @@ It's Nullboard with a few changes:
   with a "+2500 XP" badge and a screen flash (`celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
   recreated in CSS (`xp.js`). Each note moved into Done earns 2500 XP, plus
-  57.5 XP (0.5% of a level) per whole minute of its last WIP visit, up to 8
-  hours; a level is 11500 XP. XP leaves with a note that leaves Done, and
+  57.5 XP per whole minute of its last WIP visit, up to 8 hours. Level 1
+  takes 11500 XP and each level after costs 2% more than the last (44209 XP
+  for 69 to 70). XP leaves with a note that leaves Done, and
   Submit Day banks it. "XP bars" in UI preferences sets the number of bubbles (20).
 - **Levels and ranks**: beside Submit Day, your level with a rank name and
   insignia. The 70 rank names follow Call of Duty: Modern Warfare 2; the

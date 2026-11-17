@@ -1,4 +1,5 @@
-// XP: 2500 per note moved into Done, a level every 4.6 notes (11500 XP).
+// XP: 2500 per note moved into Done. Level 1 takes 11500 XP (4.6 notes),
+// and each level after costs 2% more than the one before.
 // Leaving Done (moved out, deleted) takes the XP back; Submit Day banks it
 // before clearing Done, and an Undo of that can't count it twice. The
 // WoW-style bar shows "Lvl N, XP a/b, p%" in 20 bubbles, adjustable in UI
@@ -21,6 +22,13 @@ const { openApp } = require('../lib');
 
     try {
         assert.strictEqual(await text(), 'Lvl 1, XP 0/11,500, 0%');
+        // The curve: 69 -> 70 costs 11500 x 1.02^68, and the sum of levels 1-69 reaches 70 exactly.
+        assert.deepStrictEqual(await page.evaluate(() => {
+            let sum = 0;
+            for (let l = 1; l < 70; l++) sum += XP.levelCost(l);
+            const at = XP.progress(sum), before = XP.progress(sum - 1);
+            return [XP.levelCost(69), at.level, at.into, before.level, before.need - before.into];
+        }), [44209, 70, 0, 69, 1]);
         assert.strictEqual(await page.evaluate(() => getComputedStyle($('.xp-bar')[0]).getPropertyValue('--xp-bubbles').trim()), '20');
 
         await page.evaluate(() => { setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done'); saveBoard(); });
@@ -29,7 +37,7 @@ const { openApp } = require('../lib');
         await toDone(0);
         assert.strictEqual(await text(), 'Lvl 1, XP 2,500/11,500, 21%');
         for (let i = 0; i < 4; i++) await toDone(0);
-        assert.strictEqual(await text(), 'Lvl 2, XP 1,000/11,500, 8%', 'the 5th card levels up');
+        assert.strictEqual(await text(), 'Lvl 2, XP 1,000/11,730, 8%', 'the 5th card levels up');
 
         // Out of Done: taken back.
         await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').last().appendTo($('.wrap .board .list').eq(1).find('.notes')); saveBoard(); });

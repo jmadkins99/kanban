@@ -10,15 +10,18 @@
  *	- Submit Day banks the Done notes' XP before clearing them. The bank is
  *	  keyed by xpId, so an Undo that brings banked notes back can't count
  *	  them twice, and syncing the bank is a plain merge.
- *	A level is 4.6 cards' worth: 2500 XP a card, 11500 a level. On top of
- *	that, each whole minute of the note's last visit to WIP adds 0.5% of a
- *	level (57.5 XP), up to 8 hours.
+ *	2500 XP a card. Level 1 takes 11500 XP (4.6 cards) and each level after
+ *	costs 2% more than the one before, so 69 -> 70 takes 44209. On top of
+ *	that, each whole minute of the note's last visit to WIP adds a flat
+ *	57.5 XP, up to 8 hours.
  */
 (function () {
 
 	var PER_CARD  = 2500;
-	var PER_LEVEL = PER_CARD * 4.6;
-	var PER_WIP_MINUTE = PER_LEVEL * 0.005;
+	var PER_WIP_MINUTE = 57.5; // flat: the same work earns the same XP at every level
+
+	// XP to go from `level` to level + 1, a whole number for the bar.
+	function levelCost(level) { return Math.round(PER_CARD * 4.6 * Math.pow(1.02, level - 1)); }
 	var WIP_CAP_MS = 8 * 3600 * 1000;
 
 	function bank() { return NB.storage.getJson('xpBank') || {}; } // xpId -> XP
@@ -42,9 +45,10 @@
 
 	function progress(xp)
 	{
-		var level = Math.floor(xp / PER_LEVEL) + 1;
-		var into  = xp - (level - 1) * PER_LEVEL;
-		return { xp: xp, level: level, into: into, pct: into / PER_LEVEL * 100 };
+		var level = 1, into = xp;
+		while (into >= levelCost(level)) into -= levelCost(level++);
+		var need = levelCost(level);
+		return { xp: xp, level: level, into: into, need: need, pct: into / need * 100 };
 	}
 
 	/*
@@ -75,9 +79,9 @@
 		var p = progress(total());
 		var $bar = $('.xp-bar'), $fill = $bar.find('.xp-bar__fill');
 
-		$bar.attr({ 'aria-valuenow': Math.round(p.into), 'aria-valuemax': PER_LEVEL,
-		            'aria-valuetext': 'Level ' + p.level + ', ' + fmt(p.into) + ' of ' + fmt(PER_LEVEL) + ' XP' });
-		$bar.find('.xp-bar__text').text('Lvl ' + p.level + ', XP ' + fmt(p.into) + '/' + fmt(PER_LEVEL) + ', ' + Math.floor(p.pct) + '%');
+		$bar.attr({ 'aria-valuenow': Math.round(p.into), 'aria-valuemax': p.need,
+		            'aria-valuetext': 'Level ' + p.level + ', ' + fmt(p.into) + ' of ' + fmt(p.need) + ' XP' });
+		$bar.find('.xp-bar__text').text('Lvl ' + p.level + ', XP ' + fmt(p.into) + '/' + fmt(p.need) + ', ' + Math.floor(p.pct) + '%');
 
 		var pct = p.pct + '%';
 		if (shown && p.level > shown.level)
@@ -117,7 +121,7 @@
 
 	window.XP = {
 		PER_CARD: PER_CARD,
-		PER_LEVEL: PER_LEVEL,
+		levelCost: levelCost,
 		total: total,
 		progress: progress,
 		render: render,

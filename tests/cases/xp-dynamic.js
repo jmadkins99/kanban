@@ -1,5 +1,5 @@
 // A note's XP grows with its time in WIP: 2500 + 57.5 per whole minute of
-// its last WIP visit (0.5% of an 11500 XP level), capped at 8 hours. The
+// its last WIP visit (a flat amount at every level), capped at 8 hours. The
 // +XP badge shows the amount it actually earned.
 const assert = require('assert');
 const { openApp } = require('../lib');
@@ -48,7 +48,7 @@ const { openApp } = require('../lib');
 
         // The bar adds them up: 2500 + 3075 + 5950 + 30100 + 2788 = 44413.
         assert.strictEqual(await page.evaluate(() => XP.total()), 44413);
-        assert.strictEqual(await page.evaluate(() => $('.xp-bar__text').text()), 'Lvl 4, XP 9,913/11,500, 86%');
+        assert.strictEqual(await page.evaluate(() => $('.xp-bar__text').text()), 'Lvl 4, XP 9,218/12,204, 75%');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
