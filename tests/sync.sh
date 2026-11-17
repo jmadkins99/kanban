@@ -7,6 +7,6 @@ cd "$(dirname "$0")"
 
 [ -d node_modules ] || npm ci --no-audit --no-fund || exit 1
 
-cd .. || exit 1
+cd ../firebase || exit 1  # firebase-tools reads firebase.json from here
 npx -y firebase-tools@15.36.0 emulators:exec --project demo-kanban --only auth,firestore \
-    "node tests/sync/sync.js" && echo "PASS  sync/sync.js"
+    "node ../tests/sync/sync.js" && echo "PASS  sync/sync.js"

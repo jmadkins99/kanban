@@ -66,9 +66,9 @@ To try sign-in and sync locally, run `bash tests/emulators.sh`, then in the
 page's console run `localStorage.setItem('nullboard.firebaseDev', 'true')`
 and reload: it signs in with fake accounts against the local emulators.
 
-Security rules live in `firestore.rules`: only the owner's account, and only
+Security rules live in `firebase/firestore.rules`: only the owner's account, and only
 the documents the app uses. They're deployed by hand after they merge, with
-`npx -y firebase-tools@15.36.0 deploy --only firestore:rules`.
+`cd firebase && npx -y firebase-tools@15.36.0 deploy --only firestore:rules`.
 
 ## License
 

@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { openApp } = require('../lib');
 
-const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8'))[1];
+const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 
 // The auth emulator takes unsigned custom tokens, so a test can be any uid.
 function token(uid) {
