@@ -13,14 +13,16 @@ It's Nullboard with a few changes:
   rotation (`js/accentColor.js` is a straight copy), so both apps show the same
   color on the same day.
 - **Clear**: a list menu option that empties a list's notes but keeps the list.
-- **Submit Day**: saves a snapshot of the whole board to **History**, which
-  shows past days one week at a time. Entries can be deleted. History is in
+- **Auto-submit**: at midnight the day submits itself, saving a snapshot of
+  the whole board to **History**, which shows past days one week at a time.
+  If the tab isn't open then, it happens the next time it opens, filed under
+  the last day the board changed. There's no button and no prompt. Entries can be deleted. History is in
   the ≡ menu; the board's name there goes back to the board.
 - **WIP timer**: a list named "wip" (any case) shows a live timer on each
   note, counting from when that note entered it; it starts over if the note
   leaves and comes back.
 - **Done list**: a list named "done" (any case) strikes through its notes.
-  Submit Day snapshots the board with them, then clears that list.
+  Auto-submit snapshots the board with them, then clears that list.
   Dragging a note into Done plays gym-tracker's PR celebration on the card
   with a "+2500 XP" badge and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
@@ -28,8 +30,8 @@ It's Nullboard with a few changes:
   57.5 XP per whole minute of its last WIP visit, up to 8 hours. Level 1
   takes 11500 XP and each level after costs 2% more than the last (44209 XP
   for 69 to 70). XP leaves with a note that leaves Done, and
-  Submit Day banks it. "XP bars" in UI preferences sets the number of bubbles (20).
-- **Levels and ranks**: beside Submit Day, your level with a rank name and
+  Auto-submit banks it. "XP bars" in UI preferences sets the number of bubbles (20).
+- **Levels and ranks**: centered above the XP bar, your level with a rank name and
   insignia. The 70 rank names follow Call of Duty: Modern Warfare 2; the
   insignia are original SVGs modelled on real US military rank insignia
   (`js/ranks.js`), not the game's art. Reaching a new level by finishing a note

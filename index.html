@@ -1466,7 +1466,7 @@
 	 *	Values follow gym-tracker's css/styles.css.
 	 */
 	body {
-		padding-bottom: calc(96px * var(--ui)); /* clears the fixed Submit Day button and XP bar */
+		padding-bottom: calc(96px * var(--ui)); /* clears the fixed level badge and XP bar */
 	}
 
 	.theme-dark .board .list {
@@ -1497,7 +1497,7 @@
 		pointer-events: none;
 	}
 
-	/* Level, rank and insignia, beside Submit Day */
+	/* Level, rank and insignia, centered above the XP bar */
 	.level-badge {
 		display: flex;
 		align-items: center;
@@ -1538,33 +1538,6 @@
 		color: var(--accent-pale);
 		font-size: 11px;
 		letter-spacing: 0.02em;
-	}
-
-	.submit-day {
-		pointer-events: auto;
-		flex: 0 1 280px;
-		min-width: 120px;
-		width: 280px;
-		max-width: calc(100% - 32px);
-		padding: 13px;
-		background: var(--accent-deep);
-		border: 1px solid var(--accent);
-		border-radius: 12px;
-		color: #b8b8d0;
-		font-size: 15px;
-		font-weight: 600;
-		cursor: pointer;
-		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-		transition: all 0.3s;
-	}
-
-	.submit-day:hover {
-		background: var(--accent);
-		color: #e6e6f2;
-	}
-
-	.submit-day:active {
-		transform: scale(0.98);
 	}
 
 	/***/
@@ -1851,13 +1824,12 @@
 	<div class=wrap>
 	</div>
 
-	<!-- Kanban view only: saves today's board into History. -->
+	<!-- Kanban view only: level and rank. -->
 	<div class=submit-bar>
 		<div class=level-badge>
 			<span class=level-insignia></span>
 			<span class=level-text><b class=level-num></b><span class=level-rank></span></span>
 		</div>
-		<button class=submit-day>Submit Day</button>
 	</div>
 
 	<!-- History view: submitted days, one calendar week at a time. -->
@@ -3640,6 +3612,7 @@
 			});
 		});
 
+		board.day = dayKey(new Date()); // the day it last changed, which auto-submit files it under
 		NB.storage.saveBoard(board);
 		NB.board = board;
 
@@ -4642,7 +4615,7 @@
 	 *	by the screen, not the window, so a half-screen window reads the same
 	 *	as a full-screen one. It drives Nullboard's font size (unless one is
 	 *	set in UI preferences), which sizes the board, lists and menus, and
-	 *	--ui, which zooms the fixed-size parts (Submit Day, XP bar, History,
+	 *	--ui, which zooms the fixed-size parts (level badge, XP bar, History,
 	 *	timers, card menu).
 	 */
 	function applyUiScale()
@@ -5358,25 +5331,12 @@
 		return NB.storage.getJson('history') || [];
 	}
 
-	function submitDay()
+	// Files the board under `day` and clears Done. No prompts: it runs on its
+	// own, once `day` has ended (see rollDay).
+	function submitDay(day)
 	{
-		if (! NB.board)
-			return;
-
-		var day  = dayKey(new Date());
 		var hist = loadHistory();
 		var i = hist.findIndex(function(e){ return e.day == day; });
-
-		var $done = $('.wrap .board .list.done-list');
-		var done = $done.find('.note').length;
-		var msg = (i >= 0) ? "Today is already submitted. Replace it with a snapshot of the board exactly as it is now" : "";
-
-		if (done)
-			msg = (msg || "Save a snapshot of the board exactly as it is now") +
-				", then clear the " + done + (done == 1 ? " note" : " notes") + " in the Done list";
-
-		if (msg && ! confirm(msg + "?"))
-			return;
 
 		var entry = {
 			day:         day,
@@ -5391,15 +5351,32 @@
 		if (! NB.storage.setJson('history', hist))
 		{
 			alert("Couldn't save to History: the browser's storage is full or blocked.");
-			return;
+			return; // Done stays, so nothing is lost
 		}
 
 		if (window.cloudSync) cloudSync.dayChanged(entry);
 
 		XP.bankNotes( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
-		$done.each(function(){ clearList($(this), true); }); // after the snapshot, which keeps them
 
-		showView('history');
+		var $done = $('.wrap .board .list.done-list .note');
+		if ($done.length) { $done.remove(); saveBoard(); } // after the snapshot, which keeps them
+
+		if ($('body').hasClass('view-history')) renderHistory();
+	}
+
+	// Auto-submit. A board's day ends at local midnight: open then, the timer
+	// files it; closed, the next open does. A History entry made after that
+	// day ended means it's already filed (by this device or another one); one
+	// made during the day (an old manual Submit Day) gets replaced.
+	function rollDay()
+	{
+		var day = NB.board && NB.board.day;
+		if (! day || day >= dayKey(new Date()) || $('.wrap .board .editing').length)
+			return;
+
+		var filed = loadHistory().some(function(e){ return e.day == day && dayKey(new Date(e.submittedAt)) > day; });
+		if (! filed)
+			submitDay(day);
 	}
 
 	//
@@ -5477,7 +5454,16 @@
 	}
 
 	//
-	$('.submit-day').on('click', submitDay);
+	// Signed in, wait for the cloud's board, so a device that's been closed
+	// for days doesn't file its stale copy. sync.js loads after this script.
+	$(function(){
+		var ready = window.cloudSync ? cloudSync.ready : Promise.resolve();
+		ready.then(function(state){ return state == 'signed-in' && cloudSync.boardFresh; }).then(function(){
+			rollDay();
+			setInterval(rollDay, 60000);
+			document.addEventListener('visibilitychange', function(){ if (! document.hidden) rollDay(); }); // waking from sleep
+		});
+	});
 	$('.config .view-history').on('click', function(){ showView('history'); return false; });
 
 	$('.history .week-prev').on('click', function(){ viewWeek.setDate(viewWeek.getDate() - 7); renderHistory(); });
