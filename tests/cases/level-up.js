@@ -1,4 +1,4 @@
-// Levels and ranks: the badge beside Submit Day shows level, rank name and
+// Levels and ranks: the badge above the XP bar shows level, rank name and
 // insignia; reaching a new level by moving a note into Done plays the
 // level-up once (with the new level, rank and insignia), and the overlay
 // removes itself afterwards. Dropping a level (moving out of Done) is quiet.

@@ -129,6 +129,8 @@
 		var synced = null;  // canon() of the board as the cloud last had it
 		var known  = false; // whether the cloud's board is known yet (never push blind)
 		var timer  = null;
+		var fresh;          // resolves sync.boardFresh: the server's board has been seen
+		sync.boardFresh = new Promise(function (r) { fresh = r; });
 
 		// Firestore hands maps back with sorted keys, so compare a fixed shape.
 		function canon(b)
@@ -192,6 +194,9 @@
 		document.addEventListener('visibilitychange', function () { if (document.hidden && timer) pushBoard(); });
 
 		boardRef.onSnapshot({ includeMetadataChanges: true }, function (snap) {
+			if (! snap.metadata.fromCache) // its callbacks run after this one, once the board is applied
+				fresh();
+
 			if (snap.metadata.hasPendingWrites) // our own write, not news
 				return;
 

@@ -101,11 +101,15 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await editFirstNote(a.page, 'live from A');
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'live from A');
 
-        // Live History: B submits today, A sees it; B deletes it, A loses it.
+        // Auto-submit waits for the cloud's board when signed in; that wait ends.
+        assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
+            new Promise((r) => setTimeout(r, 20000, 'never'))]), 'fresh', "the server's board was seen");
+
+        // Live History: B files today, A sees it; B deletes it, A loses it.
         const today = await b.page.evaluate(() => dayKey(new Date()));
-        await b.page.evaluate(() => $('.submit-day').click());
+        await b.page.evaluate((day) => submitDay(day), today);
         await waitFor(a.page, (day) => loadHistory().some((e) => e.day == day && e.lists[0].notes[0].text == 'live from A'), today);
-        await b.page.evaluate((day) => $('.history-item[data-day="' + day + '"] .del-day').click(), today);
+        await b.page.evaluate((day) => { $('.config .view-history').click(); $('.history-item[data-day="' + day + '"] .del-day').click(); }, today);
         await waitFor(a.page, (day) => ! loadHistory().some((e) => e.day == day), today);
         assert.ok(await a.page.evaluate((day) => loadHistory().some((e) => e.day == day), oldDay), 'other days untouched');
 

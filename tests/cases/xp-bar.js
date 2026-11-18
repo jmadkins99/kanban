@@ -1,6 +1,6 @@
 // XP: 2500 per note moved into Done. Level 1 takes 11500 XP (4.6 notes),
 // and each level after costs 2% more than the one before.
-// Leaving Done (moved out, deleted) takes the XP back; Submit Day banks it
+// Leaving Done (moved out, deleted) takes the XP back; submitting the day banks it
 // before clearing Done, and an Undo of that can't count it twice. The
 // WoW-style bar shows "Lvl N, XP a/b, p%" in 20 bubbles, adjustable in UI
 // preferences.
@@ -47,8 +47,8 @@ const { openApp } = require('../lib');
         await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').last().remove(); saveBoard(); });
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'deleting takes the XP back');
 
-        // Submit Day banks it; the Done list empties but the XP stays, through a reload.
-        await page.evaluate(() => $('.submit-day').click());
+        // Submitting the day banks it; the Done list empties but the XP stays, through a reload.
+        await page.evaluate(() => { NB.board.day = '2000-01-01'; rollDay(); });
         await page.waitForFunction(() => NB.board.lists[2].notes.filter((n) => n.xp).length == 0, { timeout: 5000 });
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'Submit Day keeps the XP');
         await app.reload();

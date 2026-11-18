@@ -99,7 +99,7 @@
 		else
 			$bar.css('--xp-pct', pct);
 
-		// The level badge beside Submit Day: insignia, level, rank (ranks.js).
+		// The level badge above the XP bar: insignia, level, rank (ranks.js).
 		var rank = Ranks.forLevel(p.level);
 		if (! shown || shown.level != p.level)
 		{
