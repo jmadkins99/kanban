@@ -11,35 +11,17 @@
 // Backlog the Card returns to the first List; with no To-Do it stays put.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, moveCard } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wake: wakePage } = require('../lib');
 
 (async () => {
-    // The page's clock: whatever the test last set (kept in localStorage, so
-    // it survives a reload), Wednesday 2028-11-15 10:00 local to begin with.
-    const app = await openApp(`{
-        const Real = Date;
-        let at = null;
-        try { at = +localStorage.getItem('test.clock') || null; } catch (e) {}
-        window.clockSkew = (at || new Real(2028, 10, 15, 10, 0, 0).getTime()) - Real.now();
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + window.clockSkew])); }
-            static now() { return Real.now() + window.clockSkew; }
-        };
-        window.RealDate = Real;
-    }`, { demo: false });
+    // The page's clock: Wednesday 2028-11-15 10:00 local to begin with.
+    const app = await openApp(fakeClock('2028-11-15 10:00'), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
 
-    // Moves the page's clock to y-m-d h:mi local, now and after a reload.
-    const setClock = (y, m, d, h, mi) => page.evaluate((y, m, d, h, mi) => {
-        const t = new RealDate(y, m - 1, d, h, mi, 0).getTime();
-        localStorage.setItem('test.clock', String(t));
-        window.clockSkew = t - RealDate.now();
-    }, y, m, d, h, mi);
-    const wake = async () => { await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await sleep(100); await settle(page); };
+    const setClock = (at) => setPageClock(page, at);
+    const wake = () => wakePage(page);
     const rename = (i, title) => page.evaluate((i, title) => { setText($('.wrap .board .list').eq(i).find('.head .text'), title); saveBoard(); }, i, title);
     // Each List's Cards as shown, top to bottom.
     const board = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => [$(l).find('.card').map((_, c) => getText($(c).find('.text'))).get()]).get());
@@ -84,7 +66,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.deepStrictEqual(await board(), [['file taxes', 'weekly review'], [], ['take bins out'], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
 
         // Midnight with the tab open.
-        await setClock(2028, 11, 16, 0, 0);
+        await setClock('2028-11-16 00:00');
         await wake();
 
         assert.deepStrictEqual(await doneIn('2028-11-15'), ['pay rent', 'renew insurance', 'water plants', 'ordinary'], 'all of Done is in that day\'s History');
@@ -128,7 +110,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
         // Closed over the Due date: on opening, it moves. " TODO " is To-Do too.
         await rename(1, ' TODO ');
-        await setClock(2028, 12, 1, 9, 0);
+        await setClock('2028-12-01 09:00');
         await app.reload();
         await sleep(300);
         await settle(page);
@@ -143,7 +125,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await moveCard(page, 0, (await board())[0].indexOf('renew insurance'), 3);
         await settle(page);
         assert.deepStrictEqual((await board())[3], ['water plants', 'renew insurance']);
-        await setClock(2028, 12, 2, 0, 0);
+        await setClock('2028-12-02 00:00');
         await wake();
         b = await board();
         assert.ok(b[0].includes('renew insurance'), 'no Backlog: the first List: ' + JSON.stringify(b));
@@ -156,7 +138,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await rename(1, 'Later');
         await moveCard(page, 1, (await board())[1].indexOf('water plants'), 2);
         await settle(page);
-        await setClock(2028, 12, 3, 0, 0);
+        await setClock('2028-12-03 00:00');
         await wake();
         b = await board();
         assert.ok(b[0].includes('water plants'), 'no To-Do: it stays in Backlog: ' + JSON.stringify(b));
@@ -175,7 +157,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             NB.board.day = '2028-12-04';
             NB.storage.saveBoard(NB.board);
         });
-        await setClock(2028, 12, 13, 9, 0);
+        await setClock('2028-12-13 09:00');
         await app.reload();
         await sleep(300);
         await settle(page);

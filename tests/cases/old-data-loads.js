@@ -7,7 +7,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp } = require('../lib');
+const { openApp, seedBoard } = require('../lib');
 
 const LISTS = [
     { title: 'To-Do', notes: [{ text: 'plain card', raw: false, min: false }, { text: 'raw card', raw: true, min: false }] },
@@ -17,17 +17,9 @@ const LISTS = [
 
 (async () => {
     // Exactly what the app wrote to localStorage before the rename.
-    const app = await openApp(`(${(lists) => {
-        if (localStorage.getItem('nullboard.last_board')) return; // seed only on the first load
-        const board = { format: 20190412, id: 77, revision: 1, title: 'Saved earlier', lists };
-        localStorage.setItem('nullboard.board.77.1', JSON.stringify(board));
-        localStorage.setItem('nullboard.board.77.meta', JSON.stringify({ title: 'Saved earlier', current: 1, history: [1] }));
-        localStorage.setItem('nullboard.board.77', '1');
-        localStorage.setItem('nullboard.last_board', '77');
-        localStorage.setItem('nullboard.history', JSON.stringify([{
-            day: '2026-01-05', title: 'Saved earlier', submittedAt: '2026-01-05T20:00:00.000Z', lists,
-        }]));
-    }})(${JSON.stringify(LISTS)})`, { demo: false });
+    const app = await openApp(seedBoard({ id: 77, title: 'Saved earlier', lists: LISTS }, [{
+        day: '2026-01-05', title: 'Saved earlier', submittedAt: '2026-01-05T20:00:00.000Z', lists: LISTS,
+    }]), { demo: false });
     const { page } = app;
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'old.nbx');
 

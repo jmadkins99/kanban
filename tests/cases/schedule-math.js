@@ -4,19 +4,11 @@
 // day of the month, clamped to shorter months and back in longer ones.
 // The math is called inside the loaded page, with the clock faked before load.
 const assert = require('assert');
-const { openApp } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, sleep, fakeClock } = require('../lib');
 
 (async () => {
     // The page's clock reads Wednesday 2028-02-23, 10:00 local time.
-    const app = await openApp(`{
-        const Real = Date, skew = new Real(2028, 1, 23, 10, 0, 0).getTime() - Real.now();
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + skew])); }
-            static now() { return Real.now() + skew; }
-        };
-    }`, { demo: false });
+    const app = await openApp(fakeClock('2028-02-23 10:00'), { demo: false });
     const { page } = app;
     await sleep(200);
 

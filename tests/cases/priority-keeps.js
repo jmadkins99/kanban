@@ -5,9 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, sleep, setPriority: setPriorityOn } = require('../lib');
 
 (async () => {
     const app = await openApp(() => {});
@@ -17,17 +15,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'board.nbx');
 
     const card = (i) => `.wrap .board .list:nth-child(1) .card:nth-child(${i + 1})`;
-    const setPriority = async (i, label) => {
-        await page.click(card(i) + ' .text');
-        await sleep(450);
-        await page.click(card(i) + ' [data-cm=edit]');
-        await sleep(100);
-        await page.click(card(i) + ' .card-prio');
-        await page.click(`${card(i)} .prio-pick button[aria-label=${label}]`);
-        await page.mouse.click(1270, 990);
-        await sleep(50);
-        await settle(page);
-    };
+    const setPriority = (i, priority) => setPriorityOn(page, card(i), priority);
     // The first three Cards of the first List: text and the Priority its icon shows.
     const shown = () => page.evaluate(() => $('.wrap .board .list').eq(0).find('.card').slice(0, 3)
         .map((_, c) => [[getText($(c).find('.text')), $(c).find('.card-prio').attr('aria-label')]]).get());

@@ -5,9 +5,7 @@
 // per-WIP-minute rule) loads as it was.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, moveCard } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, moveCard, sleep, setPriority: setPriorityOn } = require('../lib');
 
 (async () => {
     // XP banked on an earlier day, under the old rule.
@@ -23,17 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     const card = (list, i) => `.wrap .board .list:nth-child(${list + 1}) .card:nth-child(${i + 1})`;
     // Edit the Card, pick a Priority from its dropdown, click away.
-    const setPriority = async (sel, label) => {
-        await page.click(sel + ' .text');
-        await sleep(450);
-        await page.click(sel + ' [data-cm=edit]');
-        await sleep(100);
-        await page.click(sel + ' .card-prio');
-        await page.click(`${sel} .prio-pick button[aria-label=${label}]`);
-        await page.mouse.click(1270, 990);
-        await sleep(50);
-        await settle(page);
-    };
+    const setPriority = (sel, priority) => setPriorityOn(page, sel, priority);
     // Where the Card with this text sits in List `list`.
     const indexOf = (list, text) => page.evaluate((list, text) => NB.board.lists[list].notes.findIndex((n) => n.text == text), list, text);
     // The Card with this text in Done: what it saved and what its badge says.
@@ -56,12 +44,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
         // Each Priority, from To-Do to Done.
         const award = { Low: 2500, Medium: 3500, Critical: 5000, Recurring: 5000 };
-        for (const label of Object.keys(award)) {
+        for (const priority of Object.keys(award)) {
             const text = await page.evaluate(() => NB.board.lists[0].notes[0].text);
-            await setPriority(card(0, 0), label);
+            await setPriority(card(0, 0), priority);
             await moveCard(page, 0, await indexOf(0, text), 2);
-            assert.deepStrictEqual(await inDone(text), { xp: award[label], badge: `+${award[label]} XP` }, label + ' earns ' + award[label]);
-            want += award[label];
+            assert.deepStrictEqual(await inDone(text), { xp: award[priority], badge: `+${award[priority]} XP` }, priority + ' earns ' + award[priority]);
+            want += award[priority];
         }
         assert.strictEqual(await total(), want, 'the bar adds them up');
 

@@ -12,20 +12,11 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle, moveCard } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
 
 (async () => {
     // The page's clock reads Wednesday 2028-02-23, 10:00 local time.
-    const app = await openApp(`{
-        const Real = Date, skew = new Real(2028, 1, 23, 10, 0, 0).getTime() - Real.now();
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + skew])); }
-            static now() { return Real.now() + skew; }
-        };
-        window.RealDate = Real;
-    }`, { demo: false });
+    const app = await openApp(fakeClock('2028-02-23 10:00'), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
@@ -33,7 +24,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
     const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
     const EDITING = '.wrap .board .card.editing';
-    const clickAway = async () => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
+    const clickAway = () => clickAwayOn(page);
     const lists = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => getText($(l).find('.head .text'))).get());
     const index = (list, text) => page.evaluate((list, text) => $('.wrap .board .list').eq(list).find('.card').toArray()
         .findIndex((c) => getText($(c).find('.text')) == text), list, text);
@@ -56,19 +47,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     }, await cardSel(text));
     const scheduleShown = () => page.evaluate((s) => $(s).find('.card-schedule').is(':visible'), EDITING);
 
-    const pick = async (label) => {
-        await page.click(EDITING + ' .card-prio');
-        await sleep(50);
-        await page.click(`${EDITING} .prio-pick button[aria-label=${label}]`);
-        await sleep(50);
-    };
-    const edit = async (text) => {
-        const sel = await cardSel(text);
-        await page.click(sel + ' .text');
-        await sleep(450);
-        await page.click(sel + ' [data-cm=edit]');
-        await sleep(100);
-    };
+    const pick = (priority) => pickPriority(page, EDITING, priority);
+    const edit = async (text) => editCard(page, await cardSel(text));
     const addCard = async (list, text) => {
         await page.evaluate((list) => $('.wrap .board .list').eq(list).find('.add-card').click(), list);
         await sleep(100);
@@ -127,9 +107,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await pick('Recurring');
         await setSchedule(1, 'days', '2028-02-01');
         await clickAway();
-        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-        await sleep(100);
-        await settle(page);
+        await wake(page);
         assert.strictEqual(await where('stretch'), BACKLOG, 'due today and saved in Backlog, it isn\'t moved to To-Do');
         assert.strictEqual((await saved('stretch')).due, '2028-02-23');
 
