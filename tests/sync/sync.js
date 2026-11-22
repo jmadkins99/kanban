@@ -33,10 +33,11 @@ async function signIn(app, uid) {
     assert.strictEqual(await ready(app.page), 'signed-in');
 }
 
-const firstNote = (page) => page.evaluate(() => NB.board.lists[0].notes[0].text);
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+const firstCard = (page) => page.evaluate(() => NB.board.lists[0].notes[0].text);
 
-async function editFirstNote(page, text) {
-    await page.evaluate((text) => { setText($('.wrap .board .note .text').first(), text); saveBoard(); }, text);
+async function editFirstCard(page, text) {
+    await page.evaluate((text) => { setText($('.wrap .board .card .text').first(), text); saveBoard(); }, text);
 }
 
 const waitFor = (page, fn, arg) => page.waitForFunction(fn, { timeout: 20000, polling: 200 }, arg);
@@ -70,7 +71,7 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         assert.ok(await a.page.evaluate(() => $('.config .sync-out').css('display') == 'none'));
 
         // A's local edit goes up to the empty cloud on first sign-in.
-        await editFirstNote(a.page, 'from A before sign-in');
+        await editFirstCard(a.page, 'from A before sign-in');
         await signIn(a, OWNER);
         assert.ok(await a.page.evaluate(() => $('.config .sync-out').css('display') != 'none'), 'menu offers sign-out');
         assert.strictEqual(await a.page.evaluate(() => $('.firebase-emulator-warning').filter(':visible').length), 0, 'no emulator banner over the XP bar');
@@ -80,7 +81,7 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
 
         // B signs in to the same account: gets A's board as a new revision,
         // and its own History day goes up.
-        const bBefore = await firstNote(b.page);
+        const bBefore = await firstCard(b.page);
         await signIn(b, OWNER);
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'from A before sign-in').catch(async (e) => {
             const diag = await b.page.evaluate(async () => {
@@ -98,7 +99,7 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await waitFor(a.page, (day) => loadHistory().some((e) => e.day == day), oldDay); // imported, and live on A
 
         // Live board: an edit on A shows up on B without a reload.
-        await editFirstNote(a.page, 'live from A');
+        await editFirstCard(a.page, 'live from A');
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'live from A');
 
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
@@ -114,8 +115,8 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         assert.ok(await a.page.evaluate((day) => loadHistory().some((e) => e.day == day), oldDay), 'other days untouched');
 
         // XP banked on one device reaches the other (the bank merges, never overwrites).
-        await a.page.evaluate(() => XP.bankNotes([{ xp: 2500, xpId: 'from-a' }]));
-        await b.page.evaluate(() => XP.bankNotes([{ xp: 2500, xpId: 'from-b' }]));
+        await a.page.evaluate(() => XP.bankCards([{ xp: 2500, xpId: 'from-a' }]));
+        await b.page.evaluate(() => XP.bankCards([{ xp: 2500, xpId: 'from-b' }]));
         await waitFor(a.page, () => 'from-b' in XP.bank() && 'from-a' in XP.bank());
         await waitFor(b.page, () => 'from-a' in XP.bank() && 'from-b' in XP.bank());
 
@@ -132,7 +133,7 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         ]);
         assert.strictEqual(await ready(b.page), 'signed-out');
         assert.strictEqual(await deniedRead(b.page, 'users/' + uid + '/kanban/board'), 'permission-denied');
-        assert.strictEqual(await firstNote(b.page), 'live from A', 'signed out, B keeps its local copy');
+        assert.strictEqual(await firstCard(b.page), 'live from A', 'signed out, B keeps its local copy');
 
         // Any other account, even signed in, gets nothing, not even its own tree.
         await b.page.evaluate((t) => firebase.auth().signInWithCustomToken(t), token('stranger'));

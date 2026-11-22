@@ -14,12 +14,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
 
-    // A real mouse drag of note [list, index] to the top of list `to`, or
-    // below its last note with `bottom`.
+    // A real mouse drag of card [list, index] to the top of list `to`, or
+    // below its last card with `bottom`.
     async function drag(list, index, to, bottom) {
         const [from, dest] = await page.evaluate((list, index, to, bottom) => {
-            const n = $('.wrap .board .list').eq(list).find('.note .text').eq(index)[0].getBoundingClientRect();
-            const $to = $('.wrap .board .list').eq(to).find('.note');
+            const n = $('.wrap .board .list').eq(list).find('.card .text').eq(index)[0].getBoundingClientRect();
+            const $to = $('.wrap .board .list').eq(to).find('.card');
             const r = (bottom ? $to.last() : $to.first())[0].getBoundingClientRect();
             return [[n.left + n.width / 2, n.top + Math.min(n.height / 2, 8)], [r.left + r.width / 2, bottom ? r.bottom + 6 : r.top + 4]];
         }, list, index, to, bottom);
@@ -41,9 +41,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             setText($('.wrap .board .list').eq(1).find('.head .text'), 'WIP');
             setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done');
             saveBoard();
-            const $w = $('.wrap .board .list').eq(1).find('.note');
-            noteMeta($w.eq(0)).wip = Date.now() - 10 * 60000;
-            noteMeta($w.eq(1)).wip = Date.now() - 20 * 60000;
+            const $w = $('.wrap .board .list').eq(1).find('.card');
+            cardMeta($w.eq(0)).wip = Date.now() - 10 * 60000;
+            cardMeta($w.eq(1)).wip = Date.now() - 20 * 60000;
             saveBoard();
             return NB.board.lists[1].notes.slice(0, 2).map((n) => n.wip);
         });
@@ -59,7 +59,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await drag(1, moved, 2);
         assert.strictEqual(await page.evaluate(() => $('.celebrate-badge').text()), '+3075 XP', 'the badge shows the WIP bonus');
         assert.strictEqual(await page.evaluate(() => XP.total()), 3075);
-        assert.strictEqual(await page.evaluate(() => NB.board.lists[2].notes.length), await page.evaluate(() => $('.wrap .board .list').eq(2).find('.note').length), 'saved once, no duplicate');
+        assert.strictEqual(await page.evaluate(() => NB.board.lists[2].notes.length), await page.evaluate(() => $('.wrap .board .list').eq(2).find('.card').length), 'saved once, no duplicate');
 
         // Reorder inside Done (the new card further down): the XP stays.
         await drag(2, 0, 2, true);

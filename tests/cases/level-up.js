@@ -1,5 +1,5 @@
 // Levels and ranks: the badge above the XP bar shows level, rank name and
-// insignia; reaching a new level by moving a note into Done plays the
+// insignia; reaching a new level by moving a card into Done plays the
 // level-up once (with the new level, rank and insignia), and the overlay
 // removes itself afterwards. Dropping a level (moving out of Done) is quiet.
 const assert = require('assert');
@@ -17,9 +17,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         svg: $('.level-badge .level-insignia svg').length,
     }));
     const toDone = (from) => page.evaluate((from) => {
-        const $n = $('.wrap .board .list').eq(from).find('.note').first();
-        $n.appendTo($('.wrap .board .list').eq(2).find('.notes'));
-        noteMoved($n, false);
+        const $n = $('.wrap .board .list').eq(from).find('.card').first();
+        $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
+        cardMoved($n, false);
         saveBoard();
     }, from);
 
@@ -49,7 +49,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.waitForFunction(() => !$('.lu-ov').length, { timeout: 9000 });
 
         // Dropping back a level: badge follows, no show.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').last().appendTo($('.wrap .board .list').eq(1).find('.notes')); saveBoard(); });
+        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').last().appendTo($('.wrap .board .list').eq(1).find('.cards')); saveBoard(); });
         await sleep(1200);
         assert.deepStrictEqual(await badge(), { num: 'Lvl 1', rank: 'Private', svg: 1 });
         assert.strictEqual(await page.evaluate(() => played.length), 1, 'losing a level is quiet');

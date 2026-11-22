@@ -3,16 +3,16 @@
  *	recreation of World of Warcraft classic's (20 "bubbles", purple fill,
  *	grey bevelled frame, "Lvl 2, XP 290/900, 30%"), no Blizzard assets.
  *
- *	Total XP = banked XP + the XP of the notes sitting in Done lists.
- *	- A note moved into Done earns XP (stored on the note as xp + xpId).
+ *	Total XP = banked XP + the XP of the cards sitting in Done lists.
+ *	- A card moved into Done earns XP (stored on the card as xp + xpId).
  *	- Leaving Done any other way (moved out, deleted, Clear, Undo) drops it,
  *	  because the board no longer has it in Done.
- *	- Submit Day banks the Done notes' XP before clearing them. The bank is
- *	  keyed by xpId, so an Undo that brings banked notes back can't count
+ *	- Submit Day banks the Done cards' XP before clearing them. The bank is
+ *	  keyed by xpId, so an Undo that brings banked cards back can't count
  *	  them twice, and syncing the bank is a plain merge.
  *	2500 XP a card. Level 1 takes 11500 XP (4.6 cards) and each level after
  *	costs 2% more than the one before, so 69 -> 70 takes 44209. On top of
- *	that, each whole minute of the note's last visit to WIP adds a flat
+ *	that, each whole minute of the card's last visit to WIP adds a flat
  *	57.5 XP, up to 8 hours.
  */
 (function () {
@@ -26,20 +26,21 @@
 
 	function bank() { return NB.storage.getJson('xpBank') || {}; } // xpId -> XP
 
-	function doneNotes()
+	function doneCards()
 	{
-		var notes = [];
+		var cards = [];
 		(NB.board ? NB.board.lists : []).forEach(function (l) {
-			if (isDoneTitle(l.title)) notes.push.apply(notes, l.notes);
+			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+			if (isDoneTitle(l.title)) cards.push.apply(cards, l.notes);
 		});
-		return notes;
+		return cards;
 	}
 
 	function total()
 	{
 		var b = bank(), sum = 0;
 		for (var id in b) sum += b[id];
-		doneNotes().forEach(function (n) { if (n.xp && ! (n.xpId in b)) sum += n.xp; });
+		doneCards().forEach(function (n) { if (n.xp && ! (n.xpId in b)) sum += n.xp; });
 		return sum;
 	}
 
@@ -56,7 +57,7 @@
 	 */
 	var BUBBLES = { min: 1, max: 40, def: 20 };
 	var shown = null;    // what the bar last showed, to animate from
-	var gaining = false; // the next render follows a note moved into Done here
+	var gaining = false; // the next render follows a card moved into Done here
 
 	function bubbles()
 	{
@@ -108,7 +109,7 @@
 			$('.level-badge .level-rank').text(rank.name);
 		}
 
-		// A level reached by moving a note into Done gets the full show, just
+		// A level reached by moving a card into Done gets the full show, just
 		// after the card's +XP celebration has had a moment.
 		if (gaining && shown && p.level > shown.level && window.LevelUp)
 			setTimeout(function () { LevelUp.play({ level: p.level, rankName: rank.name, insigniaSvg: rank.svg }); }, 900);
@@ -126,7 +127,7 @@
 		progress: progress,
 		render: render,
 
-		// A note just moved into Done: give it its XP, return the amount.
+		// A card just moved into Done: give it its XP, return the amount.
 		// Its WIP time is the visit still running (straight from WIP) or the
 		// last one it finished.
 		award: function (meta)
@@ -139,11 +140,11 @@
 			return meta.xp;
 		},
 
-		// Submit Day, before Done is cleared: keep these notes' XP for good.
-		bankNotes: function (notes)
+		// Submit Day, before Done is cleared: keep these cards' XP for good.
+		bankCards: function (cards)
 		{
 			var add = {};
-			notes.forEach(function (n) { if (n.xp && n.xpId) add[n.xpId] = n.xp; });
+			cards.forEach(function (n) { if (n.xp && n.xpId) add[n.xpId] = n.xp; });
 			if (! Object.keys(add).length) return;
 			NB.storage.setJson('xpBank', Object.assign(bank(), add));
 			if (window.cloudSync) cloudSync.bankXp(add);

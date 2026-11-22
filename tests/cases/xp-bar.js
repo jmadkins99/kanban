@@ -1,4 +1,4 @@
-// XP: 2500 per note moved into Done. Level 1 takes 11500 XP (4.6 notes),
+// XP: 2500 per card moved into Done. Level 1 takes 11500 XP (4.6 cards),
 // and each level after costs 2% more than the one before.
 // Leaving Done (moved out, deleted) takes the XP back; submitting the day banks it
 // before clearing Done, and an Undo of that can't count it twice. The
@@ -12,11 +12,11 @@ const { openApp } = require('../lib');
     const { page } = app;
 
     const text = () => page.evaluate(() => $('.xp-bar__text').text());
-    // Move the first note of list `from` to Done (list 2) the way a drag does.
+    // Move the first card of list `from` to Done (list 2) the way a drag does.
     const toDone = (from) => page.evaluate((from) => {
-        const $n = $('.wrap .board .list').eq(from).find('.note').first();
-        $n.appendTo($('.wrap .board .list').eq(2).find('.notes'));
-        noteMoved($n, false);
+        const $n = $('.wrap .board .list').eq(from).find('.card').first();
+        $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
+        cardMoved($n, false);
         saveBoard();
     }, from);
 
@@ -40,11 +40,11 @@ const { openApp } = require('../lib');
         assert.strictEqual(await text(), 'Lvl 2, XP 1,000/11,730, 8%', 'the 5th card levels up');
 
         // Out of Done: taken back.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').last().appendTo($('.wrap .board .list').eq(1).find('.notes')); saveBoard(); });
+        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').last().appendTo($('.wrap .board .list').eq(1).find('.cards')); saveBoard(); });
         assert.strictEqual(await text(), 'Lvl 1, XP 10,000/11,500, 86%', 'moving out of Done takes the XP back');
 
         // Deleted from Done: taken back.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').last().remove(); saveBoard(); });
+        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').last().remove(); saveBoard(); });
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'deleting takes the XP back');
 
         // Submitting the day banks it; the Done list empties but the XP stays, through a reload.
@@ -54,7 +54,7 @@ const { openApp } = require('../lib');
         await app.reload();
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'banked XP survives a reload');
 
-        // Undo brings the banked notes back into Done: still counted once.
+        // Undo brings the banked cards back into Done: still counted once.
         await page.evaluate(() => $('.wrap .board .undo-board').click());
         await page.waitForFunction(() => NB.board.lists[2].notes.some((n) => n.xp));
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'undo after Submit Day does not double count');

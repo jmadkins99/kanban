@@ -140,9 +140,10 @@
 				lists: (b.lists || []).map(function (l) {
 					return {
 						title: l.title || '',
+						// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 						notes: (l.notes || []).map(function (n) {
 							var o = { text: n.text || '', raw: !! n.raw, min: !! n.min };
-							// plus any per-note state (WIP timer, XP), in a fixed key order
+							// plus any per-card state (WIP timer, XP), in a fixed key order
 							Object.keys(n).sort().forEach(function (k) { if (! (k in o) && n[k] != null) o[k] = n[k]; });
 							return o;
 						})
@@ -174,7 +175,7 @@
 			if (synced != c || ! NB.board || canon(NB.board) == c)
 				return;
 
-			if ($('.wrap .board .editing').length) // don't yank a note out from under the cursor
+			if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
 				return setTimeout(function () { applyBoard(c); }, 1000);
 
 			var b = JSON.parse(c);

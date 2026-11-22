@@ -1,7 +1,7 @@
 // A list named "wip" (any case) shows a live timer on the right of each
-// note, per note, counting from when that note entered the list. It
-// survives a reload, stops when the note leaves (keeping that visit's
-// length), and starts over from 0 if the note comes back.
+// card, per card, counting from when that card entered the list. It
+// survives a reload, stops when the card leaves (keeping that visit's
+// length), and starts over from 0 if the card comes back.
 const assert = require('assert');
 const { openApp } = require('../lib');
 
@@ -12,10 +12,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const { page } = app;
 
     const move = (from, to) => page.evaluate((from, to) => {
-        $('.wrap .board .list').eq(from).find('.note').first().appendTo($('.wrap .board .list').eq(to).find('.notes'));
+        $('.wrap .board .list').eq(from).find('.card').first().appendTo($('.wrap .board .list').eq(to).find('.cards'));
         saveBoard();
     }, from, to);
-    const timers = (i) => page.evaluate((i) => $('.wrap .board .list').eq(i).find('.note').toArray().map((n) => {
+    const timers = (i) => page.evaluate((i) => $('.wrap .board .list').eq(i).find('.card').toArray().map((n) => {
         const t = $(n).find('.wip-timer');
         return t.is(':visible') ? t.text() : null;
     }), i);
@@ -29,17 +29,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await move(0, 2);
         let t = await timers(2);
         assert.strictEqual(t.length, before + 1);
-        assert.match(t[before], /^0m [01]s$/, 'a note entering WIP starts at 0');
+        assert.match(t[before], /^0m [01]s$/, 'a card entering WIP starts at 0');
 
         // Right side of the card, inside it.
         const box = await page.evaluate(() => {
-            const n = $('.wrap .board .list').eq(2).find('.note').last();
+            const n = $('.wrap .board .list').eq(2).find('.card').last();
             const a = n[0].getBoundingClientRect(), b = n.find('.wip-timer')[0].getBoundingClientRect();
             return { right: a.right - b.right, top: b.top - a.top, bottom: a.bottom - b.bottom, mid: b.left - (a.left + a.width / 2) };
         });
         assert.ok(box.right >= 0 && box.right < 20 && box.mid > 0 && box.top >= 0 && box.bottom >= 0, 'timer sits on the right inside the card ' + JSON.stringify(box));
 
-        // Per card: a second note entering later shows less time.
+        // Per card: a second card entering later shows less time.
         await sleep(2100);
         await move(1, 2);
         await sleep(1100);
@@ -52,11 +52,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.ok(secs(t[before]) >= 2, 'still counting after a reload: ' + t);
 
         // Leaving stops it and keeps the visit's length; coming back starts at 0.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.note').eq(-2).appendTo($('.wrap .board .list').eq(0).find('.notes')); saveBoard(); });
+        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').eq(-2).appendTo($('.wrap .board .list').eq(0).find('.cards')); saveBoard(); });
         const left = await page.evaluate(() => { const n = NB.board.lists[0].notes; return n[n.length - 1]; });
         assert.ok(!('wip' in left) && left.wipMs >= 2000, 'leaving keeps the visit length: ' + JSON.stringify(left));
         assert.ok((await timers(0)).every((x) => x === null), 'no timer after leaving');
-        await page.evaluate(() => { $('.wrap .board .list').eq(0).find('.note').last().appendTo($('.wrap .board .list').eq(2).find('.notes')); saveBoard(); });
+        await page.evaluate(() => { $('.wrap .board .list').eq(0).find('.card').last().appendTo($('.wrap .board .list').eq(2).find('.cards')); saveBoard(); });
         t = await timers(2);
         assert.match(t[t.length - 1], /^0m [01]s$/, 'coming back starts over');
 

@@ -1,4 +1,4 @@
-// Dragging a note into a Done list plays the celebration: the card's gold
+// Dragging a card into a Done list plays the celebration: the card's gold
 // aura, a "+2500 XP" badge and a full-screen flash, gone after ~2 s.
 // Reordering inside Done, or dragging out of it, doesn't celebrate.
 const assert = require('assert');
@@ -12,12 +12,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300); // let the board re-centre before reading positions
 
-    // A real mouse drag of note [list, index] to the top of list `to`.
+    // A real mouse drag of card [list, index] to the top of list `to`.
     async function drag(list, index, to) {
         const [from, dest] = await page.evaluate((list, index, to) => {
             const c = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + Math.min(r.height / 2, 8)]; };
-            const n = $('.wrap .board .list').eq(list).find('.note .text').eq(index)[0];
-            const first = $('.wrap .board .list').eq(to).find('.note').first()[0];
+            const n = $('.wrap .board .list').eq(list).find('.card .text').eq(index)[0];
+            const first = $('.wrap .board .list').eq(to).find('.card').first()[0];
             const r = first.getBoundingClientRect();
             return [c(n), [r.left + r.width / 2, r.top + 4]]; // drop at the top of the target list
         }, list, index, to);

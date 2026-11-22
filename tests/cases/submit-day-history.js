@@ -17,7 +17,7 @@ const DAY = 86400000;
         const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         localStorage.setItem('nullboard.history', JSON.stringify([{
             day, title: 'Old board', submittedAt: d.toISOString(),
-            lists: [{ title: 'Done', notes: [{ text: 'old note', raw: false, min: false }] }],
+            lists: [{ title: 'Done', notes: [{ text: 'old card', raw: false, min: false }] }],
         }]));
     });
     const { page } = app;
@@ -36,7 +36,7 @@ const DAY = 86400000;
         assert.strictEqual((await stored()).length, 1, 'nothing filed for a board that was never stamped');
 
         // An edit stamps today; the same day, nothing is filed.
-        await page.evaluate(() => { setText($('.wrap .board .note .text').first(), 'edited today'); saveBoard(); });
+        await page.evaluate(() => { setText($('.wrap .board .card .text').first(), 'edited today'); saveBoard(); });
         const today = await page.evaluate(() => dayKey(new Date()));
         assert.strictEqual(await page.evaluate(() => NB.board.day), today, 'a save stamps the day');
         await wake();
@@ -74,14 +74,14 @@ const DAY = 86400000;
             board: $(el).find('.history-board').text(),
             lists: $(el).find('.history-list').map((_, l) => ({
                 title: $(l).find('.history-list-title').text(),
-                notes: $(l).find('.history-note').map((_, n) => $(n).text()).get(),
+                cards: $(l).find('.history-card').map((_, n) => $(n).text()).get(),
             })).get(),
         })).get());
 
         let items = await shown();
         assert.strictEqual(items.length, 1, 'current week shows just today');
         assert.strictEqual(items[0].board, board.title);
-        assert.deepStrictEqual(items[0].lists, board.lists.map((l) => ({ title: l.title, notes: l.notes.map((n) => n.text) })),
+        assert.deepStrictEqual(items[0].lists, board.lists.map((l) => ({ title: l.title, cards: l.notes.map((n) => n.text) })),
             'History shows the whole board');
         assert.match(await page.$eval('.week-title', (e) => e.textContent), /\(Current\)$/);
         assert.ok(await page.$eval('.week-next', (b) => b.disabled), 'no weeks after the current one');
