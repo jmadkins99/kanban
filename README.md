@@ -41,6 +41,10 @@ It's Nullboard with a few changes:
   arrows step it one list left or right, greyed out at the first and last
   list. Cards don't drag. In edit mode a small × at the card's right edge
   deletes it, asking first if it has text.
+- **Priority**: every card is Recurring, Critical, Medium or Low (Low
+  unless set), shown as a Jira-style icon at its left, in History too
+  (original SVGs in `js/priority.js`, not Atlassian's). In edit mode the icon
+  is a dropdown; clicking away saves the text and Priority as one Undo step.
 - **Big screens**: everything scales with the screen's height from a 1080p
   baseline (1.33x on a 3440x1440 ultrawide, full-screen or half); a font
   size set in UI preferences still wins.
