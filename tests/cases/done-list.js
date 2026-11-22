@@ -3,7 +3,7 @@
 // with the Done cards in it, then clears the Done list, without asking.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle } = require('../lib');
+const { openApp, settle, moveCard } = require('../lib');
 
 (async () => {
     const app = await openApp(() => {});
@@ -22,10 +22,7 @@ const { openApp, settle } = require('../lib');
         assert.ok(!(await struck(0)).some(Boolean), 'other lists are untouched');
 
         // A card moved in is struck while it's there.
-        await page.evaluate(() => {
-            $('.wrap .board .list').eq(0).find('.card').first().appendTo($('.wrap .board .list').eq(1).find('.cards'));
-            saveBoard();
-        });
+        await moveCard(page, 0, 0, 1);
         assert.ok((await struck(1)).every(Boolean), 'a moved-in card is struck');
 
         await rename(1, 'Doing');

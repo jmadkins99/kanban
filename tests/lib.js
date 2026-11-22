@@ -92,4 +92,16 @@ async function openApp(seed, { demo = true } = {}) {
 // Lets jQuery animations (opacity fades before a removal) finish.
 const settle = (page) => page.evaluate(() => new Promise((r) => $(':animated').promise().done(() => setTimeout(r, 50))));
 
-module.exports = { openApp, settle };
+// Moves Card `index` of List `list` (negative counts from the end) `steps`
+// Lists over, negative to the left, the way a person does: a tap on the Card,
+// then ⬅️ or ➡️ in its menu, once per List.
+const moveCard = (page, list, index, steps) => page.evaluate((list, index, steps) => {
+    const card = $('.wrap .board .list').eq(list).find('.card').eq(index)[0];
+    if (!card) throw new Error(`no Card ${index} in List ${list}`);
+    for (let i = 0; i < Math.abs(steps); i++) {
+        $(card).find('.text').trigger('click');
+        $(card).find(steps < 0 ? '[data-cm=left]' : '[data-cm=right]').trigger('click');
+    }
+}, list, index, steps);
+
+module.exports = { openApp, settle, moveCard };

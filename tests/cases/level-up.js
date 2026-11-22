@@ -3,7 +3,7 @@
 // level-up once (with the new level, rank and insignia), and the overlay
 // removes itself afterwards. Dropping a level (moving out of Done) is quiet.
 const assert = require('assert');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -16,12 +16,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         rank: $('.level-badge .level-rank').text(),
         svg: $('.level-badge .level-insignia svg').length,
     }));
-    const toDone = (from) => page.evaluate((from) => {
-        const $n = $('.wrap .board .list').eq(from).find('.card').first();
-        $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
-        cardMoved($n, false);
-        saveBoard();
-    }, from);
+    const toDone = (from) => moveCard(page, from, 0, 2 - from);
 
     try {
         assert.deepStrictEqual(await badge(), { num: 'Lvl 1', rank: 'Private', svg: 1 });
@@ -49,7 +44,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.waitForFunction(() => !$('.lu-ov').length, { timeout: 9000 });
 
         // Dropping back a level: badge follows, no show.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').last().appendTo($('.wrap .board .list').eq(1).find('.cards')); saveBoard(); });
+        await moveCard(page, 2, -1, -1);
         await sleep(1200);
         assert.deepStrictEqual(await badge(), { num: 'Lvl 1', rank: 'Private', svg: 1 });
         assert.strictEqual(await page.evaluate(() => played.length), 1, 'losing a level is quiet');
