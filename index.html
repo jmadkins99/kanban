@@ -1766,6 +1766,35 @@
 		display: none;
 	}
 
+	/* Edit mode's small × at the card's right edge deletes it. */
+	.board .card .card-del {
+		display: none;
+	}
+
+	.board .card.editing .card-del {
+		display: block;
+		position: absolute;
+		top: 2px;
+		right: 0;
+		width: 16px;
+		height: 18px;
+		padding: 0;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		color: #8a8aa6;
+		font: 600 calc(14px * var(--ui))/1 sans-serif;
+		cursor: pointer;
+	}
+
+	.board .card.editing .card-del:hover,
+	.board .card.editing .card-del:focus-visible {
+		color: #f2d4dc;
+		background: rgba(140, 40, 60, .45);
+		outline: none;
+	}
+
 	/* A list named "done", in any case, strikes through its cards. */
 	.board .list.done-list .card .text,
 	.history-list.done-list .history-card {
@@ -1898,6 +1927,7 @@
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
 			<span class=wip-timer></span>
+			<button type=button class=card-del aria-label="Delete Card">&times;</button>
 		</div>
 
 		<a href=# class=load-board></a>
@@ -5025,6 +5055,30 @@
 
 	$('.wrap').on('click', '.board .del-card', function(){
 		deleteCard( $(this).closest('.card') );
+		return false;
+	});
+
+	// Edit mode's ×. Pressing it keeps the focus in the textarea, so the
+	// edit isn't saved (and its blur doesn't end editing) before the delete.
+	$('.wrap').on('mousedown', '.board .card-del', function(ev){
+		ev.preventDefault();
+	});
+
+	$('.wrap').on('click', '.board .card-del', function(){
+		var $card = $(this).closest('.card');
+		var text = $card.find('.edit').val().trim() || (getText($card.find('.text')) || '').trim();
+
+		if (text && ! confirm("Delete this Card?"))
+			return false;
+
+		var brand_new = $card.hasClass('brand-new');
+		$card.removeClass('editing brand-new');
+
+		if (brand_new) // never saved, so nothing to save
+			$card.remove();
+		else
+			deleteCard($card);
+
 		return false;
 	});
 
