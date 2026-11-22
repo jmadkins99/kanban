@@ -60,7 +60,11 @@ It's Nullboard with a few changes:
   put; due later, it moves to Backlog (by name, any case; else the first list)
   and shows "Next: <date>". Editing the Schedule later only changes the Due
   date, and another Priority drops both.
-- **Lists sort themselves**: Recurring, Critical, Medium, then Low from the
+- **Late**: a Recurring card not in Done by the end of its Due date is Late
+  (worked out from the date, not stored; still Recurring). Its icon turns
+  red, a red Critical timer counts from midnight after the Due date (the WIP
+  timer in WIP), and it sorts at the very top. Done ends it, for 5000 XP.
+- **Lists sort themselves**: Late, Recurring, Critical, Medium, then Low from the
   top, first in, first out within each. A card that arrives in a list, or
   changes Priority, goes to the bottom of its tier. Done ignores Priority and
   keeps the order cards arrived in, so it reads as the day in order.
