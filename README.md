@@ -29,10 +29,12 @@ It's Nullboard with a few changes:
 - **Done list**: a list named "done" (any case) strikes through its cards.
   Auto-submit snapshots the board with them, then clears that list.
   Moving a card into Done plays gym-tracker's PR celebration on the card
-  with a "+2500 XP" badge and a screen flash (`js/celebrate.js`).
+  with a "+XP" badge showing what it earned and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
-  recreated in CSS (`js/xp.js`). Each card moved into Done earns 2500 XP, plus
-  57.5 XP per whole minute of its last WIP visit, up to 8 hours. Level 1
+  recreated in CSS (`js/xp.js`). Each card moved into Done earns a flat amount
+  by its Priority: Low 2500 XP, Medium 3500, Critical 5000, Recurring 5000.
+  The amount is fixed when it enters Done, so changing its Priority there
+  doesn't change it, and time in WIP earns nothing. Level 1
   takes 11500 XP and each level after costs 2% more than the last (44209 XP
   for 69 to 70). XP leaves with a card that leaves Done, and
   Auto-submit banks it. "XP bars" in UI preferences sets the number of bubbles (20).

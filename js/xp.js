@@ -10,19 +10,17 @@
  *	- Submit Day banks the Done cards' XP before clearing them. The bank is
  *	  keyed by xpId, so an Undo that brings banked cards back can't count
  *	  them twice, and syncing the bank is a plain merge.
- *	2500 XP a card. Level 1 takes 11500 XP (4.6 cards) and each level after
- *	costs 2% more than the one before, so 69 -> 70 takes 44209. On top of
- *	that, each whole minute of the card's last visit to WIP adds a flat
- *	57.5 XP, up to 8 hours.
+ *	A card earns a flat amount by its Priority (AWARD), fixed when it enters
+ *	Done: changing its Priority there doesn't change it, and time in WIP
+ *	earns nothing. Level 1 takes 11500 XP and each level after costs 2% more
+ *	than the one before, so 69 -> 70 takes 44209.
  */
 (function () {
 
-	var PER_CARD  = 2500;
-	var PER_WIP_MINUTE = 57.5; // flat: the same work earns the same XP at every level
+	var AWARD = { low: 2500, medium: 3500, critical: 5000, recurring: 5000 };
 
 	// XP to go from `level` to level + 1, a whole number for the bar.
-	function levelCost(level) { return Math.round(PER_CARD * 4.6 * Math.pow(1.02, level - 1)); }
-	var WIP_CAP_MS = 8 * 3600 * 1000;
+	function levelCost(level) { return Math.round(11500 * Math.pow(1.02, level - 1)); }
 
 	function bank() { return NB.storage.getJson('xpBank') || {}; } // xpId -> XP
 
@@ -121,21 +119,16 @@
 	}
 
 	window.XP = {
-		PER_CARD: PER_CARD,
 		levelCost: levelCost,
 		total: total,
 		progress: progress,
 		render: render,
 
-		// A card just moved into Done: give it its XP, return the amount.
-		// Its WIP time is the visit still running (straight from WIP) or the
-		// last one it finished.
+		// A card just moved into Done: give it its Priority's XP, return the amount.
 		award: function (meta)
 		{
 			gaining = true;
-			var wipMs = meta.wip ? Date.now() - meta.wip : (meta.wipMs || 0);
-			var minutes = Math.floor(Math.min(wipMs, WIP_CAP_MS) / 60000);
-			meta.xp = Math.round(PER_CARD + minutes * PER_WIP_MINUTE);
+			meta.xp = AWARD[Priority.of(meta)];
 			meta.xpId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 			return meta.xp;
 		},

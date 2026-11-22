@@ -1,5 +1,5 @@
 // Moving a Card with the card menu's arrows keeps its state, and saves it
-// once: a Card moved from WIP to Done earns its WIP time's XP, the Cards it
+// once: a Card moved from WIP to Done earns its XP, the Cards it
 // leaves behind keep their timers, and each move is one Undo step with no
 // duplicate. Moving it back out of Done takes the XP back and starts its WIP
 // timer over.
@@ -28,12 +28,12 @@ const { openApp, moveCard } = require('../lib');
             return NB.board.lists[1].notes.slice(0, 2).map((n) => n.wip);
         });
 
-        // WIP -> Done with ➡️ (the 10-minute Card): 2500 + 10 minutes x 57.5.
+        // WIP -> Done with ➡️ (the 10-minute Card, Low): 2500, whatever its WIP time.
         const rev = await revision();
         await moveCard(page, 1, 0, 1);
         assert.strictEqual(await revision(), rev + 1, 'one save for one move');
-        assert.strictEqual(await page.evaluate(() => $('.celebrate-badge').text()), '+3075 XP', 'the badge shows the WIP bonus');
-        assert.strictEqual(await page.evaluate(() => XP.total()), 3075);
+        assert.strictEqual(await page.evaluate(() => $('.celebrate-badge').text()), '+2500 XP', 'the badge shows the award');
+        assert.strictEqual(await page.evaluate(() => XP.total()), 2500);
         assert.strictEqual(await saved(2), await shown(2), 'saved once, no duplicate');
         assert.strictEqual(await page.evaluate(() => NB.board.lists[1].notes[0].wip), starts[1], 'the Card left in WIP kept its timer');
 
