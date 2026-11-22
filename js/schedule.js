@@ -16,6 +16,7 @@
  * Schedule.today()           today, local
  * Schedule.make(every, unit, start) a tidy Schedule from what was typed
  * Schedule.label(day)        a short date for "Next: <date>", e.g. "Mar 6"
+ * Schedule.startOf(day)      the moment `day` starts: local midnight before it, in ms
  * Schedule.endOf(day)        the moment `day` ends: local midnight after it, in ms
  */
 (function () {
@@ -97,11 +98,17 @@
     return d.toLocaleDateString(undefined, opts);
   }
 
+  function startOf(day)
+  {
+    var p = parts(day);
+    return new Date(p.y, p.m, p.d).getTime();
+  }
+
   function endOf(day)
   {
     var p = parts(day);
     return new Date(p.y, p.m, p.d + 1).getTime();
   }
 
-  window.Schedule = { UNITS: UNITS, onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, make: make, label: label, endOf: endOf };
+  window.Schedule = { onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, make: make, label: label, startOf: startOf, endOf: endOf };
 })();

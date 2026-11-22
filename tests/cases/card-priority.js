@@ -4,9 +4,7 @@
 // Priority together, as one Undo step.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, sleep, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
 
 (async () => {
     const app = await openApp(() => {});
@@ -14,7 +12,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
 
-    const clickAway = async () => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
+    const clickAway = () => clickAwayOn(page);
     // The Priority each Card in List `list` shows, top to bottom, by its icon's label.
     const shown = (list) => page.evaluate((list) => $('.wrap .board .list').eq(list).find('.card').map((_, c) => {
         const icon = $(c).find('.card-prio:visible svg');
@@ -46,23 +44,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         // Edit, open the dropdown, pick Critical and change the text: the dropdown
         // shows the new icon, and clicking away saves both.
         const first = '.wrap .board .list:nth-child(1) .card:nth-child(1)';
-        const edit = async (sel) => {
-            await page.click(sel + ' .text');
-            await sleep(450);
-            await page.click(sel + ' [data-cm=edit]');
-            await sleep(100);
-        };
-        const pick = async (sel, label) => {
-            await page.click(sel + ' .card-prio');
-            await sleep(50);
-            const options = await page.evaluate((sel) => $(sel).find('.prio-pick button:visible').map((_, b) => $(b).attr('aria-label')).get(), sel);
-            assert.deepStrictEqual(options, ['Recurring', 'Critical', 'Medium', 'Low'], 'the dropdown offers the four Priorities');
-            await page.click(`${sel} .prio-pick button[aria-label=${label}]`);
-            await sleep(50);
-        };
+        const edit = (sel) => editCard(page, sel);
+        const pick = (sel, priority) => pickPriority(page, sel, priority);
         const before = await saved(0);
         await edit(first);
-        await pick(first, 'Critical');
+        await page.click(first + ' .card-prio');
+        await sleep(50);
+        const options = await page.evaluate((sel) => $(sel).find('.prio-pick button:visible').map((_, b) => $(b).attr('aria-label')).get(), first);
+        assert.deepStrictEqual(options, ['Priority: Recurring', 'Priority: Critical', 'Priority: Medium', 'Priority: Low'], 'the dropdown offers the four Priorities');
+        await page.click(`${first} .prio-pick button[aria-label="Priority: Critical"]`);
+        await sleep(50);
         assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('editing'), first), true, 'still editing after picking');
         assert.strictEqual(await page.evaluate((sel) => $(sel).find('.card-prio').attr('aria-label'), first), 'Priority: Critical', 'the dropdown shows the pick');
         assert.deepStrictEqual(await saved(0), before, 'nothing saved before clicking away');
@@ -80,13 +71,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
         // A Priority change alone saves too; each Priority has its own icon.
         const looks = {};
-        for (const label of ['Recurring', 'Critical', 'Medium', 'Low']) {
+        for (const priority of ['Recurring', 'Critical', 'Medium', 'Low']) {
             await edit(first);
-            await pick(first, label);
+            await pick(first, priority);
             await clickAway();
-            assert.strictEqual((await saved(0))[0][1], label.toLowerCase(), label + ' is saved');
-            assert.strictEqual((await shown(0))[0], 'Priority: ' + label, label + ' icon shown');
-            looks[label] = await page.evaluate((sel) => {
+            assert.strictEqual((await saved(0))[0][1], priority.toLowerCase(), priority + ' is saved');
+            assert.strictEqual((await shown(0))[0], 'Priority: ' + priority, priority + ' icon shown');
+            looks[priority] = await page.evaluate((sel) => {
                 const svg = $(sel).find('.card-prio svg')[0];
                 return { shape: svg.innerHTML, color: getComputedStyle(svg).color };
             }, first);

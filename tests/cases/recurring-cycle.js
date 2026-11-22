@@ -1,43 +1,27 @@
 // Recurring Cards come back on their own. When the midnight Auto-submit
 // clears Done, a finished Recurring Card is filed in that day's History like
-// any other, then goes to Backlog with a fresh Arrival and its next Due date:
-// the first Schedule date after both its current Due date and the day it was
-// finished, so missed occurrences don't pile up. A Recurring Card in Backlog
-// whose Due date has come moves to To-Do by itself, at midnight or when the
-// tab next opens. One moved out of Backlog early is left alone. Lists are
+// any other, then goes back with a fresh Arrival and its next Due date: the
+// first Schedule date after its current Due date, the day it was finished and
+// yesterday, so missed occurrences don't pile up and it's never due on a day
+// already gone. Due today, it goes straight to To-Do; otherwise to Backlog. A
+// Recurring Card waiting in Backlog from before its Due date moves to To-Do by
+// itself once the day comes, at midnight or when the tab next opens. One moved
+// out of Backlog early, or put back there by hand, is left alone. Lists are
 // found by name, any case: "backlog"; "to-do", "todo" or "to do". With no
 // Backlog the Card returns to the first List; with no To-Do it stays put.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, moveCard } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wake: wakePage } = require('../lib');
 
 (async () => {
-    // The page's clock: whatever the test last set (kept in localStorage, so
-    // it survives a reload), Wednesday 2028-11-15 10:00 local to begin with.
-    const app = await openApp(`{
-        const Real = Date;
-        let at = null;
-        try { at = +localStorage.getItem('test.clock') || null; } catch (e) {}
-        window.clockSkew = (at || new Real(2028, 10, 15, 10, 0, 0).getTime()) - Real.now();
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + window.clockSkew])); }
-            static now() { return Real.now() + window.clockSkew; }
-        };
-        window.RealDate = Real;
-    }`, { demo: false });
+    // The page's clock: Wednesday 2028-11-15 10:00 local to begin with.
+    const app = await openApp(fakeClock('2028-11-15 10:00'), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
 
-    // Moves the page's clock to y-m-d h:mi local, now and after a reload.
-    const setClock = (y, m, d, h, mi) => page.evaluate((y, m, d, h, mi) => {
-        const t = new RealDate(y, m - 1, d, h, mi, 0).getTime();
-        localStorage.setItem('test.clock', String(t));
-        window.clockSkew = t - RealDate.now();
-    }, y, m, d, h, mi);
-    const wake = async () => { await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await sleep(100); await settle(page); };
+    const setClock = (at) => setPageClock(page, at);
+    const wake = () => wakePage(page);
     const rename = (i, title) => page.evaluate((i, title) => { setText($('.wrap .board .list').eq(i).find('.head .text'), title); saveBoard(); }, i, title);
     // Each List's Cards as shown, top to bottom.
     const board = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => [$(l).find('.card').map((_, c) => getText($(c).find('.text'))).get()]).get());
@@ -82,7 +66,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.deepStrictEqual(await board(), [['file taxes', 'weekly review'], [], ['take bins out'], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
 
         // Midnight with the tab open.
-        await setClock(2028, 11, 16, 0, 0);
+        await setClock('2028-11-16 00:00');
         await wake();
 
         assert.deepStrictEqual(await doneIn('2028-11-15'), ['pay rent', 'renew insurance', 'water plants', 'ordinary'], 'all of Done is in that day\'s History');
@@ -111,9 +95,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await sleep(300);
         assert.deepStrictEqual(await board(), b, 'the same after a reload');
 
+        // Put back in Backlog by hand on its Due date, it stays there.
+        await moveCard(page, 1, (await board())[1].indexOf('weekly review'), -1);
+        await settle(page);
+        await wake();
+        assert.ok((await board())[0].includes('weekly review'), 'moved back to Backlog by hand, it isn\'t moved again: ' + JSON.stringify(await board()));
+        await app.reload();
+        await sleep(300);
+        await settle(page);
+        assert.ok((await board())[0].includes('weekly review'), 'nor after a reload');
+        await moveCard(page, 0, (await board())[0].indexOf('weekly review'), 1);
+        await settle(page);
+        b = await board();
+
         // Closed over the Due date: on opening, it moves. " TODO " is To-Do too.
         await rename(1, ' TODO ');
-        await setClock(2028, 12, 1, 9, 0);
+        await setClock('2028-12-01 09:00');
         await app.reload();
         await sleep(300);
         await settle(page);
@@ -128,7 +125,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await moveCard(page, 0, (await board())[0].indexOf('renew insurance'), 3);
         await settle(page);
         assert.deepStrictEqual((await board())[3], ['water plants', 'renew insurance']);
-        await setClock(2028, 12, 2, 0, 0);
+        await setClock('2028-12-02 00:00');
         await wake();
         b = await board();
         assert.ok(b[0].includes('renew insurance'), 'no Backlog: the first List: ' + JSON.stringify(b));
@@ -141,11 +138,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await rename(1, 'Later');
         await moveCard(page, 1, (await board())[1].indexOf('water plants'), 2);
         await settle(page);
-        await setClock(2028, 12, 3, 0, 0);
+        await setClock('2028-12-03 00:00');
         await wake();
         b = await board();
         assert.ok(b[0].includes('water plants'), 'no To-Do: it stays in Backlog: ' + JSON.stringify(b));
         assert.strictEqual((await saved('water plants')).due, '2028-12-03');
+
+        // Finished on Monday Dec 4, the tab reopened on Wednesday Dec 13: the
+        // next Due date is never one already gone by. Weekly on Mondays comes
+        // back due Dec 18, not Dec 11; daily is due today and goes to To-Do.
+        await rename(1, 'To-Do');
+        await page.evaluate(() => {
+            const r = (text, schedule) => ({ text, priority: 'recurring', schedule, due: '2028-12-04', arrival: 1 });
+            NB.board.lists[3].notes = [
+                r('mow lawn',  { every: 1, start: '2028-11-06', unit: 'weeks' }),
+                r('feed fish', { every: 1, start: '2028-11-01', unit: 'days' }),
+            ];
+            NB.board.day = '2028-12-04';
+            NB.storage.saveBoard(NB.board);
+        });
+        await setClock('2028-12-13 09:00');
+        await app.reload();
+        await sleep(300);
+        await settle(page);
+        b = await board();
+        assert.strictEqual((await saved('mow lawn')).due, '2028-12-18', 'weekly: the next Monday from today, not a past one');
+        assert.ok(b[0].includes('mow lawn'), 'it waits in Backlog: ' + JSON.stringify(b));
+        assert.strictEqual((await saved('feed fish')).due, '2028-12-13', 'daily: due today');
+        assert.ok(b[1].includes('feed fish'), 'due today, it goes straight to To-Do: ' + JSON.stringify(b));
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

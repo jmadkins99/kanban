@@ -1,9 +1,12 @@
 /* Priority: every Card has exactly one, stored on the Card as `priority`.
  * Priority.LEVELS   the four, from the top of a List down
  * Priority.of(card) the Card's Priority; a missing or unknown one is Low
+ * Priority.isRecurring(card), Priority.isCritical(card)  whether it's that one
  * Priority.label(p) "Recurring", "Critical", "Medium" or "Low"
  * Priority.icon(p)  its icon as inline SVG markup, coloured by CSS through
  *                   the classes "prio-icon prio-<p>" (stroke is currentColor)
+ * Priority.badge(p) what shows a Priority: { icon, attrs }, attrs being the
+ *                   aria-label and title "Priority: <label>"
  * The icons are drawn here in Jira's style, not taken from Atlassian.
  */
 (function () {
@@ -29,6 +32,9 @@
     return LABELS.hasOwnProperty(p) ? p : 'low';
   }
 
+  function isRecurring(card) { return of(card) == 'recurring'; }
+  function isCritical(card) { return of(card) == 'critical'; }
+
   function label(p) { return LABELS[of({ priority: p })]; }
 
   function icon(p) {
@@ -37,5 +43,10 @@
       SHAPES[p] + '</svg>';
   }
 
-  window.Priority = { LEVELS: LEVELS, of: of, label: label, icon: icon };
+  function badge(p) {
+    var says = 'Priority: ' + label(p);
+    return { icon: icon(p), attrs: { 'aria-label': says, title: says } };
+  }
+
+  window.Priority = { LEVELS: LEVELS, of: of, isRecurring: isRecurring, isCritical: isCritical, label: label, icon: icon, badge: badge };
 })();

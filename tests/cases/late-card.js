@@ -7,9 +7,7 @@
 // Entering Done ends Late and earns 5000 XP, like any Recurring Card.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, moveCard, settle } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, moveCard, settle, sleep, fakeClock, setClock, seedBoard } = require('../lib');
 
 // "pay bills" is due Dec 1, so it turns Late at 00:00 Dec 2.
 const LISTS = [
@@ -27,22 +25,11 @@ const LISTS = [
 ];
 
 (async () => {
-    // The page's clock reads whatever local time `test.at` holds, and runs on from there.
-    const app = await openApp(`(${(lists) => {
-        // The first load sees 2s before midnight at the end of Dec 1, 2028.
-        if (!localStorage.getItem('test.at')) localStorage.setItem('test.at', JSON.stringify([2028, 11, 1, 23, 59, 58]));
-        const Real = Date, off = new Real(...JSON.parse(localStorage.getItem('test.at'))).getTime() - Real.now();
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + off])); }
-            static now() { return Real.now() + off; }
-        };
-        if (localStorage.getItem('nullboard.last_board')) return; // seed only on the first load
-        const board = { format: 20190412, id: 39, revision: 1, title: 'Chores', day: '2028-12-01', lists };
-        localStorage.setItem('nullboard.board.39.1', JSON.stringify(board));
-        localStorage.setItem('nullboard.board.39.meta', JSON.stringify({ title: 'Chores', current: 1, history: [1] }));
-        localStorage.setItem('nullboard.board.39', '1');
-        localStorage.setItem('nullboard.last_board', '39');
-    }})(${JSON.stringify(LISTS)})`, { demo: false });
+    // The first load sees 2s before midnight at the end of Dec 1, 2028.
+    const app = await openApp([
+        fakeClock('2028-12-01 23:59:58'),
+        seedBoard({ id: 39, title: 'Chores', day: '2028-12-01', lists: LISTS }),
+    ], { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await page.waitForFunction(() => window.NB && NB.board && NB.board.title == 'Chores' && new Date().getFullYear() == 2028);
@@ -101,7 +88,7 @@ const LISTS = [
         assert.deepStrictEqual(app.errors, []);
 
         // Reloaded on Dec 3 at 10:00, the timer counts from midnight after Dec 1.
-        await page.evaluate(() => localStorage.setItem('test.at', JSON.stringify([2028, 11, 3, 10, 0, 0])));
+        await setClock(page, '2028-12-03 10:00');
         await app.reload();
         await page.waitForFunction(() => new Date().getDate() == 3);
         await sleep(300);

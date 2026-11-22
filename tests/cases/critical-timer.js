@@ -9,53 +9,29 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, moveCard, settle } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, moveCard, settle, sleep, fakeClock, setClock, clickAway: clickAwayOn, pickPriority, setPriority: setPriorityOn } = require('../lib');
 
 const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
 
 (async () => {
-    // From the second load on, the clock runs 3h 25m ahead.
-    const app = await openApp(`if (localStorage.getItem('test.skew')) {
-        const Real = Date, skew = ${SKEW};
-        window.Date = class extends Real {
-            constructor(...a) { super(...(a.length ? a : [Real.now() + skew])); }
-            static now() { return Real.now() + skew; }
-        };
-    }`, { demo: false });
+    // The real time, until the test moves the clock on.
+    const app = await openApp(fakeClock(), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
     const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
-    const clickAway = async () => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
+    const clickAway = () => clickAwayOn(page);
     const sel = (list, i) => `.wrap .board .list:nth-child(${list + 1}) .card:nth-child(${i + 1})`;
-    const addCard = async (list, text, label) => {
+    const addCard = async (list, text, priority) => {
         await page.evaluate((list) => $('.wrap .board .list').eq(list).find('.add-card').click(), list);
         await sleep(100);
         await page.keyboard.type(text);
-        if (label) {
-            const s = '.wrap .board .card.editing';
-            await page.click(s + ' .card-prio');
-            await sleep(50);
-            await page.click(`${s} .prio-pick button[aria-label=${label}]`);
-            await sleep(50);
-        }
+        if (priority) await pickPriority(page, '.wrap .board .card.editing', priority);
         await clickAway();
     };
-    const setPriority = async (list, i, label) => {
-        await page.click(sel(list, i) + ' .text');
-        await sleep(450);
-        await page.click(sel(list, i) + ' [data-cm=edit]');
-        await sleep(100);
-        await page.click(sel(list, i) + ' .card-prio');
-        await sleep(50);
-        await page.click(`${sel(list, i)} .prio-pick button[aria-label=${label}]`);
-        await sleep(50);
-        await clickAway();
-    };
+    const setPriority = (list, i, priority) => setPriorityOn(page, sel(list, i), priority);
     // The timer each Card in List `list` shows: its text and colours, or null.
     const timers = (list) => page.evaluate((list) => $('.wrap .board .list').eq(list).find('.card').toArray().map((c) => {
         const t = $(c).find('.wip-timer');
@@ -82,33 +58,33 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
     try {
         // Created as Critical in Backlog: a red timer from 0. A Low Card shows none.
         await addCard(BACKLOG, 'calm', null);
-        await addCard(BACKLOG, 'urgent', 'Critical');
+        await addCard(BACKLOG, 'fix the gate', 'Critical');
         assert.strictEqual(await timerOf(BACKLOG, 'calm'), null, 'a Low Card has no timer');
-        let t = await timerOf(BACKLOG, 'urgent');
+        let t = await timerOf(BACKLOG, 'fix the gate');
         assert.ok(t, 'a Card created as Critical shows a timer');
         assert.match(t.text, /^0m [01]s$/, 'counting from 0: ' + t.text);
         assert.ok(isRed(t), 'in red: ' + t.bg);
 
         // It counts up, and it sits inside the Card on its right.
         await sleep(2100);
-        assert.ok(secs((await timerOf(BACKLOG, 'urgent')).text) >= 2, 'it counts up');
+        assert.ok(secs((await timerOf(BACKLOG, 'fix the gate')).text) >= 2, 'it counts up');
         const box = await page.evaluate((s) => {
             const a = $(s)[0].getBoundingClientRect(), b = $(s).find('.wip-timer')[0].getBoundingClientRect();
             return { right: a.right - b.right, mid: b.left - (a.left + a.width / 2), top: b.top - a.top, bottom: a.bottom - b.bottom };
-        }, sel(BACKLOG, await index(BACKLOG, 'urgent')));
+        }, sel(BACKLOG, await index(BACKLOG, 'fix the gate')));
         assert.ok(box.right >= 0 && box.right < 20 && box.mid > 0 && box.top >= 0 && box.bottom >= 0, 'on the right inside the Card ' + JSON.stringify(box));
 
         // Backlog to To-Do starts it over.
-        await move(BACKLOG, 'urgent', 1);
-        t = await timerOf(TODO, 'urgent');
+        await move(BACKLOG, 'fix the gate', 1);
+        t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^0m [01]s$/, 'entering To-Do starts over: ' + t.text);
         assert.ok(isRed(t), 'still red');
 
         // In WIP it's the WIP timer from 0, in the accent like any WIP Card.
         await sleep(1100);
-        await move(TODO, 'urgent', 1);
+        await move(TODO, 'fix the gate', 1);
         await move(BACKLOG, 'calm', 2);
-        t = await timerOf(WIP, 'urgent');
+        t = await timerOf(WIP, 'fix the gate');
         const calm = await timerOf(WIP, 'calm');
         assert.match(t.text, /^0m [01]s$/, 'the WIP timer starts at 0: ' + t.text);
         assert.ok(!isRed(t), 'not red in WIP: ' + t.bg);
@@ -117,45 +93,45 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
 
         // Back to To-Do: the red timer from 0 again.
         await sleep(1100);
-        await move(WIP, 'urgent', -1);
-        t = await timerOf(TODO, 'urgent');
+        await move(WIP, 'fix the gate', -1);
+        t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^0m [01]s$/, 'back in To-Do it starts over: ' + t.text);
         assert.ok(isRed(t), 'red again');
 
         // Done shows no timer.
-        await move(TODO, 'urgent', 2);
-        assert.strictEqual(await timerOf(DONE, 'urgent'), null, 'no timer in Done');
-        await move(DONE, 'urgent', -2);
-        assert.ok(isRed(await timerOf(TODO, 'urgent')), 'out of Done, it waits again');
+        await move(TODO, 'fix the gate', 2);
+        assert.strictEqual(await timerOf(DONE, 'fix the gate'), null, 'no timer in Done');
+        await move(DONE, 'fix the gate', -2);
+        assert.ok(isRed(await timerOf(TODO, 'fix the gate')), 'out of Done, it waits again');
 
         // Off Critical: gone. Critical again: from 0.
         await sleep(1100);
-        await setPriority(TODO, await index(TODO, 'urgent'), 'Medium');
-        assert.strictEqual(await timerOf(TODO, 'urgent'), null, 'no timer once not Critical');
+        await setPriority(TODO, await index(TODO, 'fix the gate'), 'Medium');
+        assert.strictEqual(await timerOf(TODO, 'fix the gate'), null, 'no timer once not Critical');
         await sleep(1100);
-        await setPriority(TODO, await index(TODO, 'urgent'), 'Critical');
-        t = await timerOf(TODO, 'urgent');
+        await setPriority(TODO, await index(TODO, 'fix the gate'), 'Critical');
+        t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^0m [01]s$/, 'Critical again starts from 0: ' + t.text);
         assert.ok(isRed(t), 'and is red');
 
         // Its start is stored on the Card; reload with the clock 3h 25m on.
-        const saved = await page.evaluate(() => NB.board.lists[1].notes.find((n) => n.text == 'urgent'));
+        const saved = await page.evaluate(() => NB.board.lists[1].notes.find((n) => n.text == 'fix the gate'));
         assert.ok(typeof saved.criticalSince == 'number', 'the start is saved: ' + JSON.stringify(saved));
-        await page.evaluate(() => localStorage.setItem('test.skew', '1'));
+        await setClock(page, await page.evaluate(() => Date.now()) + SKEW);
         await app.reload();
         await sleep(300);
-        t = await timerOf(TODO, 'urgent');
+        t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^3h 25m [0-3]s$/, 'right after a reload with the clock moved on: ' + t.text);
         assert.ok(isRed(t), 'red after the reload');
 
         // Export, take it off Critical, import the file: the timer comes back where it was.
         const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'board.nbx');
         fs.writeFileSync(file, await page.evaluate(() => decodeURIComponent(exportBoard().blob.replace(/^data:[^,]*,/, ''))));
-        await setPriority(TODO, await index(TODO, 'urgent'), 'Low');
-        assert.strictEqual(await timerOf(TODO, 'urgent'), null, 'Low: no timer');
+        await setPriority(TODO, await index(TODO, 'fix the gate'), 'Low');
+        assert.strictEqual(await timerOf(TODO, 'fix the gate'), null, 'Low: no timer');
         await (await page.$('.config .imp-board-select')).uploadFile(file);
         await page.waitForFunction(() => $('.wrap .board .wip-timer.critical:visible').length == 1);
-        t = await timerOf(TODO, 'urgent');
+        t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^3h 25m [0-5]s$/, 'kept through export and import: ' + t.text);
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');

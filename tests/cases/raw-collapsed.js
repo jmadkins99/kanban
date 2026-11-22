@@ -3,9 +3,7 @@
 // and in History, and the flags are dropped the next time the board saves.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle } = require('../lib');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { openApp, settle, sleep, seedBoard } = require('../lib');
 
 const LISTS = [{
     title: 'To-Do', notes: [
@@ -18,15 +16,8 @@ const LISTS = [{
 }];
 
 (async () => {
-    const app = await openApp(`(${(lists) => {
-        if (localStorage.getItem('nullboard.last_board')) return; // seed only on the first load
-        const board = { format: 20190412, id: 5, revision: 1, title: 'Looks', lists };
-        localStorage.setItem('nullboard.board.5.1', JSON.stringify(board));
-        localStorage.setItem('nullboard.board.5.meta', JSON.stringify({ title: 'Looks', current: 1, history: [1] }));
-        localStorage.setItem('nullboard.board.5', '1');
-        localStorage.setItem('nullboard.last_board', '5');
-        localStorage.setItem('nullboard.history', JSON.stringify([{ day: '2026-01-05', title: 'Looks', submittedAt: '2026-01-05T20:00:00.000Z', lists }]));
-    }})(${JSON.stringify(LISTS)})`, { demo: false });
+    const app = await openApp(seedBoard({ id: 5, title: 'Looks', lists: LISTS },
+        [{ day: '2026-01-05', title: 'Looks', submittedAt: '2026-01-05T20:00:00.000Z', lists: LISTS }]), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
