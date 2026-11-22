@@ -1,6 +1,7 @@
-// A list named "done" (any case) strikes through its notes, including ones
+// A list named "done" (any case) strikes through its cards, including ones
 // moved in. Once the board's day is over, auto-submit snapshots the board
-// with the Done notes in it, then clears the Done list, without asking.
+// with the Done cards in it, then clears the Done list, without asking.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
 
@@ -10,22 +11,22 @@ const { openApp, settle } = require('../lib');
     const dialogs = [];
     page.on('dialog', (d) => dialogs.push(d.message()));
 
-    // [list index] -> whether each of its notes is drawn struck through
-    const struck = (i) => page.evaluate((i) => $('.wrap .board .list').eq(i).find('.note .text').toArray()
+    // [list index] -> whether each of its cards is drawn struck through
+    const struck = (i) => page.evaluate((i) => $('.wrap .board .list').eq(i).find('.card .text').toArray()
         .map((el) => getComputedStyle(el).textDecorationLine.includes('line-through')), i);
     const rename = (i, title) => page.evaluate((i, title) => { setText($('.wrap .board .list').eq(i).find('.head .text'), title); saveBoard(); }, i, title);
 
     try {
         await rename(1, 'DoNE');
-        assert.ok((await struck(1)).every(Boolean) && (await struck(1)).length > 0, '"DoNE" strikes its notes');
+        assert.ok((await struck(1)).every(Boolean) && (await struck(1)).length > 0, '"DoNE" strikes its cards');
         assert.ok(!(await struck(0)).some(Boolean), 'other lists are untouched');
 
-        // A note moved in is struck while it's there.
+        // A card moved in is struck while it's there.
         await page.evaluate(() => {
-            $('.wrap .board .list').eq(0).find('.note').first().appendTo($('.wrap .board .list').eq(1).find('.notes'));
+            $('.wrap .board .list').eq(0).find('.card').first().appendTo($('.wrap .board .list').eq(1).find('.cards'));
             saveBoard();
         });
-        assert.ok((await struck(1)).every(Boolean), 'a moved-in note is struck');
+        assert.ok((await struck(1)).every(Boolean), 'a moved-in card is struck');
 
         await rename(1, 'Doing');
         assert.ok(!(await struck(1)).some(Boolean), 'renaming away from "done" un-strikes');
@@ -56,7 +57,7 @@ const { openApp, settle } = require('../lib');
         // History shows Done struck too (the day may be in last week).
         await page.evaluate(() => $('.config .view-history').click());
         if (! await page.$(`.history-item[data-day="${lastDay}"]`)) await page.click('.week-prev');
-        const histStruck = await page.evaluate(() => $('.history-list.done-list .history-note').toArray()
+        const histStruck = await page.evaluate(() => $('.history-list.done-list .history-card').toArray()
             .map((el) => getComputedStyle(el).textDecorationLine.includes('line-through')));
         assert.ok(histStruck.length == doneCount && histStruck.every(Boolean), 'History shows Done struck too');
 

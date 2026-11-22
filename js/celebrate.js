@@ -1,16 +1,16 @@
 /* "Card moved to Done" celebration: a port of gym-tracker's PR celebration
    (css/styles.css .card.pr-celebrating + prLegendaryAura/prHaloLine/prShimmer/
    prBadgePop/prBadgeGlow), plus a full-screen gold flash gym-tracker lacks.
-   Usage: Celebrate.done(noteEl, 2500). Leaves nothing behind after ~2 s. */
+   Usage: Celebrate.done(cardEl, 2500). Leaves nothing behind after ~2 s. */
 (function () {
     var MS = 2000; // gym-tracker's PR_CELEBRATION_MS
     var FLASH_MS = 450;
 
     // Gold is fixed, deliberately not themed, as in gym-tracker. Unlike there,
     // nothing stays after the 2 s, so 100% keyframes leave out border-color,
-    // box-shadow and filter: the note eases back to its own values, whatever
+    // box-shadow and filter: the card eases back to its own values, whatever
     // the theme gives it. The gold background sits on an injected overlay
-    // (the note can't be given overflow:hidden without clipping its .ops menu).
+    // (the card can't be given overflow:hidden without clipping its .ops menu).
     var css = `
 .celebrate-done {
     animation: celebrateAura 2s cubic-bezier(0.16, 1, 0.3, 1) both;

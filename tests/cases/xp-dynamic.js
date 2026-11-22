@@ -1,6 +1,7 @@
-// A note's XP grows with its time in WIP: 2500 + 57.5 per whole minute of
+// A card's XP grows with its time in WIP: 2500 + 57.5 per whole minute of
 // its last WIP visit (a flat amount at every level), capped at 8 hours. The
 // +XP badge shows the amount it actually earned.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 
@@ -8,13 +9,13 @@ const { openApp } = require('../lib');
     const app = await openApp(() => {});
     const { page } = app;
 
-    // Lists: 0 To-Do (stays), 1 WIP, 2 Done. Give the first WIP note a start
+    // Lists: 0 To-Do (stays), 1 WIP, 2 Done. Give the first WIP card a start
     // `minutesAgo` back, then move it straight to Done the way a drag does.
     const fromWip = (minutesAgo) => page.evaluate((minutesAgo) => {
-        const $n = $('.wrap .board .list').eq(1).find('.note').first();
-        noteMeta($n).wip = Date.now() - minutesAgo * 60000;
-        $n.appendTo($('.wrap .board .list').eq(2).find('.notes'));
-        noteMoved($n, false);
+        const $n = $('.wrap .board .list').eq(1).find('.card').first();
+        cardMeta($n).wip = Date.now() - minutesAgo * 60000;
+        $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
+        cardMoved($n, false);
         saveBoard();
         const n = NB.board.lists[2].notes;
         return { xp: n[n.length - 1].xp, badge: $n.find('.celebrate-badge').text() };
@@ -32,14 +33,14 @@ const { openApp } = require('../lib');
         assert.deepStrictEqual(await fromWip(60), { xp: 5950, badge: '+5950 XP' }, 'an hour: +30% of a level');
         assert.deepStrictEqual(await fromWip(10 * 60), { xp: 30100, badge: '+30100 XP' }, 'capped at 8 hours');
 
-        // A note that left WIP earlier carries that visit's length.
+        // A card that left WIP earlier carries that visit's length.
         const viaTodo = await page.evaluate(() => {
-            const $n = $('.wrap .board .list').eq(1).find('.note').first();
-            noteMeta($n).wip = Date.now() - 5.5 * 60000;
-            $n.appendTo($('.wrap .board .list').eq(0).find('.notes'));
+            const $n = $('.wrap .board .list').eq(1).find('.card').first();
+            cardMeta($n).wip = Date.now() - 5.5 * 60000;
+            $n.appendTo($('.wrap .board .list').eq(0).find('.cards'));
             saveBoard(); // leaves WIP: wipMs = 5.5 min
-            $n.appendTo($('.wrap .board .list').eq(2).find('.notes'));
-            noteMoved($n, false);
+            $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
+            cardMoved($n, false);
             saveBoard();
             const n = NB.board.lists[2].notes;
             return n[n.length - 1].xp;

@@ -1,5 +1,6 @@
 // One board only: no way to add or delete boards, the menu lists the one
 // board, and Import replaces it (as a new revision, so Undo brings it back).
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');

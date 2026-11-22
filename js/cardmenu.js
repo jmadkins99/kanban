@@ -1,10 +1,10 @@
-/* CardMenu: hover/tap options panel for kanban notes. Needs jQuery.
- * CardMenu.attach(containerSelector, { onMove(noteEl, dir), onEdit(noteEl), onDelete(noteEl) })
+/* CardMenu: hover/tap options panel for kanban cards. Needs jQuery.
+ * CardMenu.attach(containerSelector, { onMove(cardEl, dir), onEdit(cardEl), onDelete(cardEl) })
  */
 (function ($) {
   var CSS = [
-    '.note > .ops { display: none !important; }',
-    ':where(.note) { position: relative; }',
+    '.card > .ops { display: none !important; }',
+    ':where(.card) { position: relative; }',
 
     /* panel = clipping frame over the card; sheet = the part that slides down */
     '.cm-panel { position: absolute; inset: 0; z-index: 5; overflow: hidden; border-radius: inherit;',
@@ -78,46 +78,46 @@
       $('<style id="cardmenu-css">').text(CSS));
     // Tapping elsewhere (or on another card) hides open panels.
     document.addEventListener('pointerdown', function (e) {
-      $('.note.cm-open').each(function () { if (!this.contains(e.target)) close(this); });
+      $('.card.cm-open').each(function () { if (!this.contains(e.target)) close(this); });
     }, true);
   }
 
-  function open(note) {
-    if ($(note).hasClass('cm-open')) return;
-    $('.note.cm-open').not(note).each(function () { close(this); });
-    if (!$(note).children('.cm-panel').length) {
-      var $p = $(PANEL).appendTo(note);
+  function open(card) {
+    if ($(card).hasClass('cm-open')) return;
+    $('.card.cm-open').not(card).each(function () { close(this); });
+    if (!$(card).children('.cm-panel').length) {
+      var $p = $(PANEL).appendTo(card);
       // Mousedown anywhere on the panel, buttons included, may start the host's
       // drag: it only starts after a hold, so a click stays a click.
       void $p[0].offsetHeight; // commit the closed state so the first open animates
     }
-    $(note).removeClass('cm-moving').addClass('cm-open');
+    $(card).removeClass('cm-moving').addClass('cm-open');
   }
 
-  function close(note) { $(note).removeClass('cm-open'); }
+  function close(card) { $(card).removeClass('cm-open'); }
 
   function attach(containerSelector, cb) {
     setup();
     $(containerSelector)
       // A click (a tap on a phone) opens the menu; on desktop, moving off the card closes it.
-      .on('mouseleave', '.note', function () { close(this); })
-      .on('click', '.note', function (e) { if (!$(e.target).closest('.cm-panel').length) open(this); })
+      .on('mouseleave', '.card', function () { close(this); })
+      .on('click', '.card', function (e) { if (!$(e.target).closest('.cm-panel').length) open(this); })
       .on('click', '.cm-panel button', function (e) {
         e.preventDefault();
-        var note = $(this).closest('.note')[0], act = $(this).data('cm');
+        var card = $(this).closest('.card')[0], act = $(this).data('cm');
         // The click a drag ends with is not a choice (dropping onto Delete must not delete).
-        if (note.cmDragEnd && Date.now() - note.cmDragEnd < 400) return;
+        if (card.cmDragEnd && Date.now() - card.cmDragEnd < 400) return;
         if (act === 'move') {
-          var $list = $(note).closest('.list');
-          $(note).find('[data-cm=left]').prop('disabled', !$list.prevAll('.list').length);
-          $(note).find('[data-cm=right]').prop('disabled', !$list.nextAll('.list').length);
-          $(note).addClass('cm-moving');
+          var $list = $(card).closest('.list');
+          $(card).find('[data-cm=left]').prop('disabled', !$list.prevAll('.list').length);
+          $(card).find('[data-cm=right]').prop('disabled', !$list.nextAll('.list').length);
+          $(card).addClass('cm-moving');
           return;
         }
-        close(note);
-        if (act === 'edit') cb.onEdit && cb.onEdit(note);
-        else if (act === 'delete') cb.onDelete && cb.onDelete(note);
-        else cb.onMove && cb.onMove(note, act === 'left' ? -1 : 1);
+        close(card);
+        if (act === 'edit') cb.onEdit && cb.onEdit(card);
+        else if (act === 'delete') cb.onDelete && cb.onDelete(card);
+        else cb.onMove && cb.onMove(card, act === 'left' ? -1 : 1);
       });
   }
 

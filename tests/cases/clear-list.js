@@ -1,5 +1,5 @@
-// "Clear" empties a list's notes but keeps the list, survives a reload, and
-// Undo brings the notes back.
+// "Clear" empties a list's cards but keeps the list, survives a reload, and
+// Undo brings the cards back.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
 
@@ -7,10 +7,10 @@ const { openApp, settle } = require('../lib');
     const app = await openApp();
     const { page } = app;
     try {
-        const counts = () => page.evaluate(() => $('.wrap .list').map((_, l) => $(l).find('.note').length).get());
+        const counts = () => page.evaluate(() => $('.wrap .list').map((_, l) => $(l).find('.card').length).get());
 
         const before = await counts();
-        assert.ok(before.length >= 2 && before[0] > 0, 'demo board should start with notes in its first list');
+        assert.ok(before.length >= 2 && before[0] > 0, 'demo board should start with cards in its first list');
 
         await page.evaluate(() => $('.wrap .list').first().find('.clr-list').click());
         await settle(page);
@@ -25,7 +25,7 @@ const { openApp, settle } = require('../lib');
 
         await page.evaluate(() => $('.wrap .board > .head .undo-board').click());
         await settle(page);
-        assert.deepStrictEqual(await counts(), before, 'undo restores the notes');
+        assert.deepStrictEqual(await counts(), before, 'undo restores the cards');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

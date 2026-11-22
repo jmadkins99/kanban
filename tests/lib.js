@@ -44,7 +44,7 @@ function serve() {
     return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
-// Nullboard's old demo board (3 lists, 30 notes), which most cases are
+// Nullboard's old demo board (3 lists, 30 cards), which most cases are
 // written against. A first visit now starts with 4 empty lists instead.
 const DEMO = require('./fixtures/demo-board.json');
 

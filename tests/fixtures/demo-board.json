@@ -8,7 +8,7 @@
    "title": "The User Manual",
    "notes": [
     {
-     "text": "This is a note.\nA column of notes is a list.\nA set of lists is a board.",
+     "text": "This is a card.\nA column of cards is a list.\nA set of lists is a board.",
      "raw": false,
      "min": false
     },
@@ -63,7 +63,7 @@
    "title": "Things to try",
    "notes": [
     {
-     "text": "•   Click on a note to edit.",
+     "text": "•   Click on a card to edit.",
      "raw": false,
      "min": false
     },
@@ -83,22 +83,22 @@
      "min": false
     },
     {
-     "text": "•   Hover over a note to show its  ≡  menu.\n•   Hover over  ≡  to reveal the options.",
+     "text": "•   Hover over a card to show its  ≡  menu.\n•   Hover over  ≡  to reveal the options.",
      "raw": false,
      "min": false
     },
     {
-     "text": "•   X  deletes the note.\n•   R changes how a note looks.\n•   _  collapses the note.",
+     "text": "•   X  deletes the card.\n•   R changes how a card looks.\n•   _  collapses the card.",
      "raw": false,
      "min": false
     },
     {
-     "text": "This is a raw note.",
+     "text": "This is a raw card.",
      "raw": true,
      "min": false
     },
     {
-     "text": "This is a collapsed note. Only its first line is visible. Useful for keeping lists compact.",
+     "text": "This is a collapsed card. Only its first line is visible. Useful for keeping lists compact.",
      "raw": false,
      "min": true
     },
@@ -123,7 +123,7 @@
    "title": "More things to try",
    "notes": [
     {
-     "text": "•   Drag notes around to rearrange.\n•   Works between the lists too.",
+     "text": "•   Drag cards around to rearrange.\n•   Works between the lists too.",
      "raw": false,
      "min": false
     },

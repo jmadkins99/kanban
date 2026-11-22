@@ -85,7 +85,7 @@
 		--fs: 11;                        /* font-size   */
 		--lh: calc( var(--fs) * 1.25 );  /* line-height */
 		--fs-head: 13;                   /* font-size of board heading */
-		--fs-nops: 8;                    /* font-size of the note ops */
+		--fs-cops: 8;                    /* font-size of the card ops */
 		--lw: calc(22 * var(--fs) + 40); /* .list width */
 	}
 
@@ -145,7 +145,7 @@
 	.clearfix:after,
 	.board:after,
 	.lists:after,
-	.notes:after,
+	.cards:after,
 	.head:after,
 	.menu:after {
 		content: "";
@@ -334,7 +334,7 @@
 		margin-right: 0;
 	}
 
-	.board .list .notes {
+	.board .list .cards {
 		padding: 0 5px;
 	}
 
@@ -386,15 +386,15 @@
 	}
 
 	/***/
-	.board .note {
+	.board .card {
 		background: #fff;
 		margin-top: 5px;
 		box-shadow: 0 1px 2px #bbb, 0 0 1px #ddd;
 		position: relative;
 	}
 
-	.board .note.dragging,
-	.board .note.dragging.raw {
+	.board .card.dragging,
+	.board .card.dragging.raw {
 		background: #CED4DA;
 		box-shadow: 0 +1px 0 #0001 inset,
 		            0 -1px 0 #0001 inset,
@@ -402,27 +402,27 @@
 		            -1px 0 0 #0001 inset;
 	}
 
-	.board .note.dragging * {
+	.board .card.dragging * {
 		opacity: 0 !important;
 	}
 
 	/***/
-	.board .note:last-child {
+	.board .card:last-child {
 		margin-bottom: 5px;
 	}
 
-	.board .note {
+	.board .card {
 		padding-bottom: 6px;
 	}
 
-	.board .note .text,
-	.board .note .edit {
+	.board .card .text,
+	.board .card .edit {
 		padding: 5px 10px 0;
 		margin-right: 15px;
 		min-height: 100%;
 	}
 
-	.board .note .text {
+	.board .card .text {
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 		min-height: calc( var(--lh) * 1px );
@@ -430,7 +430,7 @@
 
 	/***/
 	.board .head .text a,
-	.board .note .text a {
+	.board .card .text a {
 		color: inherit;
 		cursor: default;
 		transition: none;
@@ -443,44 +443,44 @@
 	}
 
 	.board .head .text a:hover,
-	.board .note .text a:hover {
+	.board .card .text a:hover {
 		animation-name: whoomp;
 		animation-duration: 700ms;
 	}
 
 	.reveal .board .head .text a,
-	.reveal .board .note .text a {
+	.reveal .board .card .text a {
 		color: #1489db;
 		cursor: pointer;
 	}
 
 	.reveal .board .head .text a:hover,
-	.reveal .board .note .text a:hover {
+	.reveal .board .card .text a:hover {
 		animation-name: none;
 	}
 
 	/***/
-	.board .note .edit {
+	.board .card .edit {
 		display: none;
 		border: none;
 	}
 
-	.board .note.editing {
+	.board .card.editing {
 		box-shadow: none;
 		outline: 1px solid #8eaedd;
 	}
 
-	.board .note.editing .text {
+	.board .card.editing .text {
 		display: none;
 	}
 
-	.board .note.editing .edit {
+	.board .card.editing .edit {
 		display: block;
 		resize: none;
 	}
 
 	/***/
-	.board .note .ops {
+	.board .card .ops {
 		position: absolute;
 		top: 0;
 		right: 0;
@@ -490,93 +490,93 @@
 		font-size: calc(9rem / 11);
 	}
 
-	.board .note.editing .ops {
+	.board .card.editing .ops {
 		display: none;
 	}
 
-	.board .note:hover .ops {
+	.board .card:hover .ops {
 		opacity: 1;
 	}
 
-	.board .note .ops .teaser {
+	.board .card .ops .teaser {
 		display: block;
 		margin-top: 2px;
 		margin-right: 1px;
 		padding-right: 3px;
 	}
 
-	.board .note .ops .teaser:before {
+	.board .card .ops .teaser:before {
 		content: '\2261';
 	}
 
-	.board .note .ops .bulk {
+	.board .card .ops .bulk {
 		display: none;
 		background: #fff;
 		border-left: none;
 		padding: 1px 0 2px 5px;
-		font-size: calc( var(--fs-nops) * 1px );
+		font-size: calc( var(--fs-cops) * 1px );
 		font-weight: 500;
 		border-left: 1px solid #ddd;
 		border-bottom: 1px solid #ddd;
 	}
 
-	.board .note .ops .bulk a {
+	.board .card .ops .bulk a {
 		padding-right: 4px;
 	}
 
-	.board .note .ops:hover .bulk {
+	.board .card .ops:hover .bulk {
 		display: block;
 	}
 
-	.board .note .ops:hover .teaser {
+	.board .card .ops:hover .teaser {
 		display: none;
 	}
 
 	/***/
-	.board .note.raw {
+	.board .card.raw {
 		background: transparent;
 		box-shadow: none;
 		font-weight: 500;
 	}
 
-	.board .note.raw.editing {
+	.board .card.raw.editing {
 		background: #fff;
 	}
 
-	.board .note.raw .text {
+	.board .card.raw .text {
 	}
 
 	/***/
-	.board .note.collapsed {
+	.board .card.collapsed {
 		padding-bottom: 6px;
 	}
 
-	.board .note.collapsed .text,
-	.note-dragster.collapsed .text {
+	.board .card.collapsed .text,
+	.card-dragster.collapsed .text {
 		max-height: calc( var(--lh) * 1px );
 		overflow: hidden;
 		padding-bottom: 0;
 	}
 
-	.board .note.collapsed .ops {
+	.board .card.collapsed .ops {
 		opacity: 1;
 	}
 
-	.board .note.collapsed .ops .teaser {
+	.board .card.collapsed .ops .teaser {
 		padding: 1px 3px 0 1px;
 	}
 
-	.board .note.collapsed .ops .teaser:before {
+	.board .card.collapsed .ops .teaser:before {
 		content: '_';
 		top: 1px;
 	}
 
-	.board .note.collapsed:hover .ops .teaser:before {
+	.board .card.collapsed:hover .ops .teaser:before {
 		content: '\2261';
 	}
 
 	/***/
-	.note-dragster {
+	.card-dragster {
 		z-index: 2;
 		position: absolute;
 		opacity: 0;
@@ -593,7 +593,7 @@
 		            0px 1px 3px #00000030;
 	}
 
-	.note-dragster a {
+	.card-dragster a {
 		color: #000;
 	}
 
@@ -1225,7 +1225,7 @@
 			display: none;
 		}
 
-		.board .note {
+		.board .card {
 			box-shadow: none;
 			text-shadow: none !important;
 			outline: 1px solid #888;
@@ -1234,13 +1234,13 @@
 			outline: 1px solid #555;
 
 		}
-		.board .note .raw {
+		.board .card .raw {
 			outline: none;
 			text-shadow: none;
 		}
 
 		.board .head .text a,
-		.board .note .text a {
+		.board .card .text a {
 			color: #333;
 			text-shadow: none;
 			text-decoration: underline;
@@ -1296,14 +1296,14 @@
 		box-shadow: 0 0 2px #fff1 inset;
 	}
 
-	.theme-dark .board .note {
+	.theme-dark .board .card {
 		background: linear-gradient(#16162a, #12121f);
 		box-shadow: 0 1px 3px #000a;
 		text-shadow: 0 0 4px #0008;
 	}
 
 	.theme-dark .reveal .board .head .text a,
-	.theme-dark .reveal .board .note .text a {
+	.theme-dark .reveal .board .card .text a {
 		color: var(--accent-pale);
 	}
 
@@ -1314,57 +1314,57 @@
 	}
 
 	.theme-dark .board .head .text a:hover,
-	.theme-dark .board .note .text a:hover {
+	.theme-dark .board .card .text a:hover {
 		animation-name: whoomp-dark;
 	}
 
 
-	.theme-dark .board .note.raw {
+	.theme-dark .board .card.raw {
 		background: transparent;
 		box-shadow: none;
 	}
 
-	.theme-dark .board .note.raw .text {
+	.theme-dark .board .card.raw .text {
 		color: #e6e6f2;
 		text-shadow: 0 0 4px #0008;
 	}
 
-	.theme-dark .board .note .ops .teaser {
+	.theme-dark .board .card .ops .teaser {
 		color: #b8b8d0;
 	}
 
-	.theme-dark .board .note .ops .bulk {
+	.theme-dark .board .card .ops .bulk {
 		background: #12121f;
 		border-left: 1px solid #0b0b16;
 		border-bottom: 1px solid #0b0b16;
 	}
 
-	.theme-dark .board .note.raw .ops .bulk {
+	.theme-dark .board .card.raw .ops .bulk {
 		border: none;
 	}
 
-	.theme-dark .board .note .ops .bulk a {
+	.theme-dark .board .card .ops .bulk a {
 		color: #b8b8d0;
 	}
 
-	.theme-dark .board .note .ops .bulk a:hover {
+	.theme-dark .board .card .ops .bulk a:hover {
 		color: var(--accent-pale);
 	}
 
 	/***/
-	.theme-dark .board .note.dragging,
-	.theme-dark .board .note.dragging.raw {
+	.theme-dark .board .card.dragging,
+	.theme-dark .board .card.dragging.raw {
 	    background: #050510;
 	    outline: 1px solid #fff2;
 	}
 
-	.theme-dark .note-dragster {
+	.theme-dark .card-dragster {
 		box-shadow: 0px 1px 4px #000;
 		background: linear-gradient(#16162a, #12121f);
 		outline: 1px solid var(--accent-muted);
 	}
 
-	.theme-dark .note-dragster a {
+	.theme-dark .card-dragster a {
 		color: #b8b8d0;
 	}
 
@@ -1379,7 +1379,7 @@
 		outline: 1px solid var(--accent-muted);
 	}
 
-	.theme-dark .board .note.editing {
+	.theme-dark .board .card.editing {
 		background: #0b0b16;
 		outline: 1px solid var(--accent-muted);
 	}
@@ -1646,18 +1646,18 @@
 		margin-bottom: 6px;
 	}
 
-	.history-note {
+	.history-card {
 		padding: 4px 0;
 		border-bottom: 1px solid #1a1a2a;
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
 
-	.history-note:last-child {
+	.history-card:last-child {
 		border-bottom: none;
 	}
 
-	.history-note.raw {
+	.history-card.raw {
 		color: #e6e6f2;
 		font-weight: 600;
 	}
@@ -1734,12 +1734,12 @@
 		.xp-bar__fill { transition: none; }
 	}
 
-	/* A list named "wip", in any case, shows a live timer on each note. */
-	.board .list.wip-list .note .text {
+	/* A list named "wip", in any case, shows a live timer on each card. */
+	.board .list.wip-list .card .text {
 		padding-right: calc(72px * var(--ui));
 	}
 
-	.board .note .wip-timer {
+	.board .card .wip-timer {
 		display: none;
 		position: absolute;
 		right: 6px;
@@ -1757,18 +1757,18 @@
 		pointer-events: none;
 	}
 
-	.board .list.wip-list .note .wip-timer:not(:empty) {
+	.board .list.wip-list .card .wip-timer:not(:empty) {
 		display: block;
 	}
 
-	.board .list.wip-list .note.editing .wip-timer,
-	.board .note.editing .cm-panel {
+	.board .list.wip-list .card.editing .wip-timer,
+	.board .card.editing .cm-panel {
 		display: none;
 	}
 
-	/* A list named "done", in any case, strikes through its notes. */
-	.board .list.done-list .note .text,
-	.history-list.done-list .history-note {
+	/* A list named "done", in any case, strikes through its cards. */
+	.board .list.done-list .card .text,
+	.history-list.done-list .history-card {
 		text-decoration: line-through;
 	}
 
@@ -1878,20 +1878,20 @@
 						<a href=# class='mov-list-l full'>&lt; Move</a>
 						<a href=# class='mov-list-l half'>&lt; Mo</a><a href=# class='mov-list-r half'>ve &gt;</a>
 						<a href=# class='mov-list-r full'>Move &gt;</a>
-						<a href=# class='add-note'>+ Note</a>
+						<a href=# class='add-card'>+ Card</a>
 					</div>
 				</div>
 			</div>
-			<div class=notes>
+			<div class=cards>
 			</div>
 		</div>
 
-		<div class=note>
+		<div class=card>
 			<div class=ops>
 				<a href=# class=teaser></a>
 				<div class=bulk>
-					<a href=# class='del-note warn'>X</a>
-					<a href=# class='raw-note'>R</a>
+					<a href=# class='del-card warn'>X</a>
+					<a href=# class='raw-card'>R</a>
 					<a href=# class='collapse'>_</a>
 				</div>
 			</div>
@@ -2866,7 +2866,7 @@
 
 <script type="text/javascript">
 
-	function Note(text)
+	function Card(text)
 	{
 		this.text = text;
 		this.raw  = false;
@@ -2876,11 +2876,12 @@
 	function List(title)
 	{
 		this.title = title;
+		// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 		this.notes = [ ];
 
-		this.addNote = function(text)
+		this.addCard = function(text)
 		{
-			var x = new Note(text);
+			var x = new Card(text);
 			this.notes.push(x);
 			return x;
 		}
@@ -3098,7 +3099,7 @@
 			var have = drag.item;
 			var $have = $(have);
 			var $want = $have.clone();
-			if ($have.data('meta')) // the note's WIP start and XP, as its own copy
+			if ($have.data('meta')) // the card's WIP start and XP, as its own copy
 				$want.data('meta', Object.assign({}, $have.data('meta')));
 
 			$want.css({ display: 'none' });
@@ -3312,51 +3313,51 @@
 	});
 
 	/*
-	 *	notes / lists / boards
+	 *	cards / lists / boards
 	 */
-	function addNote($list, $after, $before)
+	function addCard($list, $after, $before)
 	{
-		var $note  = $('tt .note').clone();
-		var $notes = $list.find('.notes');
+		var $card  = $('tt .card').clone();
+		var $cards = $list.find('.cards');
 
-		$note.find('.text').html('');
-		$note.addClass('brand-new');
+		$card.find('.text').html('');
+		$card.addClass('brand-new');
 
 		if ($before && $before.length)
 		{
-			$before.before($note);
-			$note = $before.prev();
+			$before.before($card);
+			$card = $before.prev();
 		}
 		else
 		if ($after && $after.length)
 		{
-			$after.after($note);
-			$note = $after.next();
+			$after.after($card);
+			$card = $after.next();
 		}
 		else
 		{
-			$notes.append($note);
-			$note = $notes.find('.note').last();
+			$cards.append($card);
+			$card = $cards.find('.card').last();
 		}
 
-		startEditing($note.find('.text'));
+		startEditing($card.find('.text'));
 	}
 
-	function deleteNote($note)
+	function deleteCard($card)
 	{
-		$note
+		$card
 		.animate({ opacity: 0 }, 'fast')
 		.slideUp('fast')
 		.queue(function(){
-			$note.remove();
+			$card.remove();
 			saveBoard();
 		});
 	}
 
-	function noteLocation($item)
+	function cardLocation($item)
 	{
 		var loc = 0;
-		for (var $p = $item.closest('.note'); $p.length; $p = $p.prev(), loc += 1);
+		for (var $p = $item.closest('.card'); $p.length; $p = $p.prev(), loc += 1);
 		for (var $p = $item.closest('.list'); $p.length; $p = $p.prev(), loc += 10000);
 		return loc;
 	}
@@ -3384,11 +3385,11 @@
 	{
 		var empty = true;
 
-		$list.find('.note .text').each(function(){
+		$list.find('.card .text').each(function(){
 			empty &= ($(this).html().length == 0);
 		});
 
-		if (! empty && ! confirm("Delete this list and all its notes?"))
+		if (! empty && ! confirm("Delete this list and all its Cards?"))
 			return;
 
 		$list
@@ -3421,29 +3422,29 @@
 	}
 
 	/*
-	 *	Per-note state beyond text/raw/min (e.g. wip: when it entered WIP)
-	 *	rides on the note element as .data('meta') and is saved as extra
-	 *	fields on the note.
+	 *	Per-card state beyond text/raw/min (e.g. wip: when it entered WIP)
+	 *	rides on the card element as .data('meta') and is saved as extra
+	 *	fields on the card.
 	 */
-	function noteMeta($note)
+	function cardMeta($card)
 	{
-		var m = $note.data('meta');
-		if (! m) $note.data('meta', m = {});
+		var m = $card.data('meta');
+		if (! m) $card.data('meta', m = {});
 		return m;
 	}
 
-	// A note entering a WIP list starts its timer; leaving stops it, keeping
+	// A card entering a WIP list starts its timer; leaving stops it, keeping
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
-	// A note that isn't in Done (any more) holds no XP.
-	function trackNotes()
+	// A card that isn't in Done (any more) holds no XP.
+	function trackCards()
 	{
 		var now = Date.now();
 
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
-			$(this).find('.note').not('.swap-out').each(function(){
-				var m = noteMeta($(this));
+			$(this).find('.card').not('.swap-out').each(function(){
+				var m = cardMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
@@ -3451,15 +3452,15 @@
 		});
 	}
 
-	// A note was just moved (dragged, for now); call before saving. One that
+	// A card was just moved (dragged, for now); call before saving. One that
 	// arrived in Done from another list earns its XP and gets celebrated.
-	function noteMoved($note, fromDone)
+	function cardMoved($card, fromDone)
 	{
-		if (fromDone || ! $note.closest('.list').hasClass('done-list'))
+		if (fromDone || ! $card.closest('.list').hasClass('done-list'))
 			return;
 
-		var xp = XP.award(noteMeta($note));
-		if (window.Celebrate) Celebrate.done($note[0], xp);
+		var xp = XP.award(cardMeta($card));
+		if (window.Celebrate) Celebrate.done($card[0], xp);
 	}
 
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
@@ -3474,30 +3475,30 @@
 	function tickWipTimers()
 	{
 		var now = Date.now();
-		$('.wrap .board .list.wip-list .note').each(function(){
-			var m = noteMeta($(this));
+		$('.wrap .board .list.wip-list .card').each(function(){
+			var m = cardMeta($(this));
 			$(this).find('.wip-timer').text(m.wip ? formatTimer(now - m.wip) : '');
 		});
 	}
 
 	function clearList($list, sure)
 	{
-		var $notes = $list.find('.note');
+		var $cards = $list.find('.card');
 		var empty = true;
 
-		$notes.find('.text').each(function(){
+		$cards.find('.text').each(function(){
 			empty &= ($(this).html().length == 0);
 		});
 
-		if (! $notes.length || (! sure && ! empty && ! confirm("Clear all notes from this list? The list itself stays.")))
+		if (! $cards.length || (! sure && ! empty && ! confirm("Clear all Cards from this list? The list itself stays.")))
 			return;
 
 		// promise() fires once for the whole set, so the board saves once
-		$notes
+		$cards
 		.animate({ opacity: 0 }, 'fast')
 		.promise()
 		.done(function(){
-			$notes.remove();
+			$cards.remove();
 			saveBoard();
 		});
 	}
@@ -3592,7 +3593,7 @@
 	function saveBoard()
 	{
 		markLists();
-		trackNotes();
+		trackCards();
 
 		var $board = $('.wrap .board');
 		var board = Object.assign(new Board(), NB.board); // id, revision & title
@@ -3603,12 +3604,12 @@
 			var $list = $(this);
 			var l = board.addList( getText($list.find('.head .text')) );
 
-			$list.find('.note').not('.swap-out').each(function(){
-				var $note = $(this)
-				var n = l.addNote( getText($note.find('.text')) );
-				n.raw = $note.hasClass('raw');
-				n.min = $note.hasClass('collapsed');
-				Object.assign(n, noteMeta($note));
+			$list.find('.card').not('.swap-out').each(function(){
+				var $card = $(this)
+				var n = l.addCard( getText($card.find('.text')) );
+				n.raw = $card.hasClass('raw');
+				n.min = $card.hasClass('collapsed');
+				Object.assign(n, cardMeta($card));
 			});
 		});
 
@@ -3684,7 +3685,7 @@
 		var $wrap = $('.wrap');
 		var $bdiv = $('tt .board');
 		var $ldiv = $('tt .list');
-		var $ndiv = $('tt .note');
+		var $cdiv = $('tt .card');
 
 		var $b = $bdiv.clone();
 		var $b_lists = $b.find('.lists');
@@ -3695,19 +3696,20 @@
 		board.lists.forEach(function(list){
 
 			var $l = $ldiv.clone();
-			var $l_notes = $l.find('.notes');
+			var $l_cards = $l.find('.cards');
 
 			setText( $l.find('.head .text'), list.title );
 
+			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 			list.notes.forEach(function(n){
-				var $n = $ndiv.clone();
+				var $n = $cdiv.clone();
 				setText( $n.find('.text'), n.text );
 				if (n.raw) $n.addClass('raw');
 				if (n.min) $n.addClass('collapsed');
 				var meta = Object.assign({}, n);
 				delete meta.text; delete meta.raw; delete meta.min;
 				$n.data('meta', meta);
-				$l_notes.append($n);
+				$l_cards.append($n);
 			});
 
 			$b_lists.append($l);
@@ -4258,9 +4260,9 @@
 		return $('tt .encoder').text(raw).html();
 	}
 
-	function setText($note, text)
+	function setText($text, text)
 	{
-		$note.attr('_text', text);
+		$text.attr('_text', text);
 
 		text = htmlEncode(text);
 
@@ -4278,12 +4280,12 @@
 			});
 		}
 
-		$note.html(text); // ? text : ' ');
+		$text.html(text); // ? text : ' ');
 	}
 
-	function getText($note)
+	function getText($text)
 	{
-		return $note.attr('_text');
+		return $text.attr('_text');
 	}
 
 	function removeTextSelection()
@@ -4311,17 +4313,17 @@
 	 */
 	function startEditing($text, ev)
 	{
-		var $note = $text.parent();
-		var $edit = $note.find('.edit');
+		var $card = $text.parent();
+		var $edit = $card.find('.edit');
 
-		$note[0]._collapsed = $note.hasClass('collapsed');
-		$note.removeClass('collapsed');
+		$card[0]._collapsed = $card.hasClass('collapsed');
+		$card.removeClass('collapsed');
 
 		$edit.val( getText($text) );
 		$edit.width( $text.width() );
 
 		$edit.height( $text.height() );
-		$note.addClass('editing');
+		$card.addClass('editing');
 
 		$edit.focus();
 	}
@@ -4348,13 +4350,13 @@
 		if (via_escape)
 		{
 			if (brand_new)
-				$item.closest('.note, .list, .board').remove();
+				$item.closest('.card, .list, .board').remove();
 			return;
 		}
 
 		if (via_xclick && brand_new && !text_now.length)
 		{
-			$item.closest('.note, .list, .board').remove();
+			$item.closest('.card, .list, .board').remove();
 			return;
 		}
 
@@ -4371,14 +4373,14 @@
 
 		//
 		if (brand_new && $item.hasClass('list'))
-			addNote($item);
+			addCard($item);
 	}
 
 	function handleTab(ev)
 	{
 		var $this = $(this);
-		var $note = $this.closest('.note');
-		var $sibl = ev.shiftKey ? $note.prev() : $note.next();
+		var $card = $this.closest('.card');
+		var $sibl = ev.shiftKey ? $card.prev() : $card.next();
 
 		if ($sibl.length)
 		{
@@ -4568,38 +4570,38 @@
 	 */
 	function initDragAndDrop()
 	{
-		NB.noteDrag = new Drag2();
-		NB.noteDrag.listSel = '.board .list .notes';
-		NB.noteDrag.itemSel = '.note';
-		NB.noteDrag.dragster = 'note-dragster';
-		NB.noteDrag.onDragging = function(started)
+		NB.cardDrag = new Drag2();
+		NB.cardDrag.listSel = '.board .list .cards';
+		NB.cardDrag.itemSel = '.card';
+		NB.cardDrag.dragster = 'card-dragster';
+		NB.cardDrag.onDragging = function(started)
 		{
 			var drag = this;
-			var $note = $(drag.item);
+			var $card = $(drag.item);
 
 			if (started)
 			{
 				var $drag = drag.$drag;
 
-				if ($note.hasClass('collapsed'))
+				if ($card.hasClass('collapsed'))
 					$drag.addClass('collapsed');
 
 				$drag.html('<div class=text></div>');
-				$drag.find('.text').html( $note.find('.text').html() );
+				$drag.find('.text').html( $card.find('.text').html() );
 
-				drag.org_loc = noteLocation($note);
-				drag.from_done = $note.closest('.list').hasClass('done-list');
-				$note.removeClass('cm-open cm-moving'); // the card menu closes for the drag
-				if ($note.hasClass('collapsed'))
+				drag.org_loc = cardLocation($card);
+				drag.from_done = $card.closest('.list').hasClass('done-list');
+				$card.removeClass('cm-open cm-moving'); // the card menu closes for the drag
+				if ($card.hasClass('collapsed'))
 					drag.$drag.addClass('collapsed');
 			}
 			else
 			{
-				$note[0].cmDragEnd = Date.now(); // see cardmenu.js
+				$card[0].cmDragEnd = Date.now(); // see cardmenu.js
 
-				if (this.org_loc != noteLocation($note))
+				if (this.org_loc != cardLocation($card))
 				{
-					noteMoved($note, this.from_done);
+					cardMoved($card, this.from_done);
 					saveBoard();
 				}
 			}
@@ -4623,7 +4625,7 @@
 		var ui = Math.max(1, Math.min(2, screen.height / 1080));
 		var $html = $('html');
 
-		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-nops': (8 * ui).toFixed(2) });
+		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-cops': (8 * ui).toFixed(2) });
 		if (! $html.hasClass('fs-set'))
 			$html.css('--fs', (11 * ui).toFixed(2));
 
@@ -4813,16 +4815,16 @@
 			return false;
 		}
 
-		NB.noteDrag.cancelPriming();
+		NB.cardDrag.cancelPriming();
 
-		if ($(this).closest('.note').length) // notes: a click opens the card menu, whose Edit edits
+		if ($(this).closest('.card').length) // cards: a click opens the card menu, whose Edit edits
 			return;
 
 		startEditing($(this), ev);
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .note .text a', function(ev){
+	$('.wrap').on('click', '.board .card .text a', function(ev){
 
 		if (! $('body').hasClass('reveal'))
 			return true;
@@ -4835,10 +4837,10 @@
 	$('.wrap').on('keydown', '.board .edit', function(ev){
 
 		var $this = $(this);
-		var $note = $this.closest('.note');
+		var $card = $this.closest('.card');
 		var $list = $this.closest('.list');
 
-		var isNote = $note.length > 0;
+		var isCard = $card.length > 0;
 		var isList = $list.length > 0;
 
 		// esc
@@ -4868,18 +4870,18 @@
 		{
 			stopEditing($this, false, false);
 
-			if (isNote)
+			if (isCard)
 			{
 				if (ev.shiftKey) // ctrl-shift-enter
-					addNote($list, null, $note);
+					addCard($list, null, $card);
 				else
-					addNote($list, $note);
+					addCard($list, $card);
 			}
 			else
 			if (isList)
 			{
-				$note = $list.find('.note').last();
-				addNote($list, $note);
+				$card = $list.find('.card').last();
+				addCard($list, $card);
 			}
 			else
 			{
@@ -4890,14 +4892,14 @@
 		}
 
 		// done on Enter if editing board or list title
-		if (ev.keyCode == 13 && ! isNote)
+		if (ev.keyCode == 13 && ! isCard)
 		{
 			stopEditing($this, false, false);
 			return false;
 		}
 
 		// done + collapse
-		if (isNote && ev.altKey && ev.key == 'ArrowUp')
+		if (isCard && ev.altKey && ev.key == 'ArrowUp')
 		{
 			var $item = $this.parent();
 			$item[0]._collapsed = true;
@@ -4906,7 +4908,7 @@
 		}
 
 		// done + expand
-		if (isNote && ev.altKey && ev.key == 'ArrowDown')
+		if (isCard && ev.altKey && ev.key == 'ArrowDown')
 		{
 			var $item = $this.parent();
 			$item[0]._collapsed = false;
@@ -4915,7 +4917,7 @@
 		}
 
 		// done + toggle 'raw'
-		if (isNote && ev.altKey && ev.keyCode == 82)
+		if (isCard && ev.altKey && ev.keyCode == 82)
 		{
 			$this.parent().toggleClass('raw');
 			stopEditing($this, false, false);
@@ -4923,7 +4925,7 @@
 		}
 
 		// ctrl-shift-8
-		if (isNote && ev.key == '*' && ev.ctrlKey)
+		if (isCard && ev.key == '*' && ev.ctrlKey)
 		{
 			var have = this.value;
 			var pos  = this.selectionStart;
@@ -4955,7 +4957,7 @@
 	});
 
 	//
-	$('.wrap').on('input propertychange', '.board .note .edit', function(){
+	$('.wrap').on('input propertychange', '.board .card .edit', function(){
 
 		var delta = $(this).outerHeight() - $(this).height();
 
@@ -5016,31 +5018,31 @@
 	});
 
 	//
-	$('.wrap').on('click', '.board .add-note', function(){
-		addNote( $(this).closest('.list') );
+	$('.wrap').on('click', '.board .add-card', function(){
+		addCard( $(this).closest('.list') );
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .del-note', function(){
-		deleteNote( $(this).closest('.note') );
+	$('.wrap').on('click', '.board .del-card', function(){
+		deleteCard( $(this).closest('.card') );
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .raw-note', function(){
-		$(this).closest('.note').toggleClass('raw');
+	$('.wrap').on('click', '.board .raw-card', function(){
+		$(this).closest('.card').toggleClass('raw');
 		saveBoard();
 		return false;
 	});
 
 	$('.wrap').on('click', '.board .collapse', function(){
-		$(this).closest('.note').toggleClass('collapsed');
+		$(this).closest('.card').toggleClass('collapsed');
 		saveBoard();
 		return false;
 	});
 
 	//
-	$('.wrap').on('mousedown', '.board .note .text, .board .note .cm-panel', function(ev){
-		NB.noteDrag.prime($(this).closest('.note')[0], ev);
+	$('.wrap').on('mousedown', '.board .card .text, .board .card .cm-panel', function(ev){
+		NB.cardDrag.prime($(this).closest('.card')[0], ev);
 	});
 
 
@@ -5062,13 +5064,13 @@
 
 	//
 	$(document).on('mouseup', function(ev){
-		NB.noteDrag.end();
+		NB.cardDrag.end();
 		NB.varAdjust.end();
 	});
 
 	$(document).on('mousemove', function(ev){
 		setRevealState(ev);
-		NB.noteDrag.onMouseMove(ev);
+		NB.cardDrag.onMouseMove(ev);
 		NB.varAdjust.onMouseMove(ev);
 	});
 
@@ -5356,9 +5358,10 @@
 
 		if (window.cloudSync) cloudSync.dayChanged(entry);
 
-		XP.bankNotes( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
+		// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+		XP.bankCards( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
 
-		var $done = $('.wrap .board .list.done-list .note');
+		var $done = $('.wrap .board .list.done-list .card');
 		if ($done.length) { $done.remove(); saveBoard(); } // after the snapshot, which keeps them
 
 		if ($('body').hasClass('view-history')) renderHistory();
@@ -5425,8 +5428,9 @@
 			e.lists.forEach(function(l){
 				var $l = $('<div class=history-list>').toggleClass('done-list', isDoneTitle(l.title)).appendTo($lists);
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
+				// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 				l.notes.forEach(function(n){
-					$('<div class=history-note>').toggleClass('raw', !! n.raw).text(n.text).appendTo($l);
+					$('<div class=history-card>').toggleClass('raw', !! n.raw).text(n.text).appendTo($l);
 				});
 			});
 
@@ -5487,25 +5491,25 @@
 	});
 
 	/*
-	 *	Card menu (cardmenu.js): hover a note, or tap it on a phone, for
+	 *	Card menu (cardmenu.js): hover a card, or tap it on a phone, for
 	 *	Move / Edit / Delete. Move steps it one list left or right.
 	 */
 	$(function(){
 		CardMenu.attach('.wrap', {
-			onMove: function(note, dir){
-				var $note = $(note), $list = $note.closest('.list');
+			onMove: function(card, dir){
+				var $card = $(card), $list = $card.closest('.list');
 				var $to = dir < 0 ? $list.prev('.list') : $list.next('.list');
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
-				$to.find('.notes').append($note);
-				noteMoved($note, fromDone);
+				$to.find('.cards').append($card);
+				cardMoved($card, fromDone);
 				saveBoard();
 			},
-			onEdit: function(note){
-				startEditing($(note).find('.text'));
+			onEdit: function(card){
+				startEditing($(card).find('.text'));
 			},
-			onDelete: function(note){
-				deleteNote($(note));
+			onDelete: function(card){
+				deleteCard($(card));
 			}
 		});
 	});
