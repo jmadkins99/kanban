@@ -30,20 +30,17 @@ const LISTS = [
     const { page } = app;
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'old.nbx');
 
-    // What each List on screen shows: its title, then each Card's text and look.
+    // What each List on screen shows: its title, then each Card's text. (Raw and
+    // collapsed Cards show as normal ones; raw-collapsed.js covers that.)
     const shown = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => ({
         title: $(l).find('.head .text').text(),
-        cards: $(l).find('.text').not('.head .text').map((_, t) => ({
-            text: $(t).attr('_text'),
-            raw: $(t).parent().hasClass('raw'),
-            min: $(t).parent().hasClass('collapsed'),
-        })).get(),
+        cards: $(l).find('.text').not('.head .text').map((_, t) => $(t).attr('_text')).get(),
     })).get());
-    const expected = (lists) => lists.map((l) => ({ title: l.title, cards: l.notes.map((n) => ({ text: n.text, raw: n.raw, min: n.min })) }));
-    const strip = (lists) => lists.map((l) => ({ title: l.title, notes: l.notes.map(({ text, raw, min, wip, xp, xpId }) => ({ text, raw, min, wip, xp, xpId })) }));
+    const expected = (lists) => lists.map((l) => ({ title: l.title, cards: l.notes.map((n) => n.text) }));
+    const strip = (lists) => lists.map((l) => ({ title: l.title, notes: l.notes.map(({ text, wip, xp, xpId }) => ({ text, wip, xp, xpId })) }));
 
     try {
-        // The saved board opens with every Card, its look and its state.
+        // The saved board opens with every Card and its state.
         assert.strictEqual(await page.evaluate(() => NB.board.title), 'Saved earlier');
         assert.deepStrictEqual(await shown(), expected(LISTS), 'the saved board shows its Cards');
         assert.deepStrictEqual(strip(await page.evaluate(() => NB.board.lists)), strip(LISTS), 'WIP start and XP survive');
