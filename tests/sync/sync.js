@@ -139,6 +139,19 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await new Promise((r) => setTimeout(r, 3000));
         assert.strictEqual(await a.page.evaluate(() => NB.board.revision), revA, "A's echo from the cloud makes no new revision");
 
+        // A Due date that has ended makes the Card Late on B too: a red icon, top of its List.
+        await a.page.evaluate(() => {
+            const $c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            cardMeta($c).due = '2000-01-03';
+            saveBoard();
+        });
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'live from A' && n.due == '2000-01-03')));
+        await waitFor(b.page, () => $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A').hasClass('late'));
+        assert.deepStrictEqual(await b.page.evaluate(() => {
+            const c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            return [getComputedStyle(c.find('.card-prio svg')[0]).color, c.index()];
+        }), ['rgb(255, 86, 48)', 0], 'B shows it Late: a red icon, at the top of its List');
+
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
             new Promise((r) => setTimeout(r, 20000, 'never'))]), 'fresh', "the server's board was seen");

@@ -1539,6 +1539,9 @@
 	.prio-low       { color: #2684ff; }
 	.prio-recurring { color: #8777d9; }
 
+	/* A Late Card's circular arrow is red. */
+	.board .card.late .card-prio .prio-recurring { color: #ff5630; }
+
 	/* The icon at the Card's very left, level with its first line; in edit mode
 	   it's the dropdown that picks the Priority. */
 	.board .card .text,
@@ -3086,14 +3089,24 @@
 	/*
 	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
 	 *	then first in, first out by Arrival, when the Card entered its List.
-	 *	Done ignores Priority, so it reads as the day in order.
+	 *	Late Cards go above them all. Done ignores Priority, so it reads as
+	 *	the day in order.
 	 */
 	function cardOrder(done)
 	{
+		var today = Schedule.today();
+		var tier = function(m){ return isLate(m, today) ? -1 : Priority.LEVELS.indexOf(Priority.of(m)); };
 		return function(a, b){
-			var tier = done ? 0 : Priority.LEVELS.indexOf(Priority.of(a)) - Priority.LEVELS.indexOf(Priority.of(b));
-			return tier || (a.arrival || 0) - (b.arrival || 0);
+			return (done ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
 		};
+	}
+
+	// A Recurring Card not in Done is Late once its Due date has ended. It's
+	// worked out each time, never stored, and isn't a Priority of its own.
+	// Pass the Card's saved fields; a Card in Done is never Late.
+	function isLate(m, today)
+	{
+		return Priority.of(m) == 'recurring' && !! m.due && m.due < (today || Schedule.today());
 	}
 
 	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
@@ -3243,7 +3256,11 @@
 	// while a Critical card waits elsewhere, otherwise none. Recomputed from
 	// the stored start each tick, so a sleeping laptop is right on waking.
 	// A Recurring Card waiting in Backlog for a later Due date shows
-	// "Next: <date>" there instead.
+	// "Next: <date>" there instead. A Late Card (red icon) shows the red
+	// Critical timer from the end of its Due date, or the WIP timer in WIP.
+	// A Card that has just turned Late moves up its List.
+	var lateUnsorted = false;
+
 	function tickTimers()
 	{
 		var now = Date.now(), today = Schedule.today(), backlog = backlogList()[0];
@@ -3253,15 +3270,25 @@
 			var home = this == backlog;
 			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
-				var critical = ! wip && ! done && Priority.of(m) == 'critical' && !! m.criticalSince;
+				var late = ! done && isLate(m, today);
+				var critical = ! wip && ! done && (late || Priority.of(m) == 'critical' && !! m.criticalSince);
 				var next = home && ! wip && ! done && Priority.of(m) == 'recurring' && !! m.due && m.due > today;
-				var since = wip ? m.wip : critical ? m.criticalSince : null;
-				$(this).toggleClass('critical-waiting', critical)
+				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
+				if ($(this).hasClass('late') != late) lateUnsorted = true;
+				$(this).toggleClass('late', late)
+				       .toggleClass('critical-waiting', critical)
 				       .toggleClass('next-waiting', next)
 				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', next)
 				       .text(since ? formatTimer(now - since) : next ? 'Next: ' + Schedule.label(m.due) : '');
 			});
 		});
+
+		// Not while editing: moving the Card being edited would end the edit.
+		if (lateUnsorted && ! $('.wrap .board .editing').length)
+		{
+			lateUnsorted = false;
+			orderCards();
+		}
 	}
 
 	function clearList($list, sure)
