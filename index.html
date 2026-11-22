@@ -1750,6 +1750,7 @@
 
 		<div class=card>
 			<button type=button class=card-prio aria-haspopup=true></button>
+			<div class=prio-pick role=radiogroup aria-label=Priority></div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
 			<span class=wip-timer></span>
@@ -2843,8 +2844,7 @@
 
 		$card.find('.text').html('');
 		$card.addClass('brand-new');
-		cardMeta($card).priority = 'low';
-		showPriority($card);
+		setPriority($card, 'low');
 
 		if ($before && $before.length)
 		{
@@ -2955,6 +2955,13 @@
 		$card.find('.card-prio')
 			.html( Priority.icon(p) )
 			.attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) });
+	}
+
+	// Changes a Card's Priority; call before saving.
+	function setPriority($card, p)
+	{
+		cardMeta($card).priority = Priority.of({ priority: p });
+		showPriority($card);
 	}
 
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
@@ -3849,12 +3856,17 @@
 		if (! $item.hasClass('editing'))
 			return;
 
-		$item.removeClass('editing');
+		$item.removeClass('editing prio-picking');
 
 		//
 		var $text = $item.find('.text');
 		var text_now = $edit.val().trimRight();
 		var text_was = getText( $text );
+
+		// a Card's Priority, as picked in the dropdown, saves with its text
+		var prio_now = $item.data('prioEdit');
+		$item.removeData('prioEdit');
+		var prio_changed = $item.hasClass('card') && prio_now && prio_now != Priority.of(cardMeta($item));
 
 		//
 		var brand_new = $item.hasClass('brand-new');
@@ -3866,9 +3878,12 @@
 			return;
 		}
 
-		if (text_now != text_was || brand_new)
+		if (text_now != text_was || brand_new || prio_changed)
 		{
 			setText( $text, text_now );
+
+			if (prio_changed)
+				setPriority($item, prio_now);
 
 			if ($item.parent().hasClass('board'))
 				NB.board.title = text_now;
@@ -4306,6 +4321,38 @@
 	$('.wrap').on('click', '.board .add-card', function(){
 		addCard( $(this).closest('.list') );
 		return false;
+	});
+
+	// Edit mode's Priority dropdown. Like the ×, pressing it keeps the focus in
+	// the textarea, so picking doesn't end editing; clicking away saves the pick.
+	$('.wrap').on('mousedown', '.board .card-prio, .board .prio-pick button', function(ev){
+		ev.preventDefault();
+	});
+
+	$('.wrap').on('click', '.board .card.editing .card-prio', function(){
+		var $card = $(this).closest('.card');
+		var now = $card.data('prioEdit') || Priority.of(cardMeta($card));
+
+		$card.find('.prio-pick').html( Priority.LEVELS.map(function(p){
+			return '<button type=button role=radio data-priority=' + p + ' aria-label=' + Priority.label(p) +
+				' title=' + Priority.label(p) + ' aria-checked=' + (p == now) + '>' + Priority.icon(p) + '</button>';
+		}).join('') );
+
+		$card.toggleClass('prio-picking');
+		return false;
+	});
+
+	$('.wrap').on('click', '.board .prio-pick button', function(){
+		var $card = $(this).closest('.card');
+		var p = $(this).data('priority');
+
+		$card.data('prioEdit', p).removeClass('prio-picking');
+		showPriority($card, p);
+		return false;
+	});
+
+	$('.wrap').on('mousedown', '.board .card.prio-picking .edit', function(){
+		$(this).closest('.card').removeClass('prio-picking');
 	});
 
 	// Edit mode's ×. Pressing it keeps the focus in the textarea, so the

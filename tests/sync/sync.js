@@ -102,6 +102,12 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await editFirstCard(a.page, 'live from A');
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'live from A');
 
+        // A Card's Priority goes across too, and B shows its icon.
+        await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
+        await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
+        assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
+        assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
+
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
             new Promise((r) => setTimeout(r, 20000, 'never'))]), 'fresh', "the server's board was seen");
