@@ -1506,6 +1506,128 @@
 		outline: none;
 	}
 
+	/* Priority icons, coloured as Jira colours them. */
+	.prio-icon { display: block; width: 100%; height: 100%; overflow: visible; }
+	.prio-critical  { color: #ff5630; }
+	.prio-medium    { color: #ff8b00; }
+	.prio-low       { color: #2684ff; }
+	.prio-recurring { color: #8777d9; }
+
+	/* The icon at the Card's very left, level with its first line; in edit mode
+	   it's the dropdown that picks the Priority. */
+	.board .card .text,
+	.board .card .edit {
+		padding-left: calc( var(--lh) * 1px + 12px );
+	}
+
+	.board .card .card-prio {
+		position: absolute;
+		left: 4px;
+		top: 3px;
+		width: calc( var(--lh) * 1px + 4px );
+		height: calc( var(--lh) * 1px + 4px );
+		padding: 2px;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		pointer-events: none; /* a tap on it is a tap on the Card */
+	}
+
+	.board .card.editing .card-prio {
+		pointer-events: auto;
+		cursor: pointer;
+		box-shadow: 0 0 0 1px #8eaedd;
+	}
+
+	.board .card.editing .card-prio:hover,
+	.board .card.editing .card-prio:focus-visible,
+	.board .card.prio-picking .card-prio {
+		background: rgba(142, 174, 221, .3);
+		outline: none;
+	}
+
+	.theme-dark .board .card.editing .card-prio {
+		box-shadow: 0 0 0 1px var(--accent-muted);
+	}
+
+	.theme-dark .board .card.editing .card-prio:hover,
+	.theme-dark .board .card.editing .card-prio:focus-visible,
+	.theme-dark .board .card.prio-picking .card-prio {
+		background: rgba(var(--accent-rgb), .35);
+	}
+
+	/* The dropdown's choices: a row of the four icons, opening beside it. */
+	.board .card .prio-pick {
+		display: none;
+	}
+
+	.board .card.editing.prio-picking .prio-pick {
+		display: flex;
+		position: absolute;
+		z-index: 6;
+		left: calc( var(--lh) * 1px + 10px );
+		top: 1px;
+		gap: 2px;
+		padding: 2px;
+		border-radius: 4px;
+		background: #fff;
+		box-shadow: 0 1px 4px #0006, 0 0 1px #0004;
+	}
+
+	.theme-dark .board .card.editing.prio-picking .prio-pick {
+		background: #1c1c30;
+		box-shadow: 0 2px 8px #000c, 0 0 0 1px var(--accent-muted);
+	}
+
+	.board .card .prio-pick button {
+		width: calc( var(--lh) * 1px + 6px );
+		height: calc( var(--lh) * 1px + 6px );
+		padding: 3px;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.board .card .prio-pick button:hover,
+	.board .card .prio-pick button:focus-visible {
+		background: rgba(142, 174, 221, .3);
+		outline: none;
+	}
+
+	.theme-dark .board .card .prio-pick button:hover,
+	.theme-dark .board .card .prio-pick button:focus-visible {
+		background: rgba(var(--accent-rgb), .35);
+	}
+
+	.board .card .prio-pick button[aria-checked=true] {
+		box-shadow: 0 0 0 1px #8eaedd inset;
+	}
+
+	.theme-dark .board .card .prio-pick button[aria-checked=true] {
+		box-shadow: 0 0 0 1px var(--accent-hi) inset;
+	}
+
+	/* History shows the icon before each Card's text too. */
+	.history-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
+	}
+
+	.history-card .history-prio {
+		flex: none;
+		width: 14px;
+		height: 14px;
+		margin-top: 2px;
+	}
+
+	.history-card .history-text {
+		min-width: 0;
+	}
+
 	/* A list named "done", in any case, strikes through its cards. */
 	.board .list.done-list .card .text,
 	.history-list.done-list .history-card {
@@ -1627,6 +1749,7 @@
 		</div>
 
 		<div class=card>
+			<button type=button class=card-prio aria-haspopup=true></button>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
 			<span class=wip-timer></span>
@@ -1680,6 +1803,7 @@
 
 <script src="extras/jquery-3.6.0.min.js"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
+<script src="js/priority.js"></script>
 
 <script type="text/javascript">
 
@@ -2719,6 +2843,8 @@
 
 		$card.find('.text').html('');
 		$card.addClass('brand-new');
+		cardMeta($card).priority = 'low';
+		showPriority($card);
 
 		if ($before && $before.length)
 		{
@@ -2820,6 +2946,15 @@
 		var m = $card.data('meta');
 		if (! m) $card.data('meta', m = {});
 		return m;
+	}
+
+	// The Card's Priority icon at its left edge; in edit mode it's the dropdown that changes it.
+	function showPriority($card, p)
+	{
+		p = Priority.of({ priority: p || cardMeta($card).priority });
+		$card.find('.card-prio')
+			.html( Priority.icon(p) )
+			.attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) });
 	}
 
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
@@ -3094,7 +3229,9 @@
 				var meta = Object.assign({}, n);
 				delete meta.text;
 				delete meta.raw; delete meta.min; // Nullboard's raw and collapsed looks are gone; the next save drops them
+				meta.priority = Priority.of(meta); // Cards from before Priorities are Low
 				$n.data('meta', meta);
+				showPriority($n);
 				$l_cards.append($n);
 			});
 
@@ -4575,7 +4712,11 @@
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
 				// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 				l.notes.forEach(function(n){
-					$('<div class=history-card>').text(n.text).appendTo($l);
+					var p = Priority.of(n); // Cards from before Priorities are Low
+					$('<div class=history-card>')
+						.append( $('<span class=history-prio role=img>').attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) }).html(Priority.icon(p)) )
+						.append( $('<span class=history-text>').text(n.text) )
+						.appendTo($l);
 				});
 			});
 
