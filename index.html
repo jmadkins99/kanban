@@ -85,7 +85,6 @@
 		--fs: 11;                        /* font-size   */
 		--lh: calc( var(--fs) * 1.25 );  /* line-height */
 		--fs-head: 13;                   /* font-size of board heading */
-		--fs-cops: 8;                    /* font-size of the card ops */
 		--lw: calc(22 * var(--fs) + 40); /* .list width */
 	}
 
@@ -140,16 +139,6 @@
 		content: "";
 		display: table;
 		clear: both;
-	}
-
-	/***/
-	body.dragging {
-		-webkit-touch-callout: none;
-		-webkit-user-select: none;
-		-khtml-user-select: none;
-		-moz-user-select: none;
-		-ms-user-select: none;
-		user-select: none;
 	}
 
 	/***/
@@ -242,8 +231,7 @@
 		line-height: calc(20 / 11);
 	}
 
-	.board .menu a,
-	.board .ops  a {
+	.board .menu a {
 		color: #000000A0;
 		transition: color 200ms;
 	}
@@ -252,13 +240,11 @@
 		padding-left: 10px;
 	}
 
-	.board .menu a:hover,
-	.board .ops  a:hover {
+	.board .menu a:hover {
 		color: #000;
 	}
 
-	.board .menu a.warn:hover,
-	.board .ops  a.warn:hover {
+	.board .menu a.warn:hover {
 		color: #c40;
 	}
 
@@ -382,19 +368,6 @@
 		position: relative;
 	}
 
-	.board .card.dragging,
-	.board .card.dragging.raw {
-		background: #CED4DA;
-		box-shadow: 0 +1px 0 #0001 inset,
-		            0 -1px 0 #0001 inset,
-		            +1px 0 0 #0001 inset,
-		            -1px 0 0 #0001 inset;
-	}
-
-	.board .card.dragging * {
-		opacity: 0 !important;
-	}
-
 	/***/
 	.board .card:last-child {
 		margin-bottom: 5px;
@@ -443,81 +416,6 @@
 	.board .card.editing .edit {
 		display: block;
 		resize: none;
-	}
-
-	/***/
-	.board .card .ops {
-		position: absolute;
-		top: 0;
-		right: 0;
-		opacity: 0;
-		transition: opacity 400ms;
-		cursor: default;
-		font-size: calc(9rem / 11);
-	}
-
-	.board .card.editing .ops {
-		display: none;
-	}
-
-	.board .card:hover .ops {
-		opacity: 1;
-	}
-
-	.board .card .ops .teaser {
-		display: block;
-		margin-top: 2px;
-		margin-right: 1px;
-		padding-right: 3px;
-	}
-
-	.board .card .ops .teaser:before {
-		content: '\2261';
-	}
-
-	.board .card .ops .bulk {
-		display: none;
-		background: #fff;
-		border-left: none;
-		padding: 1px 0 2px 5px;
-		font-size: calc( var(--fs-cops) * 1px );
-		font-weight: 500;
-		border-left: 1px solid #ddd;
-		border-bottom: 1px solid #ddd;
-	}
-
-	.board .card .ops .bulk a {
-		padding-right: 4px;
-	}
-
-	.board .card .ops:hover .bulk {
-		display: block;
-	}
-
-	.board .card .ops:hover .teaser {
-		display: none;
-	}
-
-	/***/
-	.card-dragster {
-		z-index: 2;
-		position: absolute;
-		opacity: 0;
-		background: #fff;
-		white-space: pre-wrap;
-		cursor: move;
-
-		padding: 5px 25px 6px 10px;
-
-		box-shadow: 0 +1px 0 #ACB4BC inset,
-		            0 -1px 0 #ACB4BC inset,
-		            +1px 0 0 #ACB4BC inset,
-		            -1px 0 0 #ACB4BC inset,
-		            0px 1px 3px #00000030;
-	}
-
-	.card-dragster a {
-		color: #000;
 	}
 
 	/***/
@@ -670,32 +568,6 @@
 
 	.config .bulk .boards a.load-board.active:hover {
 		color: #000;
-	}
-
-	.config .bulk .boards a.load-board.dragging {
-		background: #DDE1E5;
-		border-radius: 2px;
-		color: transparent;
-		transition: none;
-		box-shadow: 0 0 1px #0002 inset;
-	}
-
-	.config .bulk .boards a.load-board.dragging.active:before {
-		content: '';
-	}
-
-	.load-dragster {
-		z-index: 10;
-		position: absolute;
-		opacity: 0;
-		line-height: calc(19 / 11);
-		padding-left: 5px;
-		background: #fff;
-		color: #000;
-		border-radius: 2px;
-		cursor: move;
-		outline: 1px solid #ACB4BC;
-		box-shadow: 0px 1px 3px #00000030;
 	}
 
 	.config .bulk a i,
@@ -1191,8 +1063,7 @@
 		color: var(--accent-pale);
 	}
 
-	.theme-dark .board .menu a.warn:hover,
-	.theme-dark .board .ops  a.warn:hover {
+	.theme-dark .board .menu a.warn:hover {
 		color: #fc5555 !important;
 		text-shadow: 0 0 1px #fc555544;
 	}
@@ -1226,41 +1097,6 @@
 		color: var(--accent-pale);
 	}
 
-
-	.theme-dark .board .card .ops .teaser {
-		color: #b8b8d0;
-	}
-
-	.theme-dark .board .card .ops .bulk {
-		background: #12121f;
-		border-left: 1px solid #0b0b16;
-		border-bottom: 1px solid #0b0b16;
-	}
-
-	.theme-dark .board .card .ops .bulk a {
-		color: #b8b8d0;
-	}
-
-	.theme-dark .board .card .ops .bulk a:hover {
-		color: var(--accent-pale);
-	}
-
-	/***/
-	.theme-dark .board .card.dragging,
-	.theme-dark .board .card.dragging.raw {
-	    background: #050510;
-	    outline: 1px solid #fff2;
-	}
-
-	.theme-dark .card-dragster {
-		box-shadow: 0px 1px 4px #000;
-		background: linear-gradient(#16162a, #12121f);
-		outline: 1px solid var(--accent-muted);
-	}
-
-	.theme-dark .card-dragster a {
-		color: #b8b8d0;
-	}
 
 	/***/
 	.theme-dark .wrap textarea,
@@ -1339,20 +1175,6 @@
 
 	.theme-dark .config a.switch-theme b {
 		display: none;
-	}
-
-	/***/
-	.theme-dark .config .bulk .boards .load-board.dragging,
-	.theme-dark .config .bulk .boards .load-board.active.dragging {
-		background: #fff2;
-		color: transparent;
-	}
-
-	.theme-dark .load-dragster {
-		background: #050510;
-		box-shadow: 0px 2px 4px #000;
-		outline: 1px solid var(--accent-muted);
-		color: #b8b8d0;
 	}
 
 	/*
@@ -1655,6 +1477,35 @@
 		display: none;
 	}
 
+	/* Edit mode's small × at the card's right edge deletes it. */
+	.board .card .card-del {
+		display: none;
+	}
+
+	.board .card.editing .card-del {
+		display: block;
+		position: absolute;
+		top: 2px;
+		right: 0;
+		width: 16px;
+		height: 18px;
+		padding: 0;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		color: #8a8aa6;
+		font: 600 calc(14px * var(--ui))/1 sans-serif;
+		cursor: pointer;
+	}
+
+	.board .card.editing .card-del:hover,
+	.board .card.editing .card-del:focus-visible {
+		color: #f2d4dc;
+		background: rgba(140, 40, 60, .45);
+		outline: none;
+	}
+
 	/* A list named "done", in any case, strikes through its cards. */
 	.board .list.done-list .card .text,
 	.history-list.done-list .history-card {
@@ -1776,15 +1627,10 @@
 		</div>
 
 		<div class=card>
-			<div class=ops>
-				<a href=# class=teaser></a>
-				<div class=bulk>
-					<a href=# class='del-card warn'>X</a>
-				</div>
-			</div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
 			<span class=wip-timer></span>
+			<button type=button class=card-del aria-label="Delete Card">&times;</button>
 		</div>
 
 		<a href=# class=load-board></a>
@@ -2792,340 +2638,6 @@
 
 <script type="text/javascript">
 
-	function Drag2()
-	{
-		// config
-		this.listSel    = null;
-		this.itemSel    = null;
-		this.dragster   = null;
-		this.onDragging = function(started) { }
-		this.swapAnimMs = 200;
-
-		// state
-		this.item    = null;
-		this.priming = null;
-		this.primeXY = { x: 0, y: 0 };
-		this.$drag   = null;
-		this.mouseEv = null;
-		this.delta   = { x: 0, y: 0 };
-		this.inSwap  = 0;
-
-		// api
-		this.prime = function(item, ev)
-		{
-			var self = this;
-
-			this.item = item;
-			this.priming = setTimeout(function(){ self.onPrimed.call(self); }, ev.altKey ? 1 : 500);
-			this.primeXY = { x: ev.clientX, y: ev.clientY };
-			this.mouseEv = ev;
-		}
-
-		this.cancelPriming = function()
-		{
-			if (! this.item || ! this.priming)
-				return;
-
-			clearTimeout(this.priming);
-			this.priming = null;
-			this.item = null;
-		}
-
-		this.end = function()
-		{
-			this.cancelPriming();
-			this.stopDragging();
-		}
-
-		this.isActive = function()
-		{
-			return this.item && (this.priming == null);
-		}
-
-		this.onPrimed = function()
-		{
-			clearTimeout(this.priming);
-			this.priming = null;
-
-			removeTextSelection();
-
-			var $item = $(this.item);
-			$item.addClass('dragging');
-
-			$('body').append('<div class=' + this.dragster + '></div>');
-			var $drag = $('body .' + this.dragster).last();
-
-			$drag.outerWidth ( $item.outerWidth()  );
-			$drag.outerHeight( $item.outerHeight() );
-
-			this.$drag = $drag;
-
-			if (this.onDragging)
-				this.onDragging.call(this, true); // started
-
-			var $win = $(window);
-			var scroll_x = $win.scrollLeft();
-			var scroll_y = $win.scrollTop();
-
-			var pos = $item.offset();
-			this.delta.x = pos.left - this.mouseEv.clientX - scroll_x;
-			this.delta.y = pos.top  - this.mouseEv.clientY - scroll_y;
-
-			this.adjustDrag();
-
-			$drag.css({ opacity: 1 });
-
-			$('body').addClass('dragging');
-		}
-
-		this.adjustDrag = function()
-		{
-			if (! this.$drag)
-				return;
-
-			var drag = this;
-			var $drag = this.$drag;
-
-			var $win = $(window);
-			var scroll_x = $win.scrollLeft();
-			var scroll_y = $win.scrollTop();
-
-			var drag_x = drag.mouseEv.clientX + drag.delta.x + scroll_x;
-			var drag_y = drag.mouseEv.clientY + drag.delta.y + scroll_y;
-
-			$drag.offset({ left: drag_x, top: drag_y });
-
-			if (drag.inSwap)
-				return;
-
-			/*
-			 *	see if a swap is in order
-			 */
-			var pos = $drag.offset();
-			var x = pos.left + $drag.width()/2 - $win.scrollLeft();
-			var y = pos.top + $drag.height()/2 - $win.scrollTop();
-
-			var targetList = null;
-			var targetItem = null;  // if over some item
-			var before = false;     // if should go before targetItem
-
-			var $target;
-
-			$(this.listSel).each(function(){
-
-				var list = this;
-				var rcList = list.getBoundingClientRect();
-				var yTop, itemTop = null;
-				var yBottom, itemBottom = null;
-
-				if (x <= rcList.left || rcList.right <= x)
-					return;
-
-				$(list).find(drag.itemSel).each(function(){
-					var rcItem = this.getBoundingClientRect();
-
-					if (! itemTop || rcItem.top < yTop)
-					{
-						itemTop = this;
-						yTop = rcItem.top;
-					}
-
-					if (! itemBottom || yBottom < rcItem.bottom)
-					{
-						itemBottom = this;
-						yBottom = rcItem.bottom;
-					}
-
-					if (y <= rcItem.top || rcItem.bottom <= y)
-						return;
-
-					if (this == drag.item)
-						return;
-
-					targetList = list;
-					targetItem = this;
-					before = (y < (rcItem.top + rcItem.bottom)/2);
-				});
-
-				if (y < rcList.top)
-				{
-					targetList = list;
-					targetItem = itemTop;
-					before = true;
-				}
-				else
-				if (y >= rcList.bottom)
-				{
-					targetList = list;
-					targetItem = itemBottom;
-					before = false;
-				}
-
-			});
-
-			if (! targetList)
-				return;
-
-			if (targetItem)
-			{
-				if (targetItem == drag.item)
-					return;
-
-				$target = $(targetItem);
-
-				if (! before && $target.next()[0] == drag.item ||
-				      before && $target.prev()[0] == drag.item)
-					return;
-			}
-
-			/*
-			 *	swap 'em
-			 */
-			var have = drag.item;
-			var $have = $(have);
-			var $want = $have.clone();
-			if ($have.data('meta')) // the card's WIP start and XP, as its own copy
-				$want.data('meta', Object.assign({}, $have.data('meta')));
-
-			$want.css({ display: 'none' });
-
-			if (targetItem)
-			{
-				if (before)
-				{
-					$want.insertBefore($target);
-					$want = $target.prev();
-				}
-				else
-				{
-					$want.insertAfter($target);
-					$want = $target.next();
-				}
-			}
-			else
-			{
-				var $list = $(targetList);
-				$want = $list.append($want).find(drag.itemSel)
-			}
-
-			drag.item = $want[0];
-			$have.addClass('swap-out'); // on its way out; saves must skip it while it animates away
-
-			if (! drag.swapAnimMs)
-			{
-				$have.remove();
-				$want.show();
-				return;
-			}
-
-			/*
-			 *	see if it's a same-list move
-			 */
-			if (targetList == have.parentNode)
-			{
-				var delta = $have.offset().top - $target.offset().top;
-
-				var d_bulk = 0;
-				var d_have = 0;
-				var $bulk = $();
-
-				if (delta < 0) // item is moving down
-				{
-					for (var $i = $have.next(); $i.length && $i[0] != $want[0]; $i = $i.next())
-						$bulk = $bulk.add($i);
-				}
-				else
-				{
-					for (var $i = $want.next(); $i.length && $i[0] != $have[0]; $i = $i.next())
-						$bulk = $bulk.add($i);
-				}
-
-				d_bulk = $have.outerHeight(true);
-				d_have = $bulk.last().offset().top + $bulk.last().outerHeight(true) - $bulk.first().offset().top;
-
-				if (delta < 0) d_bulk = -d_bulk;
-				else           d_have = -d_have;
-
-				$have.parent().css({ position: 'relative' });
-				$have.css({ position: 'relative', 'z-index': 0 });
-				$bulk.css({ position: 'relative', 'z-index': 1 });
-
-				drag.inSwap = 1 + $bulk.length;
-
-				$have.animate({ top: d_have }, drag.swapAnimMs, function(){ if (! --drag.inSwap) swapCleanUp(); });
-				$bulk.animate({ top: d_bulk }, drag.swapAnimMs, function(){ if (! --drag.inSwap) swapCleanUp(); });
-
-				function swapCleanUp()
-				{
-					$have.parent().css({ position: '' });
-
-					$have.remove();
-					$want.show();
-					$bulk.css({ position: '', 'z-index': '', top: '' });
-
-					drag.adjustDrag();
-				}
-			}
-			else
-			{
-				drag.inSwap = 1;
-
-				$want.slideDown(drag.swapAnimMs);
-
-				$have.slideUp(drag.swapAnimMs, function() {
-					$have.remove();
-					drag.inSwap = 0;
-					drag.adjustDrag();
-				});
-			}
-		}
-
-		this.onMouseMove = function(ev)
-		{
-			this.mouseEv = ev;
-
-			if (! this.item)
-				return;
-
-			if (this.priming)
-			{
-				var x = ev.clientX - this.primeXY.x;
-				var y = ev.clientY - this.primeXY.y;
-				if (x*x + y*y > 5*5)
-					this.onPrimed();
-			}
-			else
-			{
-				this.adjustDrag();
-			}
-		}
-
-		this.stopDragging = function()
-		{
-			var $item = $(this.item);
-
-			$item.removeClass('dragging');
-			$('body').removeClass('dragging');
-
-			if (this.$drag)
-			{
-				this.$drag.remove();
-				this.$drag = null;
-
-				removeTextSelection();
-
-				if (this.onDragging)
-					this.onDragging.call(this, false); // stopped
-			}
-
-			this.item = null;
-		}
-	}
-
-</script>
-
-<script type="text/javascript">
-
 	function VarAdjust()
 	{
 		// state
@@ -3239,14 +2751,6 @@
 		});
 	}
 
-	function cardLocation($item)
-	{
-		var loc = 0;
-		for (var $p = $item.closest('.card'); $p.length; $p = $p.prev(), loc += 1);
-		for (var $p = $item.closest('.list'); $p.length; $p = $p.prev(), loc += 10000);
-		return loc;
-	}
-
 	//
 	function addList()
 	{
@@ -3328,7 +2832,7 @@
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
-			$(this).find('.card').not('.swap-out').each(function(){
+			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
@@ -3337,7 +2841,7 @@
 		});
 	}
 
-	// A card was just moved (dragged, for now); call before saving. One that
+	// A card was just moved to another list; call before saving. One that
 	// arrived in Done from another list earns its XP and gets celebrated.
 	function cardMoved($card, fromDone)
 	{
@@ -3489,7 +2993,7 @@
 			var $list = $(this);
 			var l = board.addList( getText($list.find('.head .text')) );
 
-			$list.find('.card').not('.swap-out').each(function(){
+			$list.find('.card').each(function(){
 				var $card = $(this)
 				var n = l.addCard( getText($card.find('.text')) );
 				Object.assign(n, cardMeta($card));
@@ -4170,12 +3674,6 @@
 		return $text.attr('_text');
 	}
 
-	function removeTextSelection()
-	{
-		if (window.getSelection) { window.getSelection().removeAllRanges(); }
-		else if (document.selection) { document.selection.empty(); }
-	}
-
 	function shakeControl($x)
 	{
 		$x
@@ -4405,49 +3903,6 @@
 	}
 
 	/*
-	 *	dragsters
-	 */
-	function initDragAndDrop()
-	{
-		NB.cardDrag = new Drag2();
-		NB.cardDrag.listSel = '.board .list .cards';
-		NB.cardDrag.itemSel = '.card';
-		NB.cardDrag.dragster = 'card-dragster';
-		NB.cardDrag.onDragging = function(started)
-		{
-			var drag = this;
-			var $card = $(drag.item);
-
-			if (started)
-			{
-				var $drag = drag.$drag;
-
-				if ($card.hasClass('collapsed'))
-					$drag.addClass('collapsed');
-
-				$drag.html('<div class=text></div>');
-				$drag.find('.text').html( $card.find('.text').html() );
-
-				drag.org_loc = cardLocation($card);
-				drag.from_done = $card.closest('.list').hasClass('done-list');
-				$card.removeClass('cm-open cm-moving'); // the card menu closes for the drag
-				if ($card.hasClass('collapsed'))
-					drag.$drag.addClass('collapsed');
-			}
-			else
-			{
-				$card[0].cmDragEnd = Date.now(); // see cardmenu.js
-
-				if (this.org_loc != cardLocation($card))
-				{
-					cardMoved($card, this.from_done);
-					saveBoard();
-				}
-			}
-		}
-	}
-
-	/*
 	 *	font size prefs (the font itself is fixed: gym-tracker's system stack)
 	 */
 	/*
@@ -4464,7 +3919,7 @@
 		var ui = Math.max(1, Math.min(2, screen.height / 1080));
 		var $html = $('html');
 
-		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-cops': (8 * ui).toFixed(2) });
+		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2) });
 		if (! $html.hasClass('fs-set'))
 			$html.css('--fs', (11 * ui).toFixed(2));
 
@@ -4616,14 +4071,6 @@
 	 */
 	$('.wrap').on('click', '.board .text', function(ev){
 
-		if (this.was_dragged)
-		{
-			this.was_dragged = false;
-			return false;
-		}
-
-		NB.cardDrag.cancelPriming();
-
 		if ($(this).closest('.card').length) // cards: a click opens the card menu, whose Edit edits
 			return;
 
@@ -4724,14 +4171,28 @@
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .del-card', function(){
-		deleteCard( $(this).closest('.card') );
-		return false;
+	// Edit mode's ×. Pressing it keeps the focus in the textarea, so the
+	// edit isn't saved (and its blur doesn't end editing) before the delete.
+	$('.wrap').on('mousedown', '.board .card-del', function(ev){
+		ev.preventDefault();
 	});
 
-	//
-	$('.wrap').on('mousedown', '.board .card .text, .board .card .cm-panel', function(ev){
-		NB.cardDrag.prime($(this).closest('.card')[0], ev);
+	$('.wrap').on('click', '.board .card-del', function(){
+		var $card = $(this).closest('.card');
+		var text = $card.find('.edit').val().trim() || (getText($card.find('.text')) || '').trim();
+
+		if (text && ! confirm("Delete this Card?"))
+			return false;
+
+		var brand_new = $card.hasClass('brand-new');
+		$card.removeClass('editing brand-new');
+
+		if (brand_new) // never saved, so nothing to save
+			$card.remove();
+		else
+			deleteCard($card);
+
+		return false;
 	});
 
 
@@ -4753,12 +4214,10 @@
 
 	//
 	$(document).on('mouseup', function(ev){
-		NB.cardDrag.end();
 		NB.varAdjust.end();
 	});
 
 	$(document).on('mousemove', function(ev){
-		NB.cardDrag.onMouseMove(ev);
 		NB.varAdjust.onMouseMove(ev);
 	});
 
@@ -4955,8 +4414,6 @@
 	 *	the ui
 	 */
 	initFonts();
-
-	initDragAndDrop();
 
 	NB.varAdjust = new VarAdjust()
 
@@ -5179,8 +4636,8 @@
 	});
 
 	/*
-	 *	Card menu (cardmenu.js): hover a card, or tap it on a phone, for
-	 *	Move / Edit / Delete. Move steps it one list left or right.
+	 *	Card menu (cardmenu.js): click a card, or tap it on a phone, for
+	 *	⬅️ Edit ➡️. The arrows step it one list left or right.
 	 */
 	$(function(){
 		CardMenu.attach('.wrap', {
@@ -5195,9 +4652,6 @@
 			},
 			onEdit: function(card){
 				startEditing($(card).find('.text'));
-			},
-			onDelete: function(card){
-				deleteCard($(card));
 			}
 		});
 	});

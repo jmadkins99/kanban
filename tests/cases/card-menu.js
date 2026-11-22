@@ -1,8 +1,9 @@
-// The card menu: clicking a card (tapping on a phone) slides a panel over it
-// with Move, Edit and Delete; moving the mouse off the card closes it, and
-// hovering alone opens nothing. Move offers left/right arrows, greyed out at the board's ends, and
-// a move into Done counts like a drag (XP + celebration). A click on a card
-// opens the menu rather than editing; Edit edits; Delete deletes.
+// The card menu: clicking a Card (tapping on a phone) slides a panel over it
+// with one row, ⬅️ Edit ➡️. Moving the mouse off the Card closes it, and
+// hovering alone opens nothing. ⬅️ and ➡️ move the Card one List over and are
+// greyed out (and do nothing) in the first and last List; a move into Done
+// awards XP and celebrates. A click on a Card opens the menu rather than
+// editing; Edit edits.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
@@ -18,7 +19,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const card = (l, i) => `.wrap .board .list:nth-child(${l + 1}) .card:nth-child(${i + 1})`;
     const counts = () => page.evaluate(() => NB.board.lists.map((l) => l.notes.length));
     const clickOpen = async (sel) => { await page.click(sel + ' .text'); await sleep(450); };
+    const tapOpen = (sel) => page.evaluate((sel) => $(sel).find('.text').trigger('click'), sel);
     const press = (sel, cm) => page.evaluate((sel, cm) => $(sel).find(`[data-cm=${cm}]`).click(), sel, cm);
+    const greyed = (sel) => page.evaluate((sel) => ['left', 'right'].map((d) => $(sel).find(`[data-cm=${d}]`).prop('disabled')), sel);
 
     try {
         await page.evaluate(() => { setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done'); saveBoard(); });
@@ -28,47 +31,59 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await sleep(450);
         assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), card(0, 0)), false, 'hover does not open the menu');
 
-        // A click: the panel covers the card, with exactly the three options.
+        // A click: the panel covers the Card, with one row of ⬅️ Edit ➡️.
         await clickOpen(card(0, 0));
         const open = await page.evaluate((sel) => {
             const n = $(sel)[0], p = $(sel).find('.cm-panel')[0];
             const a = n.getBoundingClientRect(), b = p.getBoundingClientRect();
+            const $b = $(sel).find('.cm-panel button:visible');
+            const tops = $b.map((_, x) => Math.round(x.getBoundingClientRect().top)).get();
             return {
                 covers: Math.abs(a.top - b.top) <= 2 && Math.abs(a.bottom - b.bottom) <= 2 && Math.abs(a.left - b.left) <= 2 && Math.abs(a.right - b.right) <= 2,
-                options: $(sel).find('.cm-main button').map((_, x) => x.textContent.trim().toLowerCase()).get(),
+                options: $b.map((_, x) => x.textContent.trim().toLowerCase()).get(),
+                oneRow: tops.every((t) => t === tops[0]),
             };
         }, card(0, 0));
-        assert.deepStrictEqual(open, { covers: true, options: ['move', 'edit', 'delete'] });
+        assert.deepStrictEqual(open, { covers: true, options: ['⬅️', 'edit', '➡️'], oneRow: true });
 
-        // Moving off the card closes it; a click opens it again.
+        // Moving off the Card closes it; a click opens it again.
         await page.mouse.move(5, 5);
         await sleep(100);
-        assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), card(0, 0)), false, 'leaving the card closes the menu');
+        assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), card(0, 0)), false, 'leaving the Card closes the menu');
         await clickOpen(card(0, 0));
 
-        // Move: in the first list, left is greyed out; right moves it over.
-        await press(card(0, 0), 'move');
-        assert.deepStrictEqual(await page.evaluate((sel) => [$(sel).find('[data-cm=left]').prop('disabled'), $(sel).find('[data-cm=right]').prop('disabled')], card(0, 0)), [true, false]);
+        // In the first List, ⬅️ is greyed out and does nothing; ➡️ moves it over.
+        assert.deepStrictEqual(await greyed(card(0, 0)), [true, false]);
         const before = await counts();
-        await press(card(0, 0), 'right');
-        assert.deepStrictEqual(await counts(), [before[0] - 1, before[1] + 1, before[2]], 'moved one list right');
+        await page.click(card(0, 0) + ' [data-cm=left]');
+        await sleep(100);
+        assert.deepStrictEqual(await counts(), before, '⬅️ in the first List does nothing');
+        await page.click(card(0, 0) + ' [data-cm=right]');
+        await sleep(100);
+        assert.deepStrictEqual(await counts(), [before[0] - 1, before[1] + 1, before[2]], 'moved one List right');
 
-        // Into Done with the arrows: XP and the celebration, like a drag.
-        await page.evaluate(() => { $('.wrap .board .list').eq(1).find('.card').last().find('.text').trigger('click'); });
+        // Into Done with ➡️: XP and the celebration.
         const last1 = `.wrap .board .list:nth-child(2) .card:last-child`;
-        await press(last1, 'move');
+        await tapOpen(last1);
         await press(last1, 'right');
         assert.strictEqual(await page.evaluate(() => $('.celebrate-badge').text()), '+2500 XP');
         assert.strictEqual(await page.evaluate(() => XP.total()), 2500);
+        assert.deepStrictEqual(await counts(), [before[0] - 1, before[1], before[2] + 1], 'moved into Done');
 
-        // In the last list, right is greyed out.
+        // In the last List, ➡️ is greyed out and does nothing.
         const lastDone = `.wrap .board .list:nth-child(3) .card:last-child`;
-        await page.evaluate((sel) => $(sel).find('.text').trigger('click'), lastDone);
-        await press(lastDone, 'move');
-        assert.deepStrictEqual(await page.evaluate((sel) => [$(sel).find('[data-cm=left]').prop('disabled'), $(sel).find('[data-cm=right]').prop('disabled')], lastDone), [false, true]);
+        await tapOpen(lastDone);
+        assert.deepStrictEqual(await greyed(lastDone), [false, true]);
+        await press(lastDone, 'right');
+        assert.deepStrictEqual(await counts(), [before[0] - 1, before[1], before[2] + 1], '➡️ in the last List does nothing');
 
-        // A click on a card opens the menu, it doesn't edit.
-        await page.evaluate((sel) => $(sel).find('.text').trigger('click'), card(0, 1));
+        // ⬅️ moves it back out of Done (taking the XP back).
+        await press(lastDone, 'left');
+        assert.deepStrictEqual(await counts(), [before[0] - 1, before[1] + 1, before[2]], 'moved one List left');
+        assert.strictEqual(await page.evaluate(() => XP.total()), 0);
+
+        // A click on a Card opens the menu, it doesn't edit.
+        await tapOpen(card(0, 1));
         assert.deepStrictEqual(await page.evaluate((sel) => [$(sel).hasClass('cm-open'), $(sel).hasClass('editing')], card(0, 1)), [true, false]);
 
         // Edit edits.
@@ -76,12 +91,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.ok(await page.evaluate((sel) => $(sel).hasClass('editing'), card(0, 1)), 'Edit starts editing');
         await page.evaluate(() => $('.wrap .board .card.editing .edit').blur());
         await settle(page);
-
-        // Delete deletes.
-        const n0 = (await counts())[0];
-        await press(card(0, 1), 'delete');
-        await sleep(600);
-        assert.strictEqual((await counts())[0], n0 - 1, 'Delete removes the card');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

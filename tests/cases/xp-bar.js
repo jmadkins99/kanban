@@ -6,20 +6,15 @@
 // preferences.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 (async () => {
     const app = await openApp(() => {});
     const { page } = app;
 
     const text = () => page.evaluate(() => $('.xp-bar__text').text());
-    // Move the first card of list `from` to Done (list 2) the way a drag does.
-    const toDone = (from) => page.evaluate((from) => {
-        const $n = $('.wrap .board .list').eq(from).find('.card').first();
-        $n.appendTo($('.wrap .board .list').eq(2).find('.cards'));
-        cardMoved($n, false);
-        saveBoard();
-    }, from);
+    // Move the first Card of List `from` to Done (List 2) with the arrows.
+    const toDone = (from) => moveCard(page, from, 0, 2 - from);
 
     try {
         assert.strictEqual(await text(), 'Lvl 1, XP 0/11,500, 0%');
@@ -41,7 +36,7 @@ const { openApp } = require('../lib');
         assert.strictEqual(await text(), 'Lvl 2, XP 1,000/11,730, 8%', 'the 5th card levels up');
 
         // Out of Done: taken back.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').last().appendTo($('.wrap .board .list').eq(1).find('.cards')); saveBoard(); });
+        await moveCard(page, 2, -1, -1);
         assert.strictEqual(await text(), 'Lvl 1, XP 10,000/11,500, 86%', 'moving out of Done takes the XP back');
 
         // Deleted from Done: taken back.

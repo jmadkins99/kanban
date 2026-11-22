@@ -1,9 +1,9 @@
-// Dragging a card into a Done list plays the celebration: the card's gold
-// aura, a "+2500 XP" badge and a full-screen flash, gone after ~2 s.
-// Reordering inside Done, or dragging out of it, doesn't celebrate.
+// Moving a Card into a Done list with ➡️ plays the celebration: the Card's
+// gold aura, a "+2500 XP" badge and a full-screen flash, gone after ~2 s.
+// Passing through another List on the way, or moving out of Done, doesn't.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -11,28 +11,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const app = await openApp(() => {});
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
-    await sleep(300); // let the board re-centre before reading positions
 
-    // A real mouse drag of card [list, index] to the top of list `to`.
-    async function drag(list, index, to) {
-        const [from, dest] = await page.evaluate((list, index, to) => {
-            const c = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + Math.min(r.height / 2, 8)]; };
-            const n = $('.wrap .board .list').eq(list).find('.card .text').eq(index)[0];
-            const first = $('.wrap .board .list').eq(to).find('.card').first()[0];
-            const r = first.getBoundingClientRect();
-            return [c(n), [r.left + r.width / 2, r.top + 4]]; // drop at the top of the target list
-        }, list, index, to);
-        await page.mouse.move(from[0], from[1]);
-        await sleep(500); // the pointer settles on the card first, as a person's would
-        await page.mouse.down();
-        await sleep(600); // Nullboard starts a drag after a 500 ms hold
-        for (let i = 1; i <= 15; i++) {
-            await page.mouse.move(from[0] + (dest[0] - from[0]) * i / 15, from[1] + (dest[1] - from[1]) * i / 15);
-            await sleep(20);
-        }
-        await page.mouse.up();
-        await sleep(100);
-    }
     const fx = () => page.evaluate(() => ({
         badges: $('.celebrate-badge').map((_, b) => b.textContent).get(),
         inDone: $('.celebrate-badge').closest('.list').hasClass('done-list'),
@@ -43,8 +22,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.evaluate(() => { setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done'); saveBoard(); });
         const doneBefore = await page.evaluate(() => NB.board.lists[2].notes.length);
 
-        await drag(0, 1, 2);
-        assert.strictEqual(await page.evaluate(() => NB.board.lists[2].notes.length), doneBefore + 1, 'the drag landed in Done');
+        await moveCard(page, 0, 1, 2); // two Lists over, the first hop quiet
+        assert.strictEqual(await page.evaluate(() => NB.board.lists[2].notes.length), doneBefore + 1, 'the Card landed in Done');
         let f = await fx();
         assert.deepStrictEqual(f.badges, ['+2500 XP'], 'badge reads +2500 XP');
         assert.ok(f.inDone, 'badge is on the moved card');
@@ -55,12 +34,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.deepStrictEqual(f, { badges: [], inDone: false, flash: 0 }, 'all cleaned up');
         assert.strictEqual(await page.evaluate(() => $('.celebrate-done, .celebrate-fx').length), 0);
 
-        // Reordering inside Done: no celebration.
-        await drag(2, 1, 2);
-        assert.deepStrictEqual((await fx()).badges, [], 'reorder within Done is quiet');
-
         // Out of Done: no celebration.
-        await drag(2, 0, 1);
+        await moveCard(page, 2, -1, -1);
         assert.deepStrictEqual((await fx()).badges, [], 'leaving Done is quiet');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');

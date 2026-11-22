@@ -4,7 +4,7 @@
 // length), and starts over from 0 if the card comes back.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -12,10 +12,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const app = await openApp(() => {});
     const { page } = app;
 
-    const move = (from, to) => page.evaluate((from, to) => {
-        $('.wrap .board .list').eq(from).find('.card').first().appendTo($('.wrap .board .list').eq(to).find('.cards'));
-        saveBoard();
-    }, from, to);
+    const move = (from, to) => moveCard(page, from, 0, to - from);
     const timers = (i) => page.evaluate((i) => $('.wrap .board .list').eq(i).find('.card').toArray().map((n) => {
         const t = $(n).find('.wip-timer');
         return t.is(':visible') ? t.text() : null;
@@ -53,11 +50,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.ok(secs(t[before]) >= 2, 'still counting after a reload: ' + t);
 
         // Leaving stops it and keeps the visit's length; coming back starts at 0.
-        await page.evaluate(() => { $('.wrap .board .list').eq(2).find('.card').eq(-2).appendTo($('.wrap .board .list').eq(0).find('.cards')); saveBoard(); });
+        await moveCard(page, 2, -2, -2);
         const left = await page.evaluate(() => { const n = NB.board.lists[0].notes; return n[n.length - 1]; });
         assert.ok(!('wip' in left) && left.wipMs >= 2000, 'leaving keeps the visit length: ' + JSON.stringify(left));
         assert.ok((await timers(0)).every((x) => x === null), 'no timer after leaving');
-        await page.evaluate(() => { $('.wrap .board .list').eq(0).find('.card').last().appendTo($('.wrap .board .list').eq(2).find('.cards')); saveBoard(); });
+        await moveCard(page, 0, -1, 2);
         t = await timers(2);
         assert.match(t[t.length - 1], /^0m [01]s$/, 'coming back starts over');
 

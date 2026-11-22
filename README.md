@@ -23,7 +23,7 @@ It's Nullboard with a few changes:
   leaves and comes back.
 - **Done list**: a list named "done" (any case) strikes through its cards.
   Auto-submit snapshots the board with them, then clears that list.
-  Dragging a card into Done plays gym-tracker's PR celebration on the card
+  Moving a card into Done plays gym-tracker's PR celebration on the card
   with a "+2500 XP" badge and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
   recreated in CSS (`js/xp.js`). Each card moved into Done earns 2500 XP, plus
@@ -36,10 +36,11 @@ It's Nullboard with a few changes:
   insignia are original SVGs modelled on real US military rank insignia
   (`js/ranks.js`), not the game's art. Reaching a new level by finishing a card
   plays a WoW-inspired level-up (`js/levelup.js`).
-- **Card menu**: clicking a card (tapping it on a phone) slides down Move,
-  Edit and Delete (`js/cardmenu.js`), and moving off the card closes it; Move
-  steps it one list left or right.
-  Drag and drop still works: hold anywhere on the card.
+- **Card menu**: clicking a card (tapping it on a phone) slides down one row,
+  ⬅️ Edit ➡️ (`js/cardmenu.js`), and moving off the card closes it. The
+  arrows step it one list left or right, greyed out at the first and last
+  list. Cards don't drag. In edit mode a small × at the card's right edge
+  deletes it, asking first if it has text.
 - **Big screens**: everything scales with the screen's height from a 1080p
   baseline (1.33x on a 3440x1440 ultrawide, full-screen or half); a font
   size set in UI preferences still wins.
@@ -51,7 +52,7 @@ It's Nullboard with a few changes:
   and History in Firestore, live across devices (`js/sync.js`). Signed out,
   everything stays in the browser's `localStorage`, as in Nullboard.
 
-Everything else (drag and drop, undo/redo, export) is Nullboard's.
+Everything else (undo/redo, export) is Nullboard's.
 
 ## Development
 
