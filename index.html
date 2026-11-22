@@ -3022,13 +3022,59 @@
 		return (title || '').trim().toLowerCase() == 'backlog';
 	}
 
+	function isTodoTitle(title)
+	{
+		return ['to-do', 'todo', 'to do'].indexOf((title || '').trim().toLowerCase()) >= 0;
+	}
+
+	// The first List whose title passes `test`, if any.
+	function listTitled(test)
+	{
+		return $('.wrap .board .list').filter(function(){ return test(getText($(this).find('.head .text'))); }).first();
+	}
+
 	// Where a Recurring Card waits for its Due date: the List named Backlog,
 	// or the first List if there's none.
 	function backlogList()
 	{
-		var $lists = $('.wrap .board .list');
-		var $b = $lists.filter(function(){ return isBacklogTitle(getText($(this).find('.head .text'))); }).first();
-		return $b.length ? $b : $lists.first();
+		var $b = listTitled(isBacklogTitle);
+		return $b.length ? $b : $('.wrap .board .list').first();
+	}
+
+	// A finished Recurring Card goes back to Backlog to wait for its next Due
+	// date: the first Schedule date after both its current one and `day`, the
+	// day it was finished, so missed dates don't pile up. Call before saving.
+	function returnRecurring($card, day)
+	{
+		var m = cardMeta($card);
+		m.due = Schedule.after(m.schedule, m.due > day ? m.due : day);
+		backlogList().find('.cards').append($card);
+		cardArrived($card);
+		restartCriticalTimer($card);
+	}
+
+	// Recurring Cards in Backlog whose Due date has come move to To-Do, if
+	// there is one. A Card moved out of Backlog early is left where it is.
+	// Saves if any moved.
+	function moveDueToTodo()
+	{
+		var $todo = listTitled(isTodoTitle), $backlog = backlogList(), today = Schedule.today();
+		if (! $todo.length || $todo[0] == $backlog[0])
+			return;
+
+		var $due = $backlog.find('.card').filter(function(){
+			var m = cardMeta($(this));
+			return Priority.of(m) == 'recurring' && m.due && m.due <= today;
+		});
+		if (! $due.length)
+			return;
+
+		$due.each(function(){
+			$todo.find('.cards').append(this);
+			cardArrived($(this));
+			restartCriticalTimer($(this));
+		});
+		saveBoard();
 	}
 
 	function markLists()
@@ -4985,8 +5031,14 @@
 		// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 		XP.bankCards( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
 
+		// After the snapshot, which keeps them: Recurring Cards go back to wait, the rest go.
 		var $done = $('.wrap .board .list.done-list .card');
-		if ($done.length) { $done.remove(); saveBoard(); } // after the snapshot, which keeps them
+		$done.each(function(){
+			var m = cardMeta($(this));
+			if (Priority.of(m) == 'recurring' && m.schedule) returnRecurring($(this), day);
+			else $(this).remove();
+		});
+		if ($done.length) saveBoard();
 
 		if ($('body').hasClass('view-history')) renderHistory();
 	}
@@ -5091,9 +5143,13 @@
 	$(function(){
 		var ready = window.cloudSync ? cloudSync.ready : Promise.resolve();
 		ready.then(function(state){ return state == 'signed-in' && cloudSync.boardFresh; }).then(function(){
-			rollDay();
-			setInterval(rollDay, 60000);
-			document.addEventListener('visibilitychange', function(){ if (! document.hidden) rollDay(); }); // waking from sleep
+			var tick = function(){
+				rollDay();
+				if (! $('.wrap .board .editing').length) moveDueToTodo();
+			};
+			tick();
+			setInterval(tick, 60000);
+			document.addEventListener('visibilitychange', function(){ if (! document.hidden) tick(); }); // waking from sleep
 		});
 	});
 	$('.config .view-history').on('click', function(){ showView('history'); return false; });

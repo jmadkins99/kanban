@@ -27,7 +27,8 @@ It's Nullboard with a few changes:
   time it moves into another such list; in WIP the WIP timer takes over, and
   Done shows none. It counts from a time stored on the card, so it syncs.
 - **Done list**: a list named "done" (any case) strikes through its cards.
-  Auto-submit snapshots the board with them, then clears that list.
+  Auto-submit snapshots the board with them, then clears that list
+  (Recurring cards go back to Backlog instead).
   Moving a card into Done plays gym-tracker's PR celebration on the card
   with a "+XP" badge showing what it earned and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
@@ -59,7 +60,14 @@ It's Nullboard with a few changes:
   Due date to the first Schedule date on or after today. Due today, it stays
   put; due later, it moves to Backlog (by name, any case; else the first list)
   and shows "Next: <date>". Editing the Schedule later only changes the Due
-  date, and another Priority drops both.
+  date, and another Priority drops both. A finished one comes back on its
+  own: Auto-submit files it in History, then sends it to Backlog with its
+  next Due date, the first Schedule date after both its current one and the
+  day it was finished (due Nov 1 and done Nov 15 comes back Dec 1; due Dec 1
+  and done Nov 28, Jan 1), so missed dates don't pile up. On its Due date it
+  moves from Backlog to To-Do ("to-do", "todo" or "to do", any case), at
+  midnight or when the tab next opens. One moved out of Backlog early is
+  left where it is; with no To-Do list it stays in Backlog.
 - **Late**: a Recurring card not in Done by the end of its Due date is Late
   (worked out from the date, not stored; still Recurring). Its icon turns
   red, a red Critical timer counts from midnight after the Due date (the WIP
