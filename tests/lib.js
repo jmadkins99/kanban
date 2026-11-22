@@ -48,8 +48,9 @@ function serve() {
 // written against. A first visit now starts with 4 empty lists instead.
 const DEMO = require('./fixtures/demo-board.json');
 
-// Opens the app. `seed` (optional) runs before the app's own scripts on every
-// load, e.g. to put History entries into localStorage. confirm() dialogs are
+// Opens the app. `seed` (optional; a function, script text, or a list of them
+// run in order) runs before the app's own scripts on every load, e.g. to put
+// History entries into localStorage (see fakeClock, seedBoard). confirm() dialogs are
 // accepted, as a user clicking OK would. Then the demo board replaces the
 // first-visit board, unless `demo: false`.
 async function openApp(seed, { demo = true } = {}) {
@@ -63,7 +64,7 @@ async function openApp(seed, { demo = true } = {}) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('dialog', (d) => d.accept());
-    if (seed) await page.evaluateOnNewDocument(seed);
+    for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
     const url = `http://127.0.0.1:${server.address().port}/index.html`;
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForSelector('.wrap .board');
@@ -92,4 +93,99 @@ async function openApp(seed, { demo = true } = {}) {
 // Lets jQuery animations (opacity fades before a removal) finish.
 const settle = (page) => page.evaluate(() => new Promise((r) => $(':animated').promise().done(() => setTimeout(r, 50))));
 
-module.exports = { openApp, settle };
+// Moves Card `index` of List `list` (negative counts from the end) `steps`
+// Lists over, negative to the left, the way a person does: a tap on the Card,
+// then ⬅️ or ➡️ in its menu, once per List.
+const moveCard = (page, list, index, steps) => page.evaluate((list, index, steps) => {
+    const card = $('.wrap .board .list').eq(list).find('.card').eq(index)[0];
+    if (!card) throw new Error(`no Card ${index} in List ${list}`);
+    for (let i = 0; i < Math.abs(steps); i++) {
+        $(card).find('.text').trigger('click');
+        $(card).find(steps < 0 ? '[data-cm=left]' : '[data-cm=right]').trigger('click');
+    }
+}, list, index, steps);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// '2028-11-15 10:00' (seconds optional) as Date's local-time arguments.
+const localParts = (at) => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d)(?::(\d\d))?)?$/.exec(at);
+    if (!m) throw new Error('not a local time: ' + at);
+    return [+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)];
+};
+
+// A seed for openApp that fakes the page's clock. It reads `start` (local,
+// e.g. '2028-11-15 10:00'; omitted, the real time) when the page loads, or
+// the time setClock last set, which a reload keeps, and runs on from there.
+// The real Date stays reachable as window.RealDate.
+const fakeClock = (start) => `{
+    const Real = Date, start = ${JSON.stringify(start ? localParts(start) : null)};
+    let at = null;
+    try { at = +localStorage.getItem('test.clock') || null; } catch (e) {}
+    window.clockSkew = (at || (start ? new Real(...start).getTime() : Real.now())) - Real.now();
+    window.Date = class extends Real {
+        constructor(...a) { super(...(a.length ? a : [Real.now() + window.clockSkew])); }
+        static now() { return Real.now() + window.clockSkew; }
+    };
+    window.RealDate = Real;
+}`;
+
+// Sets the faked clock (see fakeClock) to `at`, local like '2028-11-16 00:00'
+// or in ms, now and after a reload.
+const setClock = (page, at) => page.evaluate((at) => {
+    const t = Array.isArray(at) ? new RealDate(...at).getTime() : at;
+    localStorage.setItem('test.clock', String(t));
+    window.clockSkew = t - RealDate.now();
+}, typeof at == 'string' ? localParts(at) : at);
+
+// The tab coming back into view, as after a laptop wakes: the app runs its
+// minute's tick (Auto-submit, Recurring Cards moving to To-Do) at once.
+const wake = async (page) => {
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await sleep(100);
+    await settle(page);
+};
+
+// A seed for openApp that saves `board` ({ id, title, lists, day? }) to
+// localStorage as the board to open, and `history` (optional, a list of
+// History days) as History, on the first load only.
+const seedBoard = (board, history) => `(${(board, history) => {
+    if (localStorage.getItem('nullboard.last_board')) return;
+    board = Object.assign({ format: 20190412, revision: 1 }, board);
+    localStorage.setItem('nullboard.board.' + board.id + '.' + board.revision, JSON.stringify(board));
+    localStorage.setItem('nullboard.board.' + board.id + '.meta', JSON.stringify({ title: board.title, current: board.revision, history: [board.revision] }));
+    localStorage.setItem('nullboard.board.' + board.id, String(board.revision));
+    localStorage.setItem('nullboard.last_board', String(board.id));
+    if (history) localStorage.setItem('nullboard.history', JSON.stringify(history));
+}})(${JSON.stringify(board)}, ${JSON.stringify(history || null)})`;
+
+// A click on empty page, which ends editing and saves.
+const clickAway = async (page) => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
+
+// Picks `priority` ('Critical', any case) in the Priority dropdown of the
+// Card at selector `card`, which is in edit mode: its icon, then the choice.
+const pickPriority = async (page, card, priority) => {
+    await page.click(card + ' .card-prio');
+    await sleep(50);
+    await page.click(`${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`);
+    await sleep(50);
+};
+
+// Opens the Card at selector `card` in edit mode, the way a person does: a
+// tap on it, then Edit in its menu.
+const editCard = async (page, card) => {
+    await page.click(card + ' .text');
+    await sleep(450);
+    await page.click(card + ' [data-cm=edit]');
+    await sleep(100);
+};
+
+// Changes the Priority of the Card at selector `card`: Edit, the dropdown,
+// then a click away to save.
+const setPriority = async (page, card, priority) => {
+    await editCard(page, card);
+    await pickPriority(page, card, priority);
+    await clickAway(page);
+};
+
+module.exports = { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority };

@@ -85,7 +85,6 @@
 		--fs: 11;                        /* font-size   */
 		--lh: calc( var(--fs) * 1.25 );  /* line-height */
 		--fs-head: 13;                   /* font-size of board heading */
-		--fs-cops: 8;                    /* font-size of the card ops */
 		--lw: calc(22 * var(--fs) + 40); /* .list width */
 	}
 
@@ -107,12 +106,6 @@
 	}
 
 	/***/
-	@keyframes shake {
-		33%  { margin-left: -5px; }
-		66%  { margin-left:  5px; }
-		100% { margin-left:  0px; }
-	}
-
 	a {
 		text-decoration: none;
 		transition: color 200ms;
@@ -127,11 +120,6 @@
 	}
 
 	/***/
-	.ding {
-		animation-name: shake;
-		animation-duration: 200ms;
-	}
-
 	.no-user-select {
 		-webkit-touch-callout: none;
 		-webkit-user-select: none;
@@ -151,16 +139,6 @@
 		content: "";
 		display: table;
 		clear: both;
-	}
-
-	/***/
-	body.dragging {
-		-webkit-touch-callout: none;
-		-webkit-user-select: none;
-		-khtml-user-select: none;
-		-moz-user-select: none;
-		-ms-user-select: none;
-		user-select: none;
 	}
 
 	/***/
@@ -253,8 +231,7 @@
 		line-height: calc(20 / 11);
 	}
 
-	.board .menu a,
-	.board .ops  a {
+	.board .menu a {
 		color: #000000A0;
 		transition: color 200ms;
 	}
@@ -263,13 +240,11 @@
 		padding-left: 10px;
 	}
 
-	.board .menu a:hover,
-	.board .ops  a:hover {
+	.board .menu a:hover {
 		color: #000;
 	}
 
-	.board .menu a.warn:hover,
-	.board .ops  a.warn:hover {
+	.board .menu a.warn:hover {
 		color: #c40;
 	}
 
@@ -393,19 +368,6 @@
 		position: relative;
 	}
 
-	.board .card.dragging,
-	.board .card.dragging.raw {
-		background: #CED4DA;
-		box-shadow: 0 +1px 0 #0001 inset,
-		            0 -1px 0 #0001 inset,
-		            +1px 0 0 #0001 inset,
-		            -1px 0 0 #0001 inset;
-	}
-
-	.board .card.dragging * {
-		opacity: 0 !important;
-	}
-
 	/***/
 	.board .card:last-child {
 		margin-bottom: 5px;
@@ -431,32 +393,9 @@
 	/***/
 	.board .head .text a,
 	.board .card .text a {
-		color: inherit;
-		cursor: default;
-		transition: none;
-	}
-
-	@keyframes whoomp {
-		0%   { color: inherit; }
-		30%  { color: #888;    }
-		100% { color: inherit; }
-	}
-
-	.board .head .text a:hover,
-	.board .card .text a:hover {
-		animation-name: whoomp;
-		animation-duration: 700ms;
-	}
-
-	.reveal .board .head .text a,
-	.reveal .board .card .text a {
 		color: #1489db;
 		cursor: pointer;
-	}
-
-	.reveal .board .head .text a:hover,
-	.reveal .board .card .text a:hover {
-		animation-name: none;
+		transition: none;
 	}
 
 	/***/
@@ -477,124 +416,6 @@
 	.board .card.editing .edit {
 		display: block;
 		resize: none;
-	}
-
-	/***/
-	.board .card .ops {
-		position: absolute;
-		top: 0;
-		right: 0;
-		opacity: 0;
-		transition: opacity 400ms;
-		cursor: default;
-		font-size: calc(9rem / 11);
-	}
-
-	.board .card.editing .ops {
-		display: none;
-	}
-
-	.board .card:hover .ops {
-		opacity: 1;
-	}
-
-	.board .card .ops .teaser {
-		display: block;
-		margin-top: 2px;
-		margin-right: 1px;
-		padding-right: 3px;
-	}
-
-	.board .card .ops .teaser:before {
-		content: '\2261';
-	}
-
-	.board .card .ops .bulk {
-		display: none;
-		background: #fff;
-		border-left: none;
-		padding: 1px 0 2px 5px;
-		font-size: calc( var(--fs-cops) * 1px );
-		font-weight: 500;
-		border-left: 1px solid #ddd;
-		border-bottom: 1px solid #ddd;
-	}
-
-	.board .card .ops .bulk a {
-		padding-right: 4px;
-	}
-
-	.board .card .ops:hover .bulk {
-		display: block;
-	}
-
-	.board .card .ops:hover .teaser {
-		display: none;
-	}
-
-	/***/
-	.board .card.raw {
-		background: transparent;
-		box-shadow: none;
-		font-weight: 500;
-	}
-
-	.board .card.raw.editing {
-		background: #fff;
-	}
-
-	.board .card.raw .text {
-	}
-
-	/***/
-	.board .card.collapsed {
-		padding-bottom: 6px;
-	}
-
-	.board .card.collapsed .text,
-	.card-dragster.collapsed .text {
-		max-height: calc( var(--lh) * 1px );
-		overflow: hidden;
-		padding-bottom: 0;
-	}
-
-	.board .card.collapsed .ops {
-		opacity: 1;
-	}
-
-	.board .card.collapsed .ops .teaser {
-		padding: 1px 3px 0 1px;
-	}
-
-	.board .card.collapsed .ops .teaser:before {
-		content: '_';
-		top: 1px;
-	}
-
-	.board .card.collapsed:hover .ops .teaser:before {
-		content: '\2261';
-	}
-
-	/***/
-	.card-dragster {
-		z-index: 2;
-		position: absolute;
-		opacity: 0;
-		background: #fff;
-		white-space: pre-wrap;
-		cursor: move;
-
-		padding: 5px 25px 6px 10px;
-
-		box-shadow: 0 +1px 0 #ACB4BC inset,
-		            0 -1px 0 #ACB4BC inset,
-		            +1px 0 0 #ACB4BC inset,
-		            -1px 0 0 #ACB4BC inset,
-		            0px 1px 3px #00000030;
-	}
-
-	.card-dragster a {
-		color: #000;
 	}
 
 	/***/
@@ -747,32 +568,6 @@
 
 	.config .bulk .boards a.load-board.active:hover {
 		color: #000;
-	}
-
-	.config .bulk .boards a.load-board.dragging {
-		background: #DDE1E5;
-		border-radius: 2px;
-		color: transparent;
-		transition: none;
-		box-shadow: 0 0 1px #0002 inset;
-	}
-
-	.config .bulk .boards a.load-board.dragging.active:before {
-		content: '';
-	}
-
-	.load-dragster {
-		z-index: 10;
-		position: absolute;
-		opacity: 0;
-		line-height: calc(19 / 11);
-		padding-left: 5px;
-		background: #fff;
-		color: #000;
-		border-radius: 2px;
-		cursor: move;
-		outline: 1px solid #ACB4BC;
-		box-shadow: 0px 1px 3px #00000030;
 	}
 
 	.config .bulk a i,
@@ -1234,10 +1029,6 @@
 			outline: 1px solid #555;
 
 		}
-		.board .card .raw {
-			outline: none;
-			text-shadow: none;
-		}
 
 		.board .head .text a,
 		.board .card .text a {
@@ -1272,8 +1063,7 @@
 		color: var(--accent-pale);
 	}
 
-	.theme-dark .board .menu a.warn:hover,
-	.theme-dark .board .ops  a.warn:hover {
+	.theme-dark .board .menu a.warn:hover {
 		color: #fc5555 !important;
 		text-shadow: 0 0 1px #fc555544;
 	}
@@ -1302,71 +1092,11 @@
 		text-shadow: 0 0 4px #0008;
 	}
 
-	.theme-dark .reveal .board .head .text a,
-	.theme-dark .reveal .board .card .text a {
+	.theme-dark .board .head .text a,
+	.theme-dark .board .card .text a {
 		color: var(--accent-pale);
 	}
 
-	@keyframes whoomp-dark {
-		0%   { color: inherit; }
-		30%  { color: #fff;    }
-		100% { color: inherit; }
-	}
-
-	.theme-dark .board .head .text a:hover,
-	.theme-dark .board .card .text a:hover {
-		animation-name: whoomp-dark;
-	}
-
-
-	.theme-dark .board .card.raw {
-		background: transparent;
-		box-shadow: none;
-	}
-
-	.theme-dark .board .card.raw .text {
-		color: #e6e6f2;
-		text-shadow: 0 0 4px #0008;
-	}
-
-	.theme-dark .board .card .ops .teaser {
-		color: #b8b8d0;
-	}
-
-	.theme-dark .board .card .ops .bulk {
-		background: #12121f;
-		border-left: 1px solid #0b0b16;
-		border-bottom: 1px solid #0b0b16;
-	}
-
-	.theme-dark .board .card.raw .ops .bulk {
-		border: none;
-	}
-
-	.theme-dark .board .card .ops .bulk a {
-		color: #b8b8d0;
-	}
-
-	.theme-dark .board .card .ops .bulk a:hover {
-		color: var(--accent-pale);
-	}
-
-	/***/
-	.theme-dark .board .card.dragging,
-	.theme-dark .board .card.dragging.raw {
-	    background: #050510;
-	    outline: 1px solid #fff2;
-	}
-
-	.theme-dark .card-dragster {
-		box-shadow: 0px 1px 4px #000;
-		background: linear-gradient(#16162a, #12121f);
-		outline: 1px solid var(--accent-muted);
-	}
-
-	.theme-dark .card-dragster a {
-		color: #b8b8d0;
-	}
 
 	/***/
 	.theme-dark .wrap textarea,
@@ -1445,20 +1175,6 @@
 
 	.theme-dark .config a.switch-theme b {
 		display: none;
-	}
-
-	/***/
-	.theme-dark .config .bulk .boards .load-board.dragging,
-	.theme-dark .config .bulk .boards .load-board.active.dragging {
-		background: #fff2;
-		color: transparent;
-	}
-
-	.theme-dark .load-dragster {
-		background: #050510;
-		box-shadow: 0px 2px 4px #000;
-		outline: 1px solid var(--accent-muted);
-		color: #b8b8d0;
 	}
 
 	/*
@@ -1657,11 +1373,6 @@
 		border-bottom: none;
 	}
 
-	.history-card.raw {
-		color: #e6e6f2;
-		font-weight: 600;
-	}
-
 	/*
 	 *	XP bar: World of Warcraft classic's experience bar, recreated in CSS
 	 *	(colours read from Blizzard's own values and classic's bar texture).
@@ -1761,9 +1472,246 @@
 		display: block;
 	}
 
-	.board .list.wip-list .card.editing .wip-timer,
+	/* A Critical card waiting outside WIP and Done shows its Critical timer
+	   in the same slot, always red whatever the day's accent. */
+	.board .card.critical-waiting .text {
+		padding-right: calc(72px * var(--ui));
+	}
+
+	.board .card .wip-timer.critical:not(:empty) {
+		display: block;
+		background: rgba(222, 53, 11, 0.55);
+		border-color: #ff5630;
+		color: #ffd5cc;
+	}
+
+	/* A Recurring card waiting in Backlog shows "Next: <date>" there, in the
+	   Recurring icon's purple. */
+	.board .card.next-waiting .text {
+		padding-right: calc(92px * var(--ui));
+	}
+
+	.board .card .wip-timer.next:not(:empty) {
+		display: block;
+		background: rgba(135, 119, 217, 0.35);
+		border-color: #8777d9;
+		color: #e4e0ff;
+	}
+
+	.board .card.editing .wip-timer,
 	.board .card.editing .cm-panel {
 		display: none;
+	}
+
+	/* Edit mode's small × at the card's right edge deletes it. */
+	.board .card .card-del {
+		display: none;
+	}
+
+	.board .card.editing .card-del {
+		display: block;
+		position: absolute;
+		top: 2px;
+		right: 0;
+		width: 16px;
+		height: 18px;
+		padding: 0;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		color: #8a8aa6;
+		font: 600 calc(14px * var(--ui))/1 sans-serif;
+		cursor: pointer;
+	}
+
+	.board .card.editing .card-del:hover,
+	.board .card.editing .card-del:focus-visible {
+		color: #f2d4dc;
+		background: rgba(140, 40, 60, .45);
+		outline: none;
+	}
+
+	/* Priority icons, coloured as Jira colours them. */
+	.prio-icon { display: block; width: 100%; height: 100%; overflow: visible; }
+	.prio-critical  { color: #ff5630; }
+	.prio-medium    { color: #ff8b00; }
+	.prio-low       { color: #2684ff; }
+	.prio-recurring { color: #8777d9; }
+
+	/* A Late Card's circular arrow is red. */
+	.board .card.late .card-prio .prio-recurring { color: #ff5630; }
+
+	/* The icon at the Card's very left, level with its first line; in edit mode
+	   it's the dropdown that picks the Priority. */
+	.board .card .text,
+	.board .card .edit {
+		padding-left: calc( var(--lh) * 1px + 12px );
+	}
+
+	.board .card .card-prio {
+		position: absolute;
+		left: 4px;
+		top: 3px;
+		width: calc( var(--lh) * 1px + 4px );
+		height: calc( var(--lh) * 1px + 4px );
+		padding: 2px;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		pointer-events: none; /* a tap on it is a tap on the Card */
+	}
+
+	.board .card.editing .card-prio {
+		pointer-events: auto;
+		cursor: pointer;
+		box-shadow: 0 0 0 1px #8eaedd;
+	}
+
+	.board .card.editing .card-prio:hover,
+	.board .card.editing .card-prio:focus-visible,
+	.board .card.prio-picking .card-prio {
+		background: rgba(142, 174, 221, .3);
+		outline: none;
+	}
+
+	.theme-dark .board .card.editing .card-prio {
+		box-shadow: 0 0 0 1px var(--accent-muted);
+	}
+
+	.theme-dark .board .card.editing .card-prio:hover,
+	.theme-dark .board .card.editing .card-prio:focus-visible,
+	.theme-dark .board .card.prio-picking .card-prio {
+		background: rgba(var(--accent-rgb), .35);
+	}
+
+	/* The dropdown's choices: a row of the four icons, opening beside it. */
+	.board .card .prio-pick {
+		display: none;
+	}
+
+	.board .card.editing.prio-picking .prio-pick {
+		display: flex;
+		position: absolute;
+		z-index: 6;
+		left: calc( var(--lh) * 1px + 10px );
+		top: 1px;
+		gap: 2px;
+		padding: 2px;
+		border-radius: 4px;
+		background: #fff;
+		box-shadow: 0 1px 4px #0006, 0 0 1px #0004;
+	}
+
+	.theme-dark .board .card.editing.prio-picking .prio-pick {
+		background: #1c1c30;
+		box-shadow: 0 2px 8px #000c, 0 0 0 1px var(--accent-muted);
+	}
+
+	.board .card .prio-pick button {
+		width: calc( var(--lh) * 1px + 6px );
+		height: calc( var(--lh) * 1px + 6px );
+		padding: 3px;
+		margin: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.board .card .prio-pick button:hover,
+	.board .card .prio-pick button:focus-visible {
+		background: rgba(142, 174, 221, .3);
+		outline: none;
+	}
+
+	.theme-dark .board .card .prio-pick button:hover,
+	.theme-dark .board .card .prio-pick button:focus-visible {
+		background: rgba(var(--accent-rgb), .35);
+	}
+
+	.board .card .prio-pick button[aria-checked=true] {
+		box-shadow: 0 0 0 1px #8eaedd inset;
+	}
+
+	.theme-dark .board .card .prio-pick button[aria-checked=true] {
+		box-shadow: 0 0 0 1px var(--accent-hi) inset;
+	}
+
+	/* Edit mode's Schedule line under a Recurring Card's text:
+	   "Every [N] [days / weeks / months] starting [date]". */
+	.board .card .card-schedule {
+		display: none;
+	}
+
+	.board .card.editing.sched-on .card-schedule {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 5px;
+		padding: 4px 10px 0 calc( var(--lh) * 1px + 12px );
+		margin-right: 15px;
+		font-size: calc(12px * var(--ui));
+		color: #555;
+		cursor: default;
+	}
+
+	.board .card .card-schedule input,
+	.board .card .card-schedule select {
+		font: inherit;
+		color: inherit;
+		height: calc(20px * var(--ui));
+		padding: 0 3px;
+		margin: 0;
+		border: 1px solid #8eaedd;
+		border-radius: 3px;
+		background: #fff;
+		box-sizing: border-box;
+	}
+
+	.board .card .card-schedule .sched-every {
+		width: calc(42px * var(--ui));
+	}
+
+	.theme-dark .board .card.editing.sched-on .card-schedule {
+		color: #a0a0bc;
+	}
+
+	.theme-dark .board .card .card-schedule input,
+	.theme-dark .board .card .card-schedule select {
+		background: #1c1c30;
+		border-color: var(--accent-muted);
+		color: #e6e6f2;
+		color-scheme: dark;
+	}
+
+	.board .card .card-schedule input:focus,
+	.board .card .card-schedule select:focus {
+		outline: 1px solid #8eaedd;
+	}
+
+	.theme-dark .board .card .card-schedule input:focus,
+	.theme-dark .board .card .card-schedule select:focus {
+		outline: 1px solid var(--accent-hi);
+	}
+
+	/* History shows the icon before each Card's text too. */
+	.history-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
+	}
+
+	.history-card .history-prio {
+		flex: none;
+		width: 14px;
+		height: 14px;
+		margin-top: 2px;
+	}
+
+	.history-card .history-text {
+		min-width: 0;
 	}
 
 	/* A list named "done", in any case, strikes through its cards. */
@@ -1887,17 +1835,15 @@
 		</div>
 
 		<div class=card>
-			<div class=ops>
-				<a href=# class=teaser></a>
-				<div class=bulk>
-					<a href=# class='del-card warn'>X</a>
-					<a href=# class='raw-card'>R</a>
-					<a href=# class='collapse'>_</a>
-				</div>
-			</div>
+			<button type=button class=card-prio aria-haspopup=true></button>
+			<div class=prio-pick role=radiogroup aria-label=Priority></div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
+			<div class=card-schedule>Every <input type=number class=sched-every min=1 step=1 aria-label="Every how many">
+				<select class=sched-unit aria-label="Days, weeks or months"><option value=days>days</option><option value=weeks>weeks</option><option value=months>months</option></select>
+				starting <input type=date class=sched-start aria-label="Starting"></div>
 			<span class=wip-timer></span>
+			<button type=button class=card-del aria-label="Delete Card">&times;</button>
 		</div>
 
 		<a href=# class=load-board></a>
@@ -1947,6 +1893,9 @@
 
 <script src="extras/jquery-3.6.0.min.js"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
+<script src="js/priority.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/recurring.js"></script>
 
 <script type="text/javascript">
 
@@ -2869,8 +2818,6 @@
 	function Card(text)
 	{
 		this.text = text;
-		this.raw  = false;
-		this.min  = false;
 	}
 
 	function List(title)
@@ -2900,340 +2847,6 @@
 			var x = new List(title);
 			this.lists.push(x);
 			return x;
-		}
-	}
-
-</script>
-
-<script type="text/javascript">
-
-	function Drag2()
-	{
-		// config
-		this.listSel    = null;
-		this.itemSel    = null;
-		this.dragster   = null;
-		this.onDragging = function(started) { }
-		this.swapAnimMs = 200;
-
-		// state
-		this.item    = null;
-		this.priming = null;
-		this.primeXY = { x: 0, y: 0 };
-		this.$drag   = null;
-		this.mouseEv = null;
-		this.delta   = { x: 0, y: 0 };
-		this.inSwap  = 0;
-
-		// api
-		this.prime = function(item, ev)
-		{
-			var self = this;
-
-			this.item = item;
-			this.priming = setTimeout(function(){ self.onPrimed.call(self); }, ev.altKey ? 1 : 500);
-			this.primeXY = { x: ev.clientX, y: ev.clientY };
-			this.mouseEv = ev;
-		}
-
-		this.cancelPriming = function()
-		{
-			if (! this.item || ! this.priming)
-				return;
-
-			clearTimeout(this.priming);
-			this.priming = null;
-			this.item = null;
-		}
-
-		this.end = function()
-		{
-			this.cancelPriming();
-			this.stopDragging();
-		}
-
-		this.isActive = function()
-		{
-			return this.item && (this.priming == null);
-		}
-
-		this.onPrimed = function()
-		{
-			clearTimeout(this.priming);
-			this.priming = null;
-
-			removeTextSelection();
-
-			var $item = $(this.item);
-			$item.addClass('dragging');
-
-			$('body').append('<div class=' + this.dragster + '></div>');
-			var $drag = $('body .' + this.dragster).last();
-
-			$drag.outerWidth ( $item.outerWidth()  );
-			$drag.outerHeight( $item.outerHeight() );
-
-			this.$drag = $drag;
-
-			if (this.onDragging)
-				this.onDragging.call(this, true); // started
-
-			var $win = $(window);
-			var scroll_x = $win.scrollLeft();
-			var scroll_y = $win.scrollTop();
-
-			var pos = $item.offset();
-			this.delta.x = pos.left - this.mouseEv.clientX - scroll_x;
-			this.delta.y = pos.top  - this.mouseEv.clientY - scroll_y;
-
-			this.adjustDrag();
-
-			$drag.css({ opacity: 1 });
-
-			$('body').addClass('dragging');
-		}
-
-		this.adjustDrag = function()
-		{
-			if (! this.$drag)
-				return;
-
-			var drag = this;
-			var $drag = this.$drag;
-
-			var $win = $(window);
-			var scroll_x = $win.scrollLeft();
-			var scroll_y = $win.scrollTop();
-
-			var drag_x = drag.mouseEv.clientX + drag.delta.x + scroll_x;
-			var drag_y = drag.mouseEv.clientY + drag.delta.y + scroll_y;
-
-			$drag.offset({ left: drag_x, top: drag_y });
-
-			if (drag.inSwap)
-				return;
-
-			/*
-			 *	see if a swap is in order
-			 */
-			var pos = $drag.offset();
-			var x = pos.left + $drag.width()/2 - $win.scrollLeft();
-			var y = pos.top + $drag.height()/2 - $win.scrollTop();
-
-			var targetList = null;
-			var targetItem = null;  // if over some item
-			var before = false;     // if should go before targetItem
-
-			var $target;
-
-			$(this.listSel).each(function(){
-
-				var list = this;
-				var rcList = list.getBoundingClientRect();
-				var yTop, itemTop = null;
-				var yBottom, itemBottom = null;
-
-				if (x <= rcList.left || rcList.right <= x)
-					return;
-
-				$(list).find(drag.itemSel).each(function(){
-					var rcItem = this.getBoundingClientRect();
-
-					if (! itemTop || rcItem.top < yTop)
-					{
-						itemTop = this;
-						yTop = rcItem.top;
-					}
-
-					if (! itemBottom || yBottom < rcItem.bottom)
-					{
-						itemBottom = this;
-						yBottom = rcItem.bottom;
-					}
-
-					if (y <= rcItem.top || rcItem.bottom <= y)
-						return;
-
-					if (this == drag.item)
-						return;
-
-					targetList = list;
-					targetItem = this;
-					before = (y < (rcItem.top + rcItem.bottom)/2);
-				});
-
-				if (y < rcList.top)
-				{
-					targetList = list;
-					targetItem = itemTop;
-					before = true;
-				}
-				else
-				if (y >= rcList.bottom)
-				{
-					targetList = list;
-					targetItem = itemBottom;
-					before = false;
-				}
-
-			});
-
-			if (! targetList)
-				return;
-
-			if (targetItem)
-			{
-				if (targetItem == drag.item)
-					return;
-
-				$target = $(targetItem);
-
-				if (! before && $target.next()[0] == drag.item ||
-				      before && $target.prev()[0] == drag.item)
-					return;
-			}
-
-			/*
-			 *	swap 'em
-			 */
-			var have = drag.item;
-			var $have = $(have);
-			var $want = $have.clone();
-			if ($have.data('meta')) // the card's WIP start and XP, as its own copy
-				$want.data('meta', Object.assign({}, $have.data('meta')));
-
-			$want.css({ display: 'none' });
-
-			if (targetItem)
-			{
-				if (before)
-				{
-					$want.insertBefore($target);
-					$want = $target.prev();
-				}
-				else
-				{
-					$want.insertAfter($target);
-					$want = $target.next();
-				}
-			}
-			else
-			{
-				var $list = $(targetList);
-				$want = $list.append($want).find(drag.itemSel)
-			}
-
-			drag.item = $want[0];
-			$have.addClass('swap-out'); // on its way out; saves must skip it while it animates away
-
-			if (! drag.swapAnimMs)
-			{
-				$have.remove();
-				$want.show();
-				return;
-			}
-
-			/*
-			 *	see if it's a same-list move
-			 */
-			if (targetList == have.parentNode)
-			{
-				var delta = $have.offset().top - $target.offset().top;
-
-				var d_bulk = 0;
-				var d_have = 0;
-				var $bulk = $();
-
-				if (delta < 0) // item is moving down
-				{
-					for (var $i = $have.next(); $i.length && $i[0] != $want[0]; $i = $i.next())
-						$bulk = $bulk.add($i);
-				}
-				else
-				{
-					for (var $i = $want.next(); $i.length && $i[0] != $have[0]; $i = $i.next())
-						$bulk = $bulk.add($i);
-				}
-
-				d_bulk = $have.outerHeight(true);
-				d_have = $bulk.last().offset().top + $bulk.last().outerHeight(true) - $bulk.first().offset().top;
-
-				if (delta < 0) d_bulk = -d_bulk;
-				else           d_have = -d_have;
-
-				$have.parent().css({ position: 'relative' });
-				$have.css({ position: 'relative', 'z-index': 0 });
-				$bulk.css({ position: 'relative', 'z-index': 1 });
-
-				drag.inSwap = 1 + $bulk.length;
-
-				$have.animate({ top: d_have }, drag.swapAnimMs, function(){ if (! --drag.inSwap) swapCleanUp(); });
-				$bulk.animate({ top: d_bulk }, drag.swapAnimMs, function(){ if (! --drag.inSwap) swapCleanUp(); });
-
-				function swapCleanUp()
-				{
-					$have.parent().css({ position: '' });
-
-					$have.remove();
-					$want.show();
-					$bulk.css({ position: '', 'z-index': '', top: '' });
-
-					drag.adjustDrag();
-				}
-			}
-			else
-			{
-				drag.inSwap = 1;
-
-				$want.slideDown(drag.swapAnimMs);
-
-				$have.slideUp(drag.swapAnimMs, function() {
-					$have.remove();
-					drag.inSwap = 0;
-					drag.adjustDrag();
-				});
-			}
-		}
-
-		this.onMouseMove = function(ev)
-		{
-			this.mouseEv = ev;
-
-			if (! this.item)
-				return;
-
-			if (this.priming)
-			{
-				var x = ev.clientX - this.primeXY.x;
-				var y = ev.clientY - this.primeXY.y;
-				if (x*x + y*y > 5*5)
-					this.onPrimed();
-			}
-			else
-			{
-				this.adjustDrag();
-			}
-		}
-
-		this.stopDragging = function()
-		{
-			var $item = $(this.item);
-
-			$item.removeClass('dragging');
-			$('body').removeClass('dragging');
-
-			if (this.$drag)
-			{
-				this.$drag.remove();
-				this.$drag = null;
-
-				removeTextSelection();
-
-				if (this.onDragging)
-					this.onDragging.call(this, false); // stopped
-			}
-
-			this.item = null;
 		}
 	}
 
@@ -3322,6 +2935,7 @@
 
 		$card.find('.text').html('');
 		$card.addClass('brand-new');
+		setPriority($card, 'low');
 
 		if ($before && $before.length)
 		{
@@ -3352,14 +2966,6 @@
 			$card.remove();
 			saveBoard();
 		});
-	}
-
-	function cardLocation($item)
-	{
-		var loc = 0;
-		for (var $p = $item.closest('.card'); $p.length; $p = $p.prev(), loc += 1);
-		for (var $p = $item.closest('.list'); $p.length; $p = $p.prev(), loc += 10000);
-		return loc;
 	}
 
 	//
@@ -3402,14 +3008,67 @@
 		setupListScrolling();
 	}
 
-	function isDoneTitle(title)
+	// The Lists with special meaning are known by name, ignoring case and
+	// surrounding spaces.
+	function titleIs(title, names)
 	{
-		return (title || '').trim().toLowerCase() == 'done';
+		return names.indexOf((title || '').trim().toLowerCase()) >= 0;
 	}
 
-	function isWipTitle(title)
+	function isDoneTitle(title)    { return titleIs(title, ['done']); }
+	function isWipTitle(title)     { return titleIs(title, ['wip']); }
+	function isBacklogTitle(title) { return titleIs(title, ['backlog']); }
+	function isTodoTitle(title)    { return titleIs(title, ['to-do', 'todo', 'to do']); }
+
+	// The first List whose title passes `test`, if any.
+	function listTitled(test)
 	{
-		return (title || '').trim().toLowerCase() == 'wip';
+		return $('.wrap .board .list').filter(function(){ return test(getText($(this).find('.head .text'))); }).first();
+	}
+
+	// Where a Recurring Card waits for its Due date: the List named Backlog,
+	// or the first List if there's none.
+	function backlogList()
+	{
+		var $b = listTitled(isBacklogTitle);
+		return $b.length ? $b : $('.wrap .board .list').first();
+	}
+
+	// A Recurring Card finished on `day` goes back to wait for its next Due
+	// date (see js/recurring.js). Due today, it goes straight to To-Do, if
+	// there is one; otherwise to Backlog. Call before saving.
+	function returnRecurring($card, day)
+	{
+		var m = cardMeta($card), $todo = todoList();
+		m.due = Recurring.nextDue(m, day);
+		moveCardTo($card, m.due <= Schedule.today() && $todo.length ? $todo : backlogList());
+	}
+
+	// The List named To-Do, if there is one that isn't also where Recurring
+	// Cards wait (see backlogList).
+	function todoList()
+	{
+		var $todo = listTitled(isTodoTitle);
+		return $todo[0] == backlogList()[0] ? $() : $todo;
+	}
+
+	// Recurring Cards in Backlog whose Due date has come move on to To-Do, if
+	// there is one, unless they arrived on or after it (see js/recurring.js).
+	// A Card moved out of Backlog early is left where it is. Saves if any moved.
+	function moveDueToTodo()
+	{
+		var $todo = todoList(), today = Schedule.today();
+		if (! $todo.length)
+			return;
+
+		var $due = backlogList().find('.card').filter(function(){
+			return Recurring.movesOn(cardMeta($(this)), today);
+		});
+		if (! $due.length)
+			return;
+
+		$due.each(function(){ moveCardTo($(this), $todo); });
+		saveBoard();
 	}
 
 	function markLists()
@@ -3422,7 +3081,52 @@
 	}
 
 	/*
-	 *	Per-card state beyond text/raw/min (e.g. wip: when it entered WIP)
+	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
+	 *	then first in, first out by Arrival, when the Card entered its List.
+	 *	Late Cards (see js/recurring.js) go above them all. Done ignores
+	 *	Priority, so it reads as the day in order; a Card in Done is never Late.
+	 */
+	function cardOrder(done)
+	{
+		var today = Schedule.today();
+		var tier = function(m){ return Recurring.isLate(m, today) ? -1 : Priority.LEVELS.indexOf(Priority.of(m)); };
+		return function(a, b){
+			return (done ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
+		};
+	}
+
+	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
+	// them in increasing order down their List, so its order is kept.
+	function orderBoard(board)
+	{
+		board.lists.forEach(function(list){
+			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+			var last = 0;
+			list.notes.forEach(function(n){
+				if (typeof n.arrival != 'number') n.arrival = last + 1;
+				last = n.arrival;
+			});
+			list.notes.sort( cardOrder(isDoneTitle(list.title)) );
+		});
+	}
+
+	// Puts each List's Cards on screen in order, moving only the ones out of place.
+	function orderCards()
+	{
+		$('.wrap .board .list').each(function(){
+			var $cards = $(this).find('.cards');
+			var order = cardOrder( $(this).hasClass('done-list') );
+			var cards = $cards.children('.card').get();
+			var want = cards.slice().sort(function(a, b){ return order(cardMeta($(a)), cardMeta($(b))); });
+			want.forEach(function(card, i){
+				var at = $cards.children('.card')[i];
+				if (at !== card) $cards[0].insertBefore(card, at);
+			});
+		});
+	}
+
+	/*
+	 *	Per-card state beyond text (e.g. wip: when it entered WIP)
 	 *	rides on the card element as .data('meta') and is saved as extra
 	 *	fields on the card.
 	 */
@@ -3433,9 +3137,66 @@
 		return m;
 	}
 
+	// The Card's Priority icon at its left edge; in edit mode it's the dropdown that changes it.
+	function showPriority($card, p)
+	{
+		var badge = Priority.badge(p || cardMeta($card).priority);
+		$card.find('.card-prio').html(badge.icon).attr(badge.attrs);
+	}
+
+	// Changes a Card's Priority; call before saving. That counts as a new
+	// Arrival, so it joins the back of its new tier.
+	// Only a Recurring Card has a Schedule and Due date.
+	function setPriority($card, p)
+	{
+		var m = cardMeta($card);
+		m.priority = Priority.of({ priority: p });
+		if (! Priority.isRecurring(m)) { delete m.schedule; delete m.due; }
+		showPriority($card);
+		cardArrived($card);
+	}
+
+	// Gives a Recurring Card its Schedule (see js/schedule.js), and its Due
+	// date the first Schedule date on or after today. Call before saving.
+	function setSchedule($card, schedule)
+	{
+		var m = cardMeta($card);
+		m.schedule = schedule;
+		m.due = Schedule.firstDue(schedule);
+	}
+
+	// A Card just saved as Recurring (new, or changed to it) waits in Backlog
+	// unless it's due today. One in Done stays, keeping its XP, and goes back
+	// to wait at the next Auto-submit. Call before saving.
+	function sendToBacklogUnlessDue($card)
+	{
+		var $from = $card.closest('.list'), $to = backlogList();
+		if (cardMeta($card).due <= Schedule.today() || $from.hasClass('done-list') || $from[0] == $to[0])
+			return;
+		moveCardTo($card, $to);
+	}
+
+	// Puts a Card at the end of another List as a fresh Arrival, its Critical
+	// timer starting over. Call before saving.
+	function moveCardTo($card, $list)
+	{
+		$list.find('.cards').append($card);
+		cardArrived($card);
+		restartCriticalTimer($card);
+	}
+
+	// A Card just entered its List (or changed Priority), so it goes to the
+	// bottom of its tier once saved. Call before saving.
+	function cardArrived($card)
+	{
+		cardMeta($card).arrival = Date.now();
+	}
+
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
 	// A card that isn't in Done (any more) holds no XP.
+	// A Critical card outside WIP and Done is waiting, and its Critical timer
+	// counts from criticalSince; any other card has none.
 	function trackCards()
 	{
 		var now = Date.now();
@@ -3443,16 +3204,19 @@
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
-			$(this).find('.card').not('.swap-out').each(function(){
+			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
+				var waiting = ! wip && ! done && Priority.isCritical(m);
+				if (waiting && ! m.criticalSince) { m.criticalSince = now; }
+				if (! waiting) { delete m.criticalSince; }
 			});
 		});
 	}
 
-	// A card was just moved (dragged, for now); call before saving. One that
+	// A card was just moved to another list; call before saving. One that
 	// arrived in Done from another list earns its XP and gets celebrated.
 	function cardMoved($card, fromDone)
 	{
@@ -3463,6 +3227,13 @@
 		if (window.Celebrate) Celebrate.done($card[0], xp);
 	}
 
+	// A card just moved into another list waits afresh: its Critical timer
+	// (if it's Critical and not in WIP or Done) starts over from 0 on saving.
+	function restartCriticalTimer($card)
+	{
+		delete cardMeta($card).criticalSince;
+	}
+
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
 	function formatTimer(ms)
 	{
@@ -3471,14 +3242,43 @@
 		return (h ? h + 'h ' : '') + m + 'm ' + (s % 60) + 's';
 	}
 
-	// Recomputed from the timestamp each tick, so a sleeping laptop is right on waking.
-	function tickWipTimers()
+	// One timer slot per card: the WIP timer in WIP, the red Critical timer
+	// while a Critical card waits elsewhere, otherwise none. Recomputed from
+	// the stored start each tick, so a sleeping laptop is right on waking.
+	// A Recurring Card waiting in Backlog for a later Due date shows
+	// "Next: <date>" there instead. A Late Card (red icon) shows the red
+	// Critical timer from the end of its Due date, or the WIP timer in WIP.
+	// A Card that has just turned Late moves up its List.
+	var lateUnsorted = false;
+
+	function tickTimers()
 	{
-		var now = Date.now();
-		$('.wrap .board .list.wip-list .card').each(function(){
-			var m = cardMeta($(this));
-			$(this).find('.wip-timer').text(m.wip ? formatTimer(now - m.wip) : '');
+		var now = Date.now(), today = Schedule.today(), backlog = backlogList()[0];
+		$('.wrap .board .list').each(function(){
+			var wip  = $(this).hasClass('wip-list');
+			var done = $(this).hasClass('done-list');
+			var inBacklog = this == backlog;
+			$(this).find('.card').each(function(){
+				var m = cardMeta($(this));
+				var late = ! done && Recurring.isLate(m, today);
+				var critical = ! wip && ! done && (late || Priority.isCritical(m) && !! m.criticalSince);
+				var waitsForDue = inBacklog && ! wip && ! done && Priority.isRecurring(m) && !! m.due && m.due > today;
+				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
+				if ($(this).hasClass('late') != late) lateUnsorted = true;
+				$(this).toggleClass('late', late)
+				       .toggleClass('critical-waiting', critical)
+				       .toggleClass('next-waiting', waitsForDue)
+				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', waitsForDue)
+				       .text(since ? formatTimer(now - since) : waitsForDue ? 'Next: ' + Schedule.label(m.due) : '');
+			});
 		});
+
+		// Not while editing: moving the Card being edited would end the edit.
+		if (lateUnsorted && ! $('.wrap .board .editing').length)
+		{
+			lateUnsorted = false;
+			orderCards();
+		}
 	}
 
 	function clearList($list, sure)
@@ -3594,6 +3394,7 @@
 	{
 		markLists();
 		trackCards();
+		orderCards();
 
 		var $board = $('.wrap .board');
 		var board = Object.assign(new Board(), NB.board); // id, revision & title
@@ -3604,11 +3405,9 @@
 			var $list = $(this);
 			var l = board.addList( getText($list.find('.head .text')) );
 
-			$list.find('.card').not('.swap-out').each(function(){
+			$list.find('.card').each(function(){
 				var $card = $(this)
 				var n = l.addCard( getText($card.find('.text')) );
-				n.raw = $card.hasClass('raw');
-				n.min = $card.hasClass('collapsed');
 				Object.assign(n, cardMeta($card));
 			});
 		});
@@ -3620,7 +3419,7 @@
 		updateUndoRedo();
 		updateBoardIndex();
 		markLists();
-		tickWipTimers();
+		tickTimers();
 		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged();
@@ -3693,6 +3492,8 @@
 		$b[0].board_id = board.id;
 		setText( $b.find('.head .text'), board.title );
 
+		orderBoard(board); // undo, redo, sync and imports all land here
+
 		board.lists.forEach(function(list){
 
 			var $l = $ldiv.clone();
@@ -3704,11 +3505,12 @@
 			list.notes.forEach(function(n){
 				var $n = $cdiv.clone();
 				setText( $n.find('.text'), n.text );
-				if (n.raw) $n.addClass('raw');
-				if (n.min) $n.addClass('collapsed');
 				var meta = Object.assign({}, n);
-				delete meta.text; delete meta.raw; delete meta.min;
+				delete meta.text;
+				delete meta.raw; delete meta.min; // Nullboard's raw and collapsed looks are gone; the next save drops them
+				meta.priority = Priority.of(meta); // Cards from before Priorities are Low
 				$n.data('meta', meta);
+				showPriority($n);
 				$l_cards.append($n);
 			});
 
@@ -3728,7 +3530,7 @@
 		updateBoardIndex();
 		setupListScrolling();
 		markLists();
-		tickWipTimers();
+		tickTimers();
 		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
@@ -4288,12 +4090,6 @@
 		return $text.attr('_text');
 	}
 
-	function removeTextSelection()
-	{
-		if (window.getSelection) { window.getSelection().removeAllRanges(); }
-		else if (document.selection) { document.selection.empty(); }
-	}
-
 	function shakeControl($x)
 	{
 		$x
@@ -4316,43 +4112,70 @@
 		var $card = $text.parent();
 		var $edit = $card.find('.edit');
 
-		$card[0]._collapsed = $card.hasClass('collapsed');
-		$card.removeClass('collapsed');
-
 		$edit.val( getText($text) );
 		$edit.width( $text.width() );
 
 		$edit.height( $text.height() );
 		$card.addClass('editing');
 
+		if ($card.hasClass('card'))
+			showScheduleLine($card, Priority.of(cardMeta($card)));
+
 		$edit.focus();
 	}
 
-	function stopEditing($edit, via_escape, via_xclick)
+	// Edit mode's Schedule line, "Every [N] [unit] starting [date]", shown
+	// while the picked Priority is Recurring. It starts from the Card's
+	// Schedule, or every 1 week from today.
+	function showScheduleLine($card, p)
+	{
+		var on = Priority.isRecurring({ priority: p });
+		var $line = $card.find('.card-schedule');
+		if (! on && $line[0].contains(document.activeElement))
+			$card.children('.edit').focus(); // before hiding it, so hiding doesn't end editing
+		if (on && ! $card.hasClass('sched-on'))
+		{
+			var s = cardMeta($card).schedule || Schedule.make(1, 'weeks', Schedule.today());
+			$card.find('.sched-every').val(s.every);
+			$card.find('.sched-unit').val(s.unit);
+			$card.find('.sched-start').val(s.start);
+		}
+		$card.toggleClass('sched-on', on);
+	}
+
+	// The Schedule as filled in on the line.
+	function scheduleLine($card)
+	{
+		return Schedule.make($card.find('.sched-every').val(), $card.find('.sched-unit').val(), $card.find('.sched-start').val());
+	}
+
+	// Leaving edit mode saves; there's no cancel, and the menu's Undo takes it back.
+	function stopEditing($edit, via_xclick)
 	{
 		var $item = $edit.parent();
 		if (! $item.hasClass('editing'))
 			return;
 
-		$item.removeClass('editing');
-		if ($item[0]._collapsed)
-			$item.addClass('collapsed')
+		var sched_on = $item.hasClass('sched-on');
+		$item.removeClass('editing prio-picking sched-on');
 
 		//
 		var $text = $item.find('.text');
 		var text_now = $edit.val().trimRight();
 		var text_was = getText( $text );
 
+		// a Card's Priority, as picked in the dropdown, saves with its text
+		var prio_now = $item.data('prioEdit');
+		$item.removeData('prioEdit');
+		var prio_changed = $item.hasClass('card') && prio_now && prio_now != Priority.of(cardMeta($item));
+
+		// and so does a Recurring Card's Schedule
+		var sched_now = sched_on ? scheduleLine($item) : null;
+		var sched_changed = sched_now && JSON.stringify(sched_now) != JSON.stringify(cardMeta($item).schedule);
+
 		//
 		var brand_new = $item.hasClass('brand-new');
 		$item.removeClass('brand-new');
-
-		if (via_escape)
-		{
-			if (brand_new)
-				$item.closest('.card, .list, .board').remove();
-			return;
-		}
 
 		if (via_xclick && brand_new && !text_now.length)
 		{
@@ -4360,9 +4183,19 @@
 			return;
 		}
 
-		if (text_now != text_was || brand_new)
+		if (text_now != text_was || brand_new || prio_changed || sched_changed)
 		{
 			setText( $text, text_now );
+
+			if (prio_changed)
+				setPriority($item, prio_now);
+
+			if (sched_now && (sched_changed || prio_changed || brand_new))
+				setSchedule($item, sched_now);
+
+			// saved as Recurring, new or changed to it; an edited Schedule alone doesn't move it
+			if (sched_now && (prio_changed || brand_new))
+				sendToBacklogUnlessDue($item);
 
 			if ($item.parent().hasClass('board'))
 				NB.board.title = text_now;
@@ -4374,38 +4207,6 @@
 		//
 		if (brand_new && $item.hasClass('list'))
 			addCard($item);
-	}
-
-	function handleTab(ev)
-	{
-		var $this = $(this);
-		var $card = $this.closest('.card');
-		var $sibl = ev.shiftKey ? $card.prev() : $card.next();
-
-		if ($sibl.length)
-		{
-			stopEditing($this, false, false);
-			startEditing($sibl.find('.text'));
-		}
-	}
-
-	//
-	function setRevealState(ev)
-	{
-		var raw = ev.originalEvent;
-		var do_reveal = raw.getModifierState && (raw.getModifierState( 'CapsLock' ) || raw.getModifierState( 'Control' ));
-
-		if (do_reveal) $('body').addClass('reveal');
-		else           $('body').removeClass('reveal');
-	}
-
-	//
-	function showDing()
-	{
-		$('body')
-		.addClass('ding')
-		.delay(250)
-		.queue(function(){ $(this).removeClass('ding').dequeue(); });
 	}
 
 	/*
@@ -4566,49 +4367,6 @@
 	}
 
 	/*
-	 *	dragsters
-	 */
-	function initDragAndDrop()
-	{
-		NB.cardDrag = new Drag2();
-		NB.cardDrag.listSel = '.board .list .cards';
-		NB.cardDrag.itemSel = '.card';
-		NB.cardDrag.dragster = 'card-dragster';
-		NB.cardDrag.onDragging = function(started)
-		{
-			var drag = this;
-			var $card = $(drag.item);
-
-			if (started)
-			{
-				var $drag = drag.$drag;
-
-				if ($card.hasClass('collapsed'))
-					$drag.addClass('collapsed');
-
-				$drag.html('<div class=text></div>');
-				$drag.find('.text').html( $card.find('.text').html() );
-
-				drag.org_loc = cardLocation($card);
-				drag.from_done = $card.closest('.list').hasClass('done-list');
-				$card.removeClass('cm-open cm-moving'); // the card menu closes for the drag
-				if ($card.hasClass('collapsed'))
-					drag.$drag.addClass('collapsed');
-			}
-			else
-			{
-				$card[0].cmDragEnd = Date.now(); // see cardmenu.js
-
-				if (this.org_loc != cardLocation($card))
-				{
-					cardMoved($card, this.from_done);
-					saveBoard();
-				}
-			}
-		}
-	}
-
-	/*
 	 *	font size prefs (the font itself is fixed: gym-tracker's system stack)
 	 */
 	/*
@@ -4625,7 +4383,7 @@
 		var ui = Math.max(1, Math.min(2, screen.height / 1080));
 		var $html = $('html');
 
-		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-cops': (8 * ui).toFixed(2) });
+		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2) });
 		if (! $html.hasClass('fs-set'))
 			$html.css('--fs', (11 * ui).toFixed(2));
 
@@ -4775,47 +4533,7 @@
 	/*
 	 *	event handlers
 	 */
-	$(window).on('blur', function(){
-		$('body').removeClass('reveal');
-	});
-
-	$(document).on('keydown', function(ev){
-		setRevealState(ev);
-	});
-
-	$(document).on('keyup', function(ev){
-
-		var raw = ev.originalEvent;
-
-		setRevealState(ev);
-
-		if (ev.target.nodeName == 'TEXTAREA' ||
-		    ev.target.nodeName == 'INPUT')
-			return;
-
-		if (ev.ctrlKey && (raw.code == 'KeyZ'))
-		{
-			var ok = ev.shiftKey ? redoBoard() : undoBoard();
-			if (! ok)
-				showDing();
-		}
-		else
-		if (ev.ctrlKey && (raw.code == 'KeyY'))
-		{
-			if (! redoBoard())
-				showDing();
-		}
-	});
-
 	$('.wrap').on('click', '.board .text', function(ev){
-
-		if (this.was_dragged)
-		{
-			this.was_dragged = false;
-			return false;
-		}
-
-		NB.cardDrag.cancelPriming();
 
 		if ($(this).closest('.card').length) // cards: a click opens the card menu, whose Edit edits
 			return;
@@ -4824,136 +4542,48 @@
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .card .text a', function(ev){
-
-		if (! $('body').hasClass('reveal'))
-			return true;
-
+	// A link opens in a new tab, rather than opening the card menu or editing a title.
+	$('.wrap').on('click', '.board .text a', function(ev){
 		ev.stopPropagation();
 		return true;
 	});
 
 	//
+	// Enter, on its own, finishes a List or board title; in a Card it's a new line.
 	$('.wrap').on('keydown', '.board .edit', function(ev){
 
-		var $this = $(this);
-		var $card = $this.closest('.card');
-		var $list = $this.closest('.list');
-
-		var isCard = $card.length > 0;
-		var isList = $list.length > 0;
-
-		// esc
-		if (ev.keyCode == 27)
+		var plain = ! (ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey);
+		if (ev.keyCode == 13 && plain && ! $(this).closest('.card').length)
 		{
-			stopEditing($this, true, false);
-			return false;
-		}
-
-		// tab
-		if (ev.keyCode == 9)
-		{
-			handleTab.call(this, ev);
-			return false;
-		}
-
-		// done
-		if (ev.keyCode == 13 && ev.altKey ||
-		    ev.keyCode == 13 && ev.shiftKey && ! ev.ctrlKey)
-		{
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + (add after / add before)
-		if (ev.keyCode == 13 && ev.ctrlKey)
-		{
-			stopEditing($this, false, false);
-
-			if (isCard)
-			{
-				if (ev.shiftKey) // ctrl-shift-enter
-					addCard($list, null, $card);
-				else
-					addCard($list, $card);
-			}
-			else
-			if (isList)
-			{
-				$card = $list.find('.card').last();
-				addCard($list, $card);
-			}
-			else
-			{
-				addList();
-			}
-
-			return false;
-		}
-
-		// done on Enter if editing board or list title
-		if (ev.keyCode == 13 && ! isCard)
-		{
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + collapse
-		if (isCard && ev.altKey && ev.key == 'ArrowUp')
-		{
-			var $item = $this.parent();
-			$item[0]._collapsed = true;
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + expand
-		if (isCard && ev.altKey && ev.key == 'ArrowDown')
-		{
-			var $item = $this.parent();
-			$item[0]._collapsed = false;
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + toggle 'raw'
-		if (isCard && ev.altKey && ev.keyCode == 82)
-		{
-			$this.parent().toggleClass('raw');
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// ctrl-shift-8
-		if (isCard && ev.key == '*' && ev.ctrlKey)
-		{
-			var have = this.value;
-			var pos  = this.selectionStart;
-			var want = have.substr(0, pos) + '\u2022 ' + have.substr(this.selectionEnd);
-			$this.val(want);
-			this.selectionStart = this.selectionEnd = pos + 2;
-			return false;
-		}
-
-		return true;
-	});
-
-	$('.wrap').on('keypress', '.board .edit', function(ev){
-
-		// tab
-		if (ev.keyCode == 9)
-		{
-			handleTab.call(this, ev);
+			stopEditing($(this), false);
 			return false;
 		}
 	});
 
 	//
-	$('.wrap').on('blur', '.board .edit', function(ev){
+	// Clicking away ends editing. In a Card that means leaving the whole Card,
+	// so its Schedule line's inputs can take the focus without ending it.
+	$('.wrap').on('focusout', '.board .head .edit', function(ev){
 		if (document.activeElement != this)
-			stopEditing($(this), false, true);
+			stopEditing($(this), true);
 		else
 			; // switch away from the browser window
+	});
+
+	$('.wrap').on('focusout', '.board .card.editing', function(ev){
+		if (this.contains(document.activeElement))
+			return; // switch away from the browser window
+
+		if (ev.relatedTarget && this.contains(ev.relatedTarget))
+			return; // e.g. into the Schedule line
+
+		stopEditing($(this).children('.edit'), true);
+	});
+
+	// The Schedule line's words keep the focus where it is, like the dropdown.
+	$('.wrap').on('mousedown', '.board .card-schedule', function(ev){
+		if (! $(ev.target).is(':input'))
+			ev.preventDefault();
 	});
 
 	//
@@ -5023,26 +4653,62 @@
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .del-card', function(){
-		deleteCard( $(this).closest('.card') );
+	// Edit mode's Priority dropdown. Like the ×, pressing it keeps the focus in
+	// the textarea, so picking doesn't end editing; clicking away saves the pick.
+	$('.wrap').on('mousedown', '.board .card-prio, .board .prio-pick button', function(ev){
+		ev.preventDefault();
+	});
+
+	$('.wrap').on('click', '.board .card.editing .card-prio', function(){
+		var $card = $(this).closest('.card');
+		var picked = $card.data('prioEdit') || Priority.of(cardMeta($card));
+
+		$card.find('.prio-pick').empty().append( Priority.LEVELS.map(function(p){
+			var badge = Priority.badge(p);
+			return $('<button type=button role=radio>').attr(badge.attrs)
+				.attr({ 'data-priority': p, 'aria-checked': String(p == picked) }).html(badge.icon);
+		}) );
+
+		$card.toggleClass('prio-picking');
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .raw-card', function(){
-		$(this).closest('.card').toggleClass('raw');
-		saveBoard();
+	$('.wrap').on('click', '.board .prio-pick button', function(){
+		var $card = $(this).closest('.card');
+		var p = $(this).data('priority');
+
+		$card.data('prioEdit', p).removeClass('prio-picking');
+		showPriority($card, p);
+		showScheduleLine($card, p);
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .collapse', function(){
-		$(this).closest('.card').toggleClass('collapsed');
-		saveBoard();
-		return false;
+	$('.wrap').on('mousedown', '.board .card.prio-picking .edit', function(){
+		$(this).closest('.card').removeClass('prio-picking');
 	});
 
-	//
-	$('.wrap').on('mousedown', '.board .card .text, .board .card .cm-panel', function(ev){
-		NB.cardDrag.prime($(this).closest('.card')[0], ev);
+	// Edit mode's ×. Pressing it keeps the focus in the textarea, so the
+	// edit isn't saved (and its blur doesn't end editing) before the delete.
+	$('.wrap').on('mousedown', '.board .card-del', function(ev){
+		ev.preventDefault();
+	});
+
+	$('.wrap').on('click', '.board .card-del', function(){
+		var $card = $(this).closest('.card');
+		var text = $card.find('.edit').val().trim() || (getText($card.find('.text')) || '').trim();
+
+		if (text && ! confirm("Delete this Card?"))
+			return false;
+
+		var brand_new = $card.hasClass('brand-new');
+		$card.removeClass('editing brand-new');
+
+		if (brand_new) // never saved, so nothing to save
+			$card.remove();
+		else
+			deleteCard($card);
+
+		return false;
 	});
 
 
@@ -5064,13 +4730,10 @@
 
 	//
 	$(document).on('mouseup', function(ev){
-		NB.cardDrag.end();
 		NB.varAdjust.end();
 	});
 
 	$(document).on('mousemove', function(ev){
-		setRevealState(ev);
-		NB.cardDrag.onMouseMove(ev);
 		NB.varAdjust.onMouseMove(ev);
 	});
 
@@ -5268,8 +4931,6 @@
 	 */
 	initFonts();
 
-	initDragAndDrop();
-
 	NB.varAdjust = new VarAdjust()
 
 	//
@@ -5295,7 +4956,7 @@
 
 	//
 	setInterval(adjustListScroller, 100);
-	setInterval(tickWipTimers, 250); // often enough that the seconds turn over on time
+	setInterval(tickTimers, 250); // often enough that the seconds turn over on time
 
 	setupListScrolling();
 
@@ -5361,8 +5022,14 @@
 		// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 		XP.bankCards( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
 
+		// After the snapshot, which keeps them: Recurring Cards go back to wait, the rest go.
 		var $done = $('.wrap .board .list.done-list .card');
-		if ($done.length) { $done.remove(); saveBoard(); } // after the snapshot, which keeps them
+		$done.each(function(){
+			var m = cardMeta($(this));
+			if (Priority.isRecurring(m) && m.schedule) returnRecurring($(this), day);
+			else $(this).remove();
+		});
+		if ($done.length) saveBoard();
 
 		if ($('body').hasClass('view-history')) renderHistory();
 	}
@@ -5430,7 +5097,11 @@
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
 				// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 				l.notes.forEach(function(n){
-					$('<div class=history-card>').toggleClass('raw', !! n.raw).text(n.text).appendTo($l);
+					var badge = Priority.badge(n.priority); // Cards from before Priorities are Low
+					$('<div class=history-card>')
+						.append( $('<span class=history-prio role=img>').attr(badge.attrs).html(badge.icon) )
+						.append( $('<span class=history-text>').text(n.text) )
+						.appendTo($l);
 				});
 			});
 
@@ -5463,9 +5134,13 @@
 	$(function(){
 		var ready = window.cloudSync ? cloudSync.ready : Promise.resolve();
 		ready.then(function(state){ return state == 'signed-in' && cloudSync.boardFresh; }).then(function(){
-			rollDay();
-			setInterval(rollDay, 60000);
-			document.addEventListener('visibilitychange', function(){ if (! document.hidden) rollDay(); }); // waking from sleep
+			var tick = function(){
+				rollDay();
+				if (! $('.wrap .board .editing').length) moveDueToTodo();
+			};
+			tick();
+			setInterval(tick, 60000);
+			document.addEventListener('visibilitychange', function(){ if (! document.hidden) tick(); }); // waking from sleep
 		});
 	});
 	$('.config .view-history').on('click', function(){ showView('history'); return false; });
@@ -5491,8 +5166,8 @@
 	});
 
 	/*
-	 *	Card menu (cardmenu.js): hover a card, or tap it on a phone, for
-	 *	Move / Edit / Delete. Move steps it one list left or right.
+	 *	Card menu (cardmenu.js): click a card, or tap it on a phone, for
+	 *	⬅️ Edit ➡️. The arrows step it one list left or right.
 	 */
 	$(function(){
 		CardMenu.attach('.wrap', {
@@ -5501,15 +5176,12 @@
 				var $to = dir < 0 ? $list.prev('.list') : $list.next('.list');
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
-				$to.find('.cards').append($card);
+				moveCardTo($card, $to);
 				cardMoved($card, fromDone);
 				saveBoard();
 			},
 			onEdit: function(card){
 				startEditing($(card).find('.text'));
-			},
-			onDelete: function(card){
-				deleteCard($(card));
 			}
 		});
 	});

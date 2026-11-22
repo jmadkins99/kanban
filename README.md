@@ -21,13 +21,21 @@ It's Nullboard with a few changes:
 - **WIP timer**: a list named "wip" (any case) shows a live timer on each
   card, counting from when that card entered it; it starts over if the card
   leaves and comes back.
+- **Critical timer**: a Critical card outside WIP and Done shows the same
+  timer in red, whatever the day's accent, for how long it has waited to get
+  into WIP. It starts when the card becomes Critical and starts over each
+  time it moves into another such list; in WIP the WIP timer takes over, and
+  Done shows none. It counts from a time stored on the card, so it syncs.
 - **Done list**: a list named "done" (any case) strikes through its cards.
-  Auto-submit snapshots the board with them, then clears that list.
-  Dragging a card into Done plays gym-tracker's PR celebration on the card
-  with a "+2500 XP" badge and a screen flash (`js/celebrate.js`).
+  Auto-submit snapshots the board with them, then clears that list
+  (Recurring cards go back to Backlog instead).
+  Moving a card into Done plays gym-tracker's PR celebration on the card
+  with a "+XP" badge showing what it earned and a screen flash (`js/celebrate.js`).
 - **XP bar**: World of Warcraft classic's experience bar along the bottom,
-  recreated in CSS (`js/xp.js`). Each card moved into Done earns 2500 XP, plus
-  57.5 XP per whole minute of its last WIP visit, up to 8 hours. Level 1
+  recreated in CSS (`js/xp.js`). Each card moved into Done earns a flat amount
+  by its Priority: Low 2500 XP, Medium 3500, Critical 5000, Recurring 5000.
+  The amount is fixed when it enters Done, so changing its Priority there
+  doesn't change it, and time in WIP earns nothing. Level 1
   takes 11500 XP and each level after costs 2% more than the last (44209 XP
   for 69 to 70). XP leaves with a card that leaves Done, and
   Auto-submit banks it. "XP bars" in UI preferences sets the number of bubbles (20).
@@ -36,10 +44,42 @@ It's Nullboard with a few changes:
   insignia are original SVGs modelled on real US military rank insignia
   (`js/ranks.js`), not the game's art. Reaching a new level by finishing a card
   plays a WoW-inspired level-up (`js/levelup.js`).
-- **Card menu**: clicking a card (tapping it on a phone) slides down Move,
-  Edit and Delete (`js/cardmenu.js`), and moving off the card closes it; Move
-  steps it one list left or right.
-  Drag and drop still works: hold anywhere on the card.
+- **Card menu**: clicking a card (tapping it on a phone) slides down one row,
+  ⬅️ Edit ➡️ (`js/cardmenu.js`), and moving off the card closes it. The
+  arrows step it one list left or right, greyed out at the first and last
+  list. Cards don't drag. In edit mode a small × at the card's right edge
+  deletes it, asking first if it has text.
+- **Priority**: every card is Recurring, Critical, Medium or Low (Low
+  unless set), shown as a Jira-style icon at its left, in History too
+  (original SVGs in `js/priority.js`, not Atlassian's). In edit mode the icon
+  is a dropdown; clicking away saves the text and Priority as one Undo step.
+- **Recurring cards**: picking Recurring shows a Schedule line, "Every N
+  days / weeks / months starting <date>" (`js/schedule.js`). It follows the
+  calendar: weeks keep the start's weekday, months its day of the month
+  (the 31st falls on the last day of shorter months). Saving sets the card's
+  Due date to the first Schedule date on or after today. Due today, it stays
+  put; due later, it moves to Backlog (by name, any case; else the first list)
+  and shows "Next: <date>". A card in Done stays there, keeping its XP.
+  Editing the Schedule later only changes the Due date, and another Priority
+  drops both. A finished one comes back on its own (`js/recurring.js`):
+  Auto-submit files it in History, then sends it back with its next Due
+  date, the first Schedule date after its current one, the day it was
+  finished and yesterday (due Nov 1 and done Nov 15 comes back Dec 1; due
+  Dec 1 and done Nov 28, Jan 1; weekly, done Mon Nov 2 with the tab next
+  opened Wed Nov 11, Nov 16), so missed dates don't pile up and it's never
+  due on a day already gone. Due today, it goes straight to To-Do ("to-do",
+  "todo" or "to do", any case); otherwise it waits in Backlog and moves to
+  To-Do on its Due date, at midnight or when the tab next opens. One moved
+  out of Backlog early, or put back there by hand on or after its Due date,
+  is left where it is; with no To-Do list it stays in Backlog.
+- **Late**: a Recurring card not in Done by the end of its Due date is Late
+  (worked out from the date, not stored; still Recurring). Its icon turns
+  red, a red Critical timer counts from midnight after the Due date (the WIP
+  timer in WIP), and it sorts at the very top. Done ends it, for 5000 XP.
+- **Lists sort themselves**: Late, Recurring, Critical, Medium, then Low from the
+  top, first in, first out within each. A card that arrives in a list, or
+  changes Priority, goes to the bottom of its tier. Done ignores Priority and
+  keeps the order cards arrived in, so it reads as the day in order.
 - **Big screens**: everything scales with the screen's height from a 1080p
   baseline (1.33x on a 3440x1440 ultrawide, full-screen or half); a font
   size set in UI preferences still wins.
@@ -51,7 +91,7 @@ It's Nullboard with a few changes:
   and History in Firestore, live across devices (`js/sync.js`). Signed out,
   everything stays in the browser's `localStorage`, as in Nullboard.
 
-Everything else (drag and drop, undo/redo, export) is Nullboard's.
+Everything else (undo/redo, export) is Nullboard's.
 
 ## Development
 

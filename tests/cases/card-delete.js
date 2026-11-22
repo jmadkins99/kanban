@@ -1,0 +1,82 @@
+// Deleting a Card: a small × at the Card's right-most edge, shown only in
+// edit mode. It asks first when the Card has text (OK deletes, Cancel keeps
+// it), deletes an empty one straight away, and Undo brings a deleted Card back.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+const assert = require('assert');
+const { openApp, settle } = require('../lib');
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+    const app = await openApp(() => {});
+    const { page } = app;
+    await page.setViewport({ width: 1280, height: 1000 });
+    await sleep(300);
+    const dialogs = [];
+    page.on('dialog', (d) => dialogs.push(d.message().trim()));
+
+    const first = '.wrap .board .list:nth-child(1) .card:nth-child(1)';
+    const texts = () => page.evaluate(() => NB.board.lists[0].notes.map((n) => n.text));
+    const xShown = (sel) => page.evaluate((sel) => $(sel).find('.card-del').is(':visible'), sel);
+    const edit = async (sel) => {
+        await page.click(sel + ' .text');
+        await sleep(450);
+        await page.click(sel + ' [data-cm=edit]');
+        await sleep(100);
+    };
+
+    try {
+        // Not editing: no ×.
+        assert.strictEqual(await xShown(first), false, 'no × outside edit mode');
+
+        // Editing: the × sits at the Card's right-most edge, inside it.
+        await edit(first);
+        assert.strictEqual(await xShown(first), true, '× shown in edit mode');
+        const box = await page.evaluate((sel) => {
+            const a = $(sel)[0].getBoundingClientRect(), b = $(sel).find('.card-del')[0].getBoundingClientRect();
+            return { right: a.right - b.right, top: b.top - a.top, bottom: a.bottom - b.bottom, small: b.width <= 24 && b.height <= 24 };
+        }, first);
+        assert.ok(box.right >= 0 && box.right < 8 && box.top >= 0 && box.bottom >= 0 && box.small, 'small × at the right edge ' + JSON.stringify(box));
+
+        // Cancel on the prompt keeps the Card.
+        const before = await texts();
+        page.removeAllListeners('dialog');
+        page.on('dialog', (d) => { dialogs.push(d.message().trim()); d.dismiss(); });
+        await page.click(first + ' .card-del');
+        await sleep(600);
+        assert.deepStrictEqual(dialogs, ['Delete this Card?'], 'a Card with text asks first');
+        assert.deepStrictEqual(await texts(), before, 'Cancel keeps the Card');
+
+        // OK deletes it.
+        page.removeAllListeners('dialog');
+        page.on('dialog', (d) => { dialogs.push(d.message().trim()); d.accept(); });
+        if (!(await xShown(first))) await edit(first);
+        await page.click(first + ' .card-del');
+        await sleep(600);
+        await settle(page);
+        assert.strictEqual(dialogs.length, 2, 'asked again');
+        assert.deepStrictEqual(await texts(), before.slice(1), 'OK deletes the Card');
+        assert.strictEqual(await page.evaluate(() => $('.wrap .board .list').eq(0).find('.card').length), before.length - 1, 'gone from the page');
+
+        // Undo brings it back.
+        await page.evaluate(() => $('.wrap .board .undo-board').click());
+        await settle(page);
+        assert.deepStrictEqual(await texts(), before, 'Undo restores the deleted Card');
+
+        // An empty Card goes without asking.
+        await page.evaluate(() => $('.wrap .board .list').eq(0).find('.add-card').click());
+        await sleep(100);
+        const fresh = '.wrap .board .card.editing';
+        assert.strictEqual(await xShown(fresh), true, 'a new Card has the × too');
+        await page.click(fresh + ' .card-del');
+        await sleep(600);
+        await settle(page);
+        assert.strictEqual(dialogs.length, 2, "an empty Card is not asked about: " + JSON.stringify(dialogs));
+        assert.deepStrictEqual(await texts(), before, 'the empty Card is gone, the rest untouched');
+        assert.strictEqual(await page.evaluate(() => $('.wrap .board .list').eq(0).find('.card').length), before.length);
+
+        assert.deepStrictEqual(app.errors, [], 'no page errors');
+    } finally {
+        await app.close();
+    }
+})().catch((e) => { console.error(e); process.exit(1); });

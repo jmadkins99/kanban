@@ -1,9 +1,8 @@
-/* CardMenu: hover/tap options panel for kanban cards. Needs jQuery.
- * CardMenu.attach(containerSelector, { onMove(cardEl, dir), onEdit(cardEl), onDelete(cardEl) })
+/* CardMenu: tap options panel for kanban cards, one row of ⬅️ Edit ➡️. Needs jQuery.
+ * CardMenu.attach(containerSelector, { onMove(cardEl, dir), onEdit(cardEl) })
  */
 (function ($) {
   var CSS = [
-    '.card > .ops { display: none !important; }',
     ':where(.card) { position: relative; }',
 
     /* panel = clipping frame over the card; sheet = the part that slides down */
@@ -17,54 +16,45 @@
     '  box-shadow: inset 0 -1px 0 rgba(var(--accent-rgb), .9), inset 0 1px 0 rgba(255,255,255,.04), 0 6px 18px rgba(0,0,0,.45); }',
     '.cm-open > .cm-panel > .cm-sheet { transform: none; }',
 
-    '.cm-main, .cm-arrows { position: absolute; inset: 0; display: flex; flex-direction: column;',
-    '  justify-content: center; gap: 2px; padding: 6px; transition: opacity .2s, visibility .2s; }',
-    '.cm-arrows { flex-direction: row; opacity: 0; visibility: hidden; }',
-    '.cm-moving .cm-main { opacity: 0; visibility: hidden; }',
-    '.cm-moving .cm-arrows { opacity: 1; visibility: visible; }',
+    /* one row: ⬅️ Edit ➡️, the arrows narrow and Edit taking the rest */
+    '.cm-row { position: absolute; inset: 0; display: flex; flex-direction: row; align-items: center;',
+    '  gap: 2px; padding: 6px; }',
 
-    '.cm-panel button { flex: 1 1 0; min-width: 0; min-height: 0; max-height: 40px; margin: 0; border: 0; border-radius: 6px;',
+    '.cm-panel button { flex: 1 1 0; min-width: 0; height: 100%; max-height: 44px; margin: 0; border: 0; border-radius: 6px;',
     '  padding: 0 .4em 0 calc(.4em + .26em); background: transparent; color: #b8b8d0; cursor: pointer;',
     "  font: 500 calc(11px * var(--ui, 1))/1 'Jost', 'Century Gothic', 'Segoe UI', sans-serif; letter-spacing: .26em; text-transform: uppercase;",
     '  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative;',
     '  opacity: 0; transform: translateY(-4px); transition: color .18s, background-color .18s, opacity .3s, transform .3s; }',
     '.cm-open .cm-panel button { opacity: 1; transform: none; }',
-    '.cm-open .cm-main button:nth-child(1) { transition-delay: 0s, 0s, .08s, .08s; }',
-    '.cm-open .cm-main button:nth-child(2) { transition-delay: 0s, 0s, .13s, .13s; }',
-    '.cm-open .cm-main button:nth-child(3) { transition-delay: 0s, 0s, .18s, .18s; }',
-    /* hairline under each label that widens on hover */
-    '.cm-main button::after { content: ""; position: absolute; left: 50%; bottom: max(22%, 6px); width: 0; height: 1px;',
+    '.cm-open .cm-row button:nth-child(1) { transition-delay: 0s, 0s, .08s, .08s; }',
+    '.cm-open .cm-row button:nth-child(2) { transition-delay: 0s, 0s, .13s, .13s; }',
+    '.cm-open .cm-row button:nth-child(3) { transition-delay: 0s, 0s, .18s, .18s; }',
+    '.cm-panel button[data-cm=edit] { flex-grow: 2; }',
+    /* hairline under Edit that widens on hover */
+    '.cm-panel button[data-cm=edit]::after { content: ""; position: absolute; left: 50%; bottom: max(22%, 6px); width: 0; height: 1px;',
     '  background: var(--accent-hi); transition: width .22s, left .22s; }',
     '.cm-panel button:hover:not(:disabled), .cm-panel button:focus-visible { color: var(--accent-pale);',
     '  background: rgba(var(--accent-rgb), .55); outline: none; }',
-    '.cm-main button:hover::after, .cm-main button:focus-visible::after { left: calc(50% - 1.1em); width: 2.2em; }',
-    '.cm-main button[data-cm=delete]:hover { background: rgba(140, 40, 60, .45); color: #f2d4dc; }',
-    '.cm-main button[data-cm=delete]:hover::after { background: #e08a9c; }',
-    '.cm-arrows { align-items: center; }',
-    '.cm-arrows button { height: 100%; max-height: 44px; font-size: 20px; letter-spacing: 0; padding: 0; }',
-    '.cm-arrows button:disabled { filter: grayscale(1); opacity: .22; cursor: not-allowed; }',
+    '.cm-panel button[data-cm=edit]:hover::after, .cm-panel button[data-cm=edit]:focus-visible::after { left: calc(50% - 1.1em); width: 2.2em; }',
+    '.cm-panel button[data-cm=left], .cm-panel button[data-cm=right] { font-size: 20px; letter-spacing: 0; padding: 0; }',
+    '.cm-panel button:disabled { filter: grayscale(1); opacity: .22; cursor: not-allowed; }',
 
-    /* short cards: options can't stack, so lay them out in a row sized to the card */
+    /* short cards: size the row to the card */
     '@container (max-height: 96px) {',
-    '  .cm-main { flex-direction: row; padding: 3px; }',
-    '  .cm-main button { max-height: none; font-size: clamp(10px, 34cqh, calc(11px * var(--ui, 1))); letter-spacing: .18em;',
+    '  .cm-row { padding: 3px; }',
+    '  .cm-panel button { max-height: none; }',
+    '  .cm-panel button[data-cm=edit] { font-size: clamp(10px, 34cqh, calc(11px * var(--ui, 1))); letter-spacing: .18em;',
     '    padding: 0 .3em 0 calc(.3em + .18em); }',
-    '  .cm-main button::after { bottom: 14%; }',
-    '  .cm-arrows button { max-height: none; }',
-    '  .cm-arrows { padding: 3px; }',
-    '  .cm-arrows button { font-size: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); }',
+    '  .cm-panel button[data-cm=edit]::after { bottom: 14%; }',
+    '  .cm-panel button[data-cm=left], .cm-panel button[data-cm=right] { font-size: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); }',
     '}'
   ].join('\n');
 
-  var PANEL = '<div class="cm-panel"><div class="cm-sheet">' +
-    '<div class="cm-main">' +
-    '<button type="button" data-cm="move">Move</button>' +
-    '<button type="button" data-cm="edit">Edit</button>' +
-    '<button type="button" data-cm="delete">Delete</button></div>' +
-    '<div class="cm-arrows">' +
+  var PANEL = '<div class="cm-panel"><div class="cm-sheet"><div class="cm-row">' +
     '<button type="button" data-cm="left" aria-label="Move left">⬅️</button>' +
-    '<button type="button" data-cm="right" aria-label="Move right">➡️</button></div>' +
-    '</div></div>';
+    '<button type="button" data-cm="edit">Edit</button>' +
+    '<button type="button" data-cm="right" aria-label="Move right">➡️</button>' +
+    '</div></div></div>';
 
   var injected = false;
 
@@ -86,12 +76,14 @@
     if ($(card).hasClass('cm-open')) return;
     $('.card.cm-open').not(card).each(function () { close(this); });
     if (!$(card).children('.cm-panel').length) {
-      var $p = $(PANEL).appendTo(card);
-      // Mousedown anywhere on the panel, buttons included, may start the host's
-      // drag: it only starts after a hold, so a click stays a click.
-      void $p[0].offsetHeight; // commit the closed state so the first open animates
+      $(PANEL).appendTo(card);
+      void card.offsetHeight; // commit the closed state so the first open animates
     }
-    $(card).removeClass('cm-moving').addClass('cm-open');
+    // Nowhere to go past the first and last List.
+    var $list = $(card).closest('.list');
+    $(card).find('[data-cm=left]').prop('disabled', !$list.prevAll('.list').length);
+    $(card).find('[data-cm=right]').prop('disabled', !$list.nextAll('.list').length);
+    $(card).addClass('cm-open');
   }
 
   function close(card) { $(card).removeClass('cm-open'); }
@@ -104,19 +96,10 @@
       .on('click', '.card', function (e) { if (!$(e.target).closest('.cm-panel').length) open(this); })
       .on('click', '.cm-panel button', function (e) {
         e.preventDefault();
+        if (this.disabled) return;
         var card = $(this).closest('.card')[0], act = $(this).data('cm');
-        // The click a drag ends with is not a choice (dropping onto Delete must not delete).
-        if (card.cmDragEnd && Date.now() - card.cmDragEnd < 400) return;
-        if (act === 'move') {
-          var $list = $(card).closest('.list');
-          $(card).find('[data-cm=left]').prop('disabled', !$list.prevAll('.list').length);
-          $(card).find('[data-cm=right]').prop('disabled', !$list.nextAll('.list').length);
-          $(card).addClass('cm-moving');
-          return;
-        }
         close(card);
         if (act === 'edit') cb.onEdit && cb.onEdit(card);
-        else if (act === 'delete') cb.onDelete && cb.onDelete(card);
         else cb.onMove && cb.onMove(card, act === 'left' ? -1 : 1);
       });
   }

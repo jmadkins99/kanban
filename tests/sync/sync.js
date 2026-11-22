@@ -8,7 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 
@@ -101,6 +101,56 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         // Live board: an edit on A shows up on B without a reload.
         await editFirstCard(a.page, 'live from A');
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'live from A');
+
+        // A Card's Priority goes across too, and B shows its icon.
+        await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
+        await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
+        assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
+        assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
+        // So does its Critical timer's start: B counts from the same moment.
+        const since = await a.page.evaluate(() => NB.board.lists[0].notes[0].criticalSince);
+        assert.ok(typeof since == 'number', 'A started the Critical timer: ' + since);
+        await waitFor(b.page, (since) => NB.board.lists[0].notes[0].criticalSince == since, since);
+
+        // So does each Card's Arrival: a Card A moves lands in the same place on B.
+        const order = (page) => page.evaluate(() => NB.board.lists.map((l) => l.notes.map((n) => [n.text, n.priority, n.arrival])));
+        const moved = await a.page.evaluate(() => NB.board.lists[0].notes[NB.board.lists[0].notes.length - 1].text);
+        await moveCard(a.page, 0, -1, 1);
+        await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), moved);
+        assert.deepStrictEqual(await order(b.page), await order(a.page), 'B has the same Cards, Priorities, Arrivals and order');
+
+        // So do a Recurring Card's Schedule and Due date, and A's own copy
+        // coming back from the cloud isn't taken for a change.
+        const recurring = (page) => page.evaluate(() => {
+            for (const l of NB.board.lists) for (const n of l.notes) if (n.text == 'live from A') return [n.priority, n.schedule, n.due];
+        });
+        await a.page.evaluate(() => {
+            const $c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            setPriority($c, 'recurring');
+            setSchedule($c, Schedule.make(2, 'weeks', Schedule.today()));
+            saveBoard();
+        });
+        const sent = await recurring(a.page);
+        assert.strictEqual(sent[0], 'recurring');
+        assert.ok(sent[1] && sent[2], 'A has a Schedule and Due date: ' + JSON.stringify(sent));
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'live from A' && n.schedule)));
+        assert.deepStrictEqual(await recurring(b.page), sent, 'B has the same Schedule and Due date');
+        const revA = await a.page.evaluate(() => NB.board.revision);
+        await new Promise((r) => setTimeout(r, 3000));
+        assert.strictEqual(await a.page.evaluate(() => NB.board.revision), revA, "A's echo from the cloud makes no new revision");
+
+        // A Due date that has ended makes the Card Late on B too: a red icon, top of its List.
+        await a.page.evaluate(() => {
+            const $c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            cardMeta($c).due = '2000-01-03';
+            saveBoard();
+        });
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'live from A' && n.due == '2000-01-03')));
+        await waitFor(b.page, () => $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A').hasClass('late'));
+        assert.deepStrictEqual(await b.page.evaluate(() => {
+            const c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            return [getComputedStyle(c.find('.card-prio svg')[0]).color, c.index()];
+        }), ['rgb(255, 86, 48)', 0], 'B shows it Late: a red icon, at the top of its List');
 
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
