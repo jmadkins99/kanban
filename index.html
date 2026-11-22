@@ -1485,6 +1485,19 @@
 		color: #ffd5cc;
 	}
 
+	/* A Recurring card waiting in Backlog shows "Next: <date>" there, in the
+	   Recurring icon's purple. */
+	.board .card.next-waiting .text {
+		padding-right: calc(92px * var(--ui));
+	}
+
+	.board .card .wip-timer.next:not(:empty) {
+		display: block;
+		background: rgba(135, 119, 217, 0.35);
+		border-color: #8777d9;
+		color: #e4e0ff;
+	}
+
 	.board .card.editing .wip-timer,
 	.board .card.editing .cm-panel {
 		display: none;
@@ -1621,6 +1634,63 @@
 
 	.theme-dark .board .card .prio-pick button[aria-checked=true] {
 		box-shadow: 0 0 0 1px var(--accent-hi) inset;
+	}
+
+	/* Edit mode's Schedule line under a Recurring Card's text:
+	   "Every [N] [days / weeks / months] starting [date]". */
+	.board .card .card-schedule {
+		display: none;
+	}
+
+	.board .card.editing.sched-on .card-schedule {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 5px;
+		padding: 4px 10px 0 calc( var(--lh) * 1px + 12px );
+		margin-right: 15px;
+		font-size: calc(12px * var(--ui));
+		color: #555;
+		cursor: default;
+	}
+
+	.board .card .card-schedule input,
+	.board .card .card-schedule select {
+		font: inherit;
+		color: inherit;
+		height: calc(20px * var(--ui));
+		padding: 0 3px;
+		margin: 0;
+		border: 1px solid #8eaedd;
+		border-radius: 3px;
+		background: #fff;
+		box-sizing: border-box;
+	}
+
+	.board .card .card-schedule .sched-every {
+		width: calc(42px * var(--ui));
+	}
+
+	.theme-dark .board .card.editing.sched-on .card-schedule {
+		color: #a0a0bc;
+	}
+
+	.theme-dark .board .card .card-schedule input,
+	.theme-dark .board .card .card-schedule select {
+		background: #1c1c30;
+		border-color: var(--accent-muted);
+		color: #e6e6f2;
+		color-scheme: dark;
+	}
+
+	.board .card .card-schedule input:focus,
+	.board .card .card-schedule select:focus {
+		outline: 1px solid #8eaedd;
+	}
+
+	.theme-dark .board .card .card-schedule input:focus,
+	.theme-dark .board .card .card-schedule select:focus {
+		outline: 1px solid var(--accent-hi);
 	}
 
 	/* History shows the icon before each Card's text too. */
@@ -1766,6 +1836,9 @@
 			<div class=prio-pick role=radiogroup aria-label=Priority></div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
+			<div class=card-schedule>Every <input type=number class=sched-every min=1 step=1 aria-label="Every how many">
+				<select class=sched-unit aria-label="Days, weeks or months"><option value=days>days</option><option value=weeks>weeks</option><option value=months>months</option></select>
+				starting <input type=date class=sched-start aria-label="Starting"></div>
 			<span class=wip-timer></span>
 			<button type=button class=card-del aria-label="Delete Card">&times;</button>
 		</div>
@@ -2941,6 +3014,20 @@
 		return (title || '').trim().toLowerCase() == 'wip';
 	}
 
+	function isBacklogTitle(title)
+	{
+		return (title || '').trim().toLowerCase() == 'backlog';
+	}
+
+	// Where a Recurring Card waits for its Due date: the List named Backlog,
+	// or the first List if there's none.
+	function backlogList()
+	{
+		var $lists = $('.wrap .board .list');
+		var $b = $lists.filter(function(){ return isBacklogTitle(getText($(this).find('.head .text'))); }).first();
+		return $b.length ? $b : $lists.first();
+	}
+
 	function markLists()
 	{
 		$('.wrap .board .list').each(function(){
@@ -3016,11 +3103,37 @@
 
 	// Changes a Card's Priority; call before saving. That counts as a new
 	// Arrival, so it joins the back of its new tier.
+	// Only a Recurring Card has a Schedule and Due date.
 	function setPriority($card, p)
 	{
-		cardMeta($card).priority = Priority.of({ priority: p });
+		var m = cardMeta($card);
+		m.priority = Priority.of({ priority: p });
+		if (m.priority != 'recurring') { delete m.schedule; delete m.due; }
 		showPriority($card);
 		cardArrived($card);
+	}
+
+	// Gives a Recurring Card its Schedule (see js/schedule.js), and its Due
+	// date the first Schedule date on or after today. Call before saving.
+	function setSchedule($card, schedule)
+	{
+		var m = cardMeta($card);
+		m.schedule = schedule;
+		m.due = Schedule.firstDue(schedule);
+	}
+
+	// A Card just saved as Recurring (new, or changed to it) waits in Backlog
+	// unless it's due today. Call before saving.
+	function sendToBacklogUnlessDue($card)
+	{
+		if (cardMeta($card).due <= Schedule.today())
+			return;
+		var $to = backlogList();
+		if ($to[0] == $card.closest('.list')[0])
+			return;
+		$to.find('.cards').append($card);
+		cardArrived($card);
+		restartCriticalTimer($card);
 	}
 
 	// A Card just entered its List (or changed Priority), so it goes to the
@@ -3083,19 +3196,24 @@
 	// One timer slot per card: the WIP timer in WIP, the red Critical timer
 	// while a Critical card waits elsewhere, otherwise none. Recomputed from
 	// the stored start each tick, so a sleeping laptop is right on waking.
+	// A Recurring Card waiting in Backlog for a later Due date shows
+	// "Next: <date>" there instead.
 	function tickTimers()
 	{
-		var now = Date.now();
+		var now = Date.now(), today = Schedule.today(), backlog = backlogList()[0];
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
+			var home = this == backlog;
 			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
 				var critical = ! wip && ! done && Priority.of(m) == 'critical' && !! m.criticalSince;
+				var next = home && ! wip && ! done && Priority.of(m) == 'recurring' && !! m.due && m.due > today;
 				var since = wip ? m.wip : critical ? m.criticalSince : null;
 				$(this).toggleClass('critical-waiting', critical)
-				       .find('.wip-timer').toggleClass('critical', critical)
-				       .text(since ? formatTimer(now - since) : '');
+				       .toggleClass('next-waiting', next)
+				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', next)
+				       .text(since ? formatTimer(now - since) : next ? 'Next: ' + Schedule.label(m.due) : '');
 			});
 		});
 	}
@@ -3937,7 +4055,35 @@
 		$edit.height( $text.height() );
 		$card.addClass('editing');
 
+		if ($card.hasClass('card'))
+			showScheduleLine($card, Priority.of(cardMeta($card)));
+
 		$edit.focus();
+	}
+
+	// Edit mode's Schedule line, "Every [N] [unit] starting [date]", shown
+	// while the picked Priority is Recurring. It starts from the Card's
+	// Schedule, or every 1 week from today.
+	function showScheduleLine($card, p)
+	{
+		var on = p == 'recurring';
+		var $line = $card.find('.card-schedule');
+		if (! on && $line[0].contains(document.activeElement))
+			$card.children('.edit').focus(); // before hiding it, so hiding doesn't end editing
+		if (on && ! $card.hasClass('sched-on'))
+		{
+			var s = cardMeta($card).schedule || Schedule.make(1, 'weeks', Schedule.today());
+			$card.find('.sched-every').val(s.every);
+			$card.find('.sched-unit').val(s.unit);
+			$card.find('.sched-start').val(s.start);
+		}
+		$card.toggleClass('sched-on', on);
+	}
+
+	// The Schedule as filled in on the line.
+	function scheduleLine($card)
+	{
+		return Schedule.make($card.find('.sched-every').val(), $card.find('.sched-unit').val(), $card.find('.sched-start').val());
 	}
 
 	// Leaving edit mode saves; there's no cancel, and the menu's Undo takes it back.
@@ -3947,7 +4093,8 @@
 		if (! $item.hasClass('editing'))
 			return;
 
-		$item.removeClass('editing prio-picking');
+		var sched_on = $item.hasClass('sched-on');
+		$item.removeClass('editing prio-picking sched-on');
 
 		//
 		var $text = $item.find('.text');
@@ -3959,6 +4106,10 @@
 		$item.removeData('prioEdit');
 		var prio_changed = $item.hasClass('card') && prio_now && prio_now != Priority.of(cardMeta($item));
 
+		// and so does a Recurring Card's Schedule
+		var sched_now = sched_on ? scheduleLine($item) : null;
+		var sched_changed = sched_now && JSON.stringify(sched_now) != JSON.stringify(cardMeta($item).schedule);
+
 		//
 		var brand_new = $item.hasClass('brand-new');
 		$item.removeClass('brand-new');
@@ -3969,12 +4120,19 @@
 			return;
 		}
 
-		if (text_now != text_was || brand_new || prio_changed)
+		if (text_now != text_was || brand_new || prio_changed || sched_changed)
 		{
 			setText( $text, text_now );
 
 			if (prio_changed)
 				setPriority($item, prio_now);
+
+			if (sched_now && (sched_changed || prio_changed || brand_new))
+				setSchedule($item, sched_now);
+
+			// saved as Recurring, new or changed to it; an edited Schedule alone doesn't move it
+			if (sched_now && (prio_changed || brand_new))
+				sendToBacklogUnlessDue($item);
 
 			if ($item.parent().hasClass('board'))
 				NB.board.title = text_now;
@@ -4340,11 +4498,29 @@
 	});
 
 	//
-	$('.wrap').on('blur', '.board .edit', function(ev){
+	// Clicking away ends editing. In a Card that means leaving the whole Card,
+	// so its Schedule line's inputs can take the focus without ending it.
+	$('.wrap').on('focusout', '.board .head .edit', function(ev){
 		if (document.activeElement != this)
 			stopEditing($(this), true);
 		else
 			; // switch away from the browser window
+	});
+
+	$('.wrap').on('focusout', '.board .card.editing', function(ev){
+		if (this.contains(document.activeElement))
+			return; // switch away from the browser window
+
+		if (ev.relatedTarget && this.contains(ev.relatedTarget))
+			return; // e.g. into the Schedule line
+
+		stopEditing($(this).children('.edit'), true);
+	});
+
+	// The Schedule line's words keep the focus where it is, like the dropdown.
+	$('.wrap').on('mousedown', '.board .card-schedule', function(ev){
+		if (! $(ev.target).is(':input'))
+			ev.preventDefault();
 	});
 
 	//
@@ -4439,6 +4615,7 @@
 
 		$card.data('prioEdit', p).removeClass('prio-picking');
 		showPriority($card, p);
+		showScheduleLine($card, p);
 		return false;
 	});
 
