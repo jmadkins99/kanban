@@ -62,12 +62,12 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         assert.strictEqual(await timerOf(BACKLOG, 'calm'), null, 'a Low Card has no timer');
         let t = await timerOf(BACKLOG, 'fix the gate');
         assert.ok(t, 'a Card created as Critical shows a timer');
-        assert.match(t.text, /^0m [01]s$/, 'counting from 0: ' + t.text);
+        assert.match(t.text, /^0m [0-2]s$/, 'counting from 0: ' + t.text);
         assert.ok(isRed(t), 'in red: ' + t.bg);
 
         // It counts up, and it sits inside the Card on its right.
-        await sleep(2100);
-        assert.ok(secs((await timerOf(BACKLOG, 'fix the gate')).text) >= 2, 'it counts up');
+        await sleep(3100);
+        assert.ok(secs((await timerOf(BACKLOG, 'fix the gate')).text) >= 3, 'it counts up');
         const box = await page.evaluate((s) => {
             const a = $(s)[0].getBoundingClientRect(), b = $(s).find('.wip-timer')[0].getBoundingClientRect();
             return { right: a.right - b.right, mid: b.left - (a.left + a.width / 2), top: b.top - a.top, bottom: a.bottom - b.bottom };
@@ -77,25 +77,25 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         // Backlog to To-Do starts it over.
         await move(BACKLOG, 'fix the gate', 1);
         t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [01]s$/, 'entering To-Do starts over: ' + t.text);
+        assert.match(t.text, /^0m [0-2]s$/, 'entering To-Do starts over: ' + t.text);
         assert.ok(isRed(t), 'still red');
 
         // In WIP it's the WIP timer from 0, in the accent like any WIP Card.
-        await sleep(1100);
+        await sleep(3100);
         await move(TODO, 'fix the gate', 1);
         await move(BACKLOG, 'calm', 2);
         t = await timerOf(WIP, 'fix the gate');
         const calm = await timerOf(WIP, 'calm');
-        assert.match(t.text, /^0m [01]s$/, 'the WIP timer starts at 0: ' + t.text);
+        assert.match(t.text, /^0m [0-2]s$/, 'the WIP timer starts at 0: ' + t.text);
         assert.ok(!isRed(t), 'not red in WIP: ' + t.bg);
         assert.deepStrictEqual([t.bg, t.border], [calm.bg, calm.border], 'looks like any WIP timer');
         assert.strictEqual(t.border, await accentHi(), 'in the accent');
 
         // Back to To-Do: the red timer from 0 again.
-        await sleep(1100);
+        await sleep(3100);
         await move(WIP, 'fix the gate', -1);
         t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [01]s$/, 'back in To-Do it starts over: ' + t.text);
+        assert.match(t.text, /^0m [0-2]s$/, 'back in To-Do it starts over: ' + t.text);
         assert.ok(isRed(t), 'red again');
 
         // Done shows no timer.
@@ -105,13 +105,13 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         assert.ok(isRed(await timerOf(TODO, 'fix the gate')), 'out of Done, it waits again');
 
         // Off Critical: gone. Critical again: from 0.
-        await sleep(1100);
+        await sleep(3100);
         await setPriority(TODO, await index(TODO, 'fix the gate'), 'Medium');
         assert.strictEqual(await timerOf(TODO, 'fix the gate'), null, 'no timer once not Critical');
-        await sleep(1100);
+        await sleep(3100);
         await setPriority(TODO, await index(TODO, 'fix the gate'), 'Critical');
         t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [01]s$/, 'Critical again starts from 0: ' + t.text);
+        assert.match(t.text, /^0m [0-2]s$/, 'Critical again starts from 0: ' + t.text);
         assert.ok(isRed(t), 'and is red');
 
         // Its start is stored on the Card; reload with the clock 3h 25m on.
