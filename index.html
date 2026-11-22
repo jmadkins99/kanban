@@ -5491,8 +5491,8 @@
 	});
 
 	/*
-	 *	Card menu (cardmenu.js): hover a card, or tap it on a phone, for
-	 *	Move / Edit / Delete. Move steps it one list left or right.
+	 *	Card menu (cardmenu.js): click a card, or tap it on a phone, for
+	 *	⬅️ Edit ➡️. The arrows step it one list left or right.
 	 */
 	$(function(){
 		CardMenu.attach('.wrap', {
@@ -5507,9 +5507,6 @@
 			},
 			onEdit: function(card){
 				startEditing($(card).find('.text'));
-			},
-			onDelete: function(card){
-				deleteCard($(card));
 			}
 		});
 	});
