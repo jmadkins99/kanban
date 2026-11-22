@@ -59,15 +59,19 @@ It's Nullboard with a few changes:
   (the 31st falls on the last day of shorter months). Saving sets the card's
   Due date to the first Schedule date on or after today. Due today, it stays
   put; due later, it moves to Backlog (by name, any case; else the first list)
-  and shows "Next: <date>". Editing the Schedule later only changes the Due
-  date, and another Priority drops both. A finished one comes back on its
-  own: Auto-submit files it in History, then sends it to Backlog with its
-  next Due date, the first Schedule date after both its current one and the
-  day it was finished (due Nov 1 and done Nov 15 comes back Dec 1; due Dec 1
-  and done Nov 28, Jan 1), so missed dates don't pile up. On its Due date it
-  moves from Backlog to To-Do ("to-do", "todo" or "to do", any case), at
-  midnight or when the tab next opens. One moved out of Backlog early is
-  left where it is; with no To-Do list it stays in Backlog.
+  and shows "Next: <date>". A card in Done stays there, keeping its XP.
+  Editing the Schedule later only changes the Due date, and another Priority
+  drops both. A finished one comes back on its own (`js/recurring.js`):
+  Auto-submit files it in History, then sends it back with its next Due
+  date, the first Schedule date after its current one, the day it was
+  finished and yesterday (due Nov 1 and done Nov 15 comes back Dec 1; due
+  Dec 1 and done Nov 28, Jan 1; weekly, done Mon Nov 2 with the tab next
+  opened Wed Nov 11, Nov 16), so missed dates don't pile up and it's never
+  due on a day already gone. Due today, it goes straight to To-Do ("to-do",
+  "todo" or "to do", any case); otherwise it waits in Backlog and moves to
+  To-Do on its Due date, at midnight or when the tab next opens. One moved
+  out of Backlog early, or put back there by hand on or after its Due date,
+  is left where it is; with no To-Do list it stays in Backlog.
 - **Late**: a Recurring card not in Done by the end of its Due date is Late
   (worked out from the date, not stored; still Recurring). Its icon turns
   red, a red Critical timer counts from midnight after the Due date (the WIP

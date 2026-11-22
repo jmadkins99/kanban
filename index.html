@@ -1895,6 +1895,7 @@
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
 <script src="js/priority.js"></script>
 <script src="js/schedule.js"></script>
+<script src="js/recurring.js"></script>
 
 <script type="text/javascript">
 
@@ -3007,25 +3008,17 @@
 		setupListScrolling();
 	}
 
-	function isDoneTitle(title)
+	// The Lists with special meaning are known by name, ignoring case and
+	// surrounding spaces.
+	function titleIs(title, names)
 	{
-		return (title || '').trim().toLowerCase() == 'done';
+		return names.indexOf((title || '').trim().toLowerCase()) >= 0;
 	}
 
-	function isWipTitle(title)
-	{
-		return (title || '').trim().toLowerCase() == 'wip';
-	}
-
-	function isBacklogTitle(title)
-	{
-		return (title || '').trim().toLowerCase() == 'backlog';
-	}
-
-	function isTodoTitle(title)
-	{
-		return ['to-do', 'todo', 'to do'].indexOf((title || '').trim().toLowerCase()) >= 0;
-	}
+	function isDoneTitle(title)    { return titleIs(title, ['done']); }
+	function isWipTitle(title)     { return titleIs(title, ['wip']); }
+	function isBacklogTitle(title) { return titleIs(title, ['backlog']); }
+	function isTodoTitle(title)    { return titleIs(title, ['to-do', 'todo', 'to do']); }
 
 	// The first List whose title passes `test`, if any.
 	function listTitled(test)
@@ -3041,17 +3034,14 @@
 		return $b.length ? $b : $('.wrap .board .list').first();
 	}
 
-	// A finished Recurring Card goes back to wait for its next Due date: the
-	// first Schedule date after its current one, after `day` (the day it was
-	// finished) and after yesterday, so missed dates don't pile up and it's
-	// never due on a day already gone. Due today, it goes straight to To-Do
-	// (if there is one); otherwise to Backlog. Call before saving.
+	// A Recurring Card finished on `day` goes back to wait for its next Due
+	// date (see js/recurring.js). Due today, it goes straight to To-Do, if
+	// there is one; otherwise to Backlog. Call before saving.
 	function returnRecurring($card, day)
 	{
-		var m = cardMeta($card), s = m.schedule, today = Schedule.today();
-		m.due = [Schedule.after(s, m.due || day), Schedule.after(s, day), Schedule.onOrAfter(s, today)].sort().pop();
-		var $todo = todoList();
-		moveCardTo($card, m.due <= today && $todo.length ? $todo : backlogList());
+		var m = cardMeta($card), $todo = todoList();
+		m.due = Recurring.nextDue(m, day);
+		moveCardTo($card, m.due <= Schedule.today() && $todo.length ? $todo : backlogList());
 	}
 
 	// The List named To-Do, if there is one that isn't also where Recurring
@@ -3062,11 +3052,9 @@
 		return $todo[0] == backlogList()[0] ? $() : $todo;
 	}
 
-	// Recurring Cards that were waiting in Backlog before their Due date came
-	// move to To-Do once it has, if there is a To-Do. One that arrived in
-	// Backlog on or after its Due date (put back by hand, or saved there as
-	// Recurring due today) is left alone, as is one moved out of Backlog
-	// early. Saves if any moved.
+	// Recurring Cards in Backlog whose Due date has come move on to To-Do, if
+	// there is one, unless they arrived on or after it (see js/recurring.js).
+	// A Card moved out of Backlog early is left where it is. Saves if any moved.
 	function moveDueToTodo()
 	{
 		var $todo = todoList(), today = Schedule.today();
@@ -3074,8 +3062,7 @@
 			return;
 
 		var $due = backlogList().find('.card').filter(function(){
-			var m = cardMeta($(this));
-			return isRecurring(m) && m.due && m.due <= today && (m.arrival || 0) < Schedule.startOf(m.due);
+			return Recurring.movesOn(cardMeta($(this)), today);
 		});
 		if (! $due.length)
 			return;
@@ -3096,28 +3083,16 @@
 	/*
 	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
 	 *	then first in, first out by Arrival, when the Card entered its List.
-	 *	Late Cards go above them all. Done ignores Priority, so it reads as
-	 *	the day in order.
+	 *	Late Cards (see js/recurring.js) go above them all. Done ignores
+	 *	Priority, so it reads as the day in order; a Card in Done is never Late.
 	 */
 	function cardOrder(done)
 	{
 		var today = Schedule.today();
-		var tier = function(m){ return isLate(m, today) ? -1 : Priority.LEVELS.indexOf(Priority.of(m)); };
+		var tier = function(m){ return Recurring.isLate(m, today) ? -1 : Priority.LEVELS.indexOf(Priority.of(m)); };
 		return function(a, b){
 			return (done ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
 		};
-	}
-
-	// Whether a Card, by its saved fields, is Recurring or Critical.
-	function isRecurring(m) { return Priority.of(m) == 'recurring'; }
-	function isCritical(m)  { return Priority.of(m) == 'critical'; }
-
-	// A Recurring Card not in Done is Late once its Due date has ended. It's
-	// worked out each time, never stored, and isn't a Priority of its own.
-	// Pass the Card's saved fields; a Card in Done is never Late.
-	function isLate(m, today)
-	{
-		return isRecurring(m) && !! m.due && m.due < (today || Schedule.today());
 	}
 
 	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
@@ -3165,10 +3140,8 @@
 	// The Card's Priority icon at its left edge; in edit mode it's the dropdown that changes it.
 	function showPriority($card, p)
 	{
-		p = Priority.of({ priority: p || cardMeta($card).priority });
-		$card.find('.card-prio')
-			.html( Priority.icon(p) )
-			.attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) });
+		var badge = Priority.badge(p || cardMeta($card).priority);
+		$card.find('.card-prio').html(badge.icon).attr(badge.attrs);
 	}
 
 	// Changes a Card's Priority; call before saving. That counts as a new
@@ -3178,7 +3151,7 @@
 	{
 		var m = cardMeta($card);
 		m.priority = Priority.of({ priority: p });
-		if (m.priority != 'recurring') { delete m.schedule; delete m.due; }
+		if (! Priority.isRecurring(m)) { delete m.schedule; delete m.due; }
 		showPriority($card);
 		cardArrived($card);
 	}
@@ -3236,7 +3209,7 @@
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
-				var waiting = ! wip && ! done && Priority.of(m) == 'critical';
+				var waiting = ! wip && ! done && Priority.isCritical(m);
 				if (waiting && ! m.criticalSince) { m.criticalSince = now; }
 				if (! waiting) { delete m.criticalSince; }
 			});
@@ -3284,19 +3257,19 @@
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
-			var home = this == backlog;
+			var inBacklog = this == backlog;
 			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
-				var late = ! done && isLate(m, today);
-				var critical = ! wip && ! done && (late || Priority.of(m) == 'critical' && !! m.criticalSince);
-				var next = home && ! wip && ! done && Priority.of(m) == 'recurring' && !! m.due && m.due > today;
+				var late = ! done && Recurring.isLate(m, today);
+				var critical = ! wip && ! done && (late || Priority.isCritical(m) && !! m.criticalSince);
+				var waitsForDue = inBacklog && ! wip && ! done && Priority.isRecurring(m) && !! m.due && m.due > today;
 				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
 				if ($(this).hasClass('late') != late) lateUnsorted = true;
 				$(this).toggleClass('late', late)
 				       .toggleClass('critical-waiting', critical)
-				       .toggleClass('next-waiting', next)
-				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', next)
-				       .text(since ? formatTimer(now - since) : next ? 'Next: ' + Schedule.label(m.due) : '');
+				       .toggleClass('next-waiting', waitsForDue)
+				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', waitsForDue)
+				       .text(since ? formatTimer(now - since) : waitsForDue ? 'Next: ' + Schedule.label(m.due) : '');
 			});
 		});
 
@@ -4156,7 +4129,7 @@
 	// Schedule, or every 1 week from today.
 	function showScheduleLine($card, p)
 	{
-		var on = p == 'recurring';
+		var on = Priority.isRecurring({ priority: p });
 		var $line = $card.find('.card-schedule');
 		if (! on && $line[0].contains(document.activeElement))
 			$card.children('.edit').focus(); // before hiding it, so hiding doesn't end editing
@@ -4688,12 +4661,13 @@
 
 	$('.wrap').on('click', '.board .card.editing .card-prio', function(){
 		var $card = $(this).closest('.card');
-		var now = $card.data('prioEdit') || Priority.of(cardMeta($card));
+		var picked = $card.data('prioEdit') || Priority.of(cardMeta($card));
 
-		$card.find('.prio-pick').html( Priority.LEVELS.map(function(p){
-			return '<button type=button role=radio data-priority=' + p + ' aria-label=' + Priority.label(p) +
-				' title=' + Priority.label(p) + ' aria-checked=' + (p == now) + '>' + Priority.icon(p) + '</button>';
-		}).join('') );
+		$card.find('.prio-pick').empty().append( Priority.LEVELS.map(function(p){
+			var badge = Priority.badge(p);
+			return $('<button type=button role=radio>').attr(badge.attrs)
+				.attr({ 'data-priority': p, 'aria-checked': String(p == picked) }).html(badge.icon);
+		}) );
 
 		$card.toggleClass('prio-picking');
 		return false;
@@ -5052,7 +5026,7 @@
 		var $done = $('.wrap .board .list.done-list .card');
 		$done.each(function(){
 			var m = cardMeta($(this));
-			if (Priority.of(m) == 'recurring' && m.schedule) returnRecurring($(this), day);
+			if (Priority.isRecurring(m) && m.schedule) returnRecurring($(this), day);
 			else $(this).remove();
 		});
 		if ($done.length) saveBoard();
@@ -5123,9 +5097,9 @@
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
 				// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 				l.notes.forEach(function(n){
-					var p = Priority.of(n); // Cards from before Priorities are Low
+					var badge = Priority.badge(n.priority); // Cards from before Priorities are Low
 					$('<div class=history-card>')
-						.append( $('<span class=history-prio role=img>').attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) }).html(Priority.icon(p)) )
+						.append( $('<span class=history-prio role=img>').attr(badge.attrs).html(badge.icon) )
 						.append( $('<span class=history-text>').text(n.text) )
 						.appendTo($l);
 				});
