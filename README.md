@@ -21,6 +21,11 @@ It's Nullboard with a few changes:
 - **WIP timer**: a list named "wip" (any case) shows a live timer on each
   card, counting from when that card entered it; it starts over if the card
   leaves and comes back.
+- **Critical timer**: a Critical card outside WIP and Done shows the same
+  timer in red, whatever the day's accent, for how long it has waited to get
+  into WIP. It starts when the card becomes Critical and starts over each
+  time it moves into another such list; in WIP the WIP timer takes over, and
+  Done shows none. It counts from a time stored on the card, so it syncs.
 - **Done list**: a list named "done" (any case) strikes through its cards.
   Auto-submit snapshots the board with them, then clears that list.
   Moving a card into Done plays gym-tracker's PR celebration on the card

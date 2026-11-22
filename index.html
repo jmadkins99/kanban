@@ -1472,7 +1472,20 @@
 		display: block;
 	}
 
-	.board .list.wip-list .card.editing .wip-timer,
+	/* A Critical card waiting outside WIP and Done shows its Critical timer
+	   in the same slot, always red whatever the day's accent. */
+	.board .card.critical-waiting .text {
+		padding-right: calc(72px * var(--ui));
+	}
+
+	.board .card .wip-timer.critical:not(:empty) {
+		display: block;
+		background: rgba(222, 53, 11, 0.55);
+		border-color: #ff5630;
+		color: #ffd5cc;
+	}
+
+	.board .card.editing .wip-timer,
 	.board .card.editing .cm-panel {
 		display: none;
 	}
@@ -2967,6 +2980,8 @@
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
 	// A card that isn't in Done (any more) holds no XP.
+	// A Critical card outside WIP and Done is waiting, and its Critical timer
+	// counts from criticalSince; any other card has none.
 	function trackCards()
 	{
 		var now = Date.now();
@@ -2979,6 +2994,9 @@
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
+				var waiting = ! wip && ! done && Priority.of(m) == 'critical';
+				if (waiting && ! m.criticalSince) { m.criticalSince = now; }
+				if (! waiting) { delete m.criticalSince; }
 			});
 		});
 	}
@@ -2994,6 +3012,13 @@
 		if (window.Celebrate) Celebrate.done($card[0], xp);
 	}
 
+	// A card just moved into another list waits afresh: its Critical timer
+	// (if it's Critical and not in WIP or Done) starts over from 0 on saving.
+	function restartCriticalTimer($card)
+	{
+		delete cardMeta($card).criticalSince;
+	}
+
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
 	function formatTimer(ms)
 	{
@@ -3002,13 +3027,23 @@
 		return (h ? h + 'h ' : '') + m + 'm ' + (s % 60) + 's';
 	}
 
-	// Recomputed from the timestamp each tick, so a sleeping laptop is right on waking.
-	function tickWipTimers()
+	// One timer slot per card: the WIP timer in WIP, the red Critical timer
+	// while a Critical card waits elsewhere, otherwise none. Recomputed from
+	// the stored start each tick, so a sleeping laptop is right on waking.
+	function tickTimers()
 	{
 		var now = Date.now();
-		$('.wrap .board .list.wip-list .card').each(function(){
-			var m = cardMeta($(this));
-			$(this).find('.wip-timer').text(m.wip ? formatTimer(now - m.wip) : '');
+		$('.wrap .board .list').each(function(){
+			var wip  = $(this).hasClass('wip-list');
+			var done = $(this).hasClass('done-list');
+			$(this).find('.card').each(function(){
+				var m = cardMeta($(this));
+				var critical = ! wip && ! done && Priority.of(m) == 'critical' && !! m.criticalSince;
+				var since = wip ? m.wip : critical ? m.criticalSince : null;
+				$(this).toggleClass('critical-waiting', critical)
+				       .find('.wip-timer').toggleClass('critical', critical)
+				       .text(since ? formatTimer(now - since) : '');
+			});
 		});
 	}
 
@@ -3149,7 +3184,7 @@
 		updateUndoRedo();
 		updateBoardIndex();
 		markLists();
-		tickWipTimers();
+		tickTimers();
 		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged();
@@ -3258,7 +3293,7 @@
 		updateBoardIndex();
 		setupListScrolling();
 		markLists();
-		tickWipTimers();
+		tickTimers();
 		if (window.XP) XP.render();
 
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
@@ -4624,7 +4659,7 @@
 
 	//
 	setInterval(adjustListScroller, 100);
-	setInterval(tickWipTimers, 250); // often enough that the seconds turn over on time
+	setInterval(tickTimers, 250); // often enough that the seconds turn over on time
 
 	setupListScrolling();
 
@@ -4835,6 +4870,7 @@
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
 				$to.find('.cards').append($card);
+				restartCriticalTimer($card);
 				cardMoved($card, fromDone);
 				saveBoard();
 			},
