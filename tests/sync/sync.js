@@ -107,6 +107,10 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
         assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
         assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
+        // So does its Critical timer's start: B counts from the same moment.
+        const since = await a.page.evaluate(() => NB.board.lists[0].notes[0].criticalSince);
+        assert.ok(typeof since == 'number', 'A started the Critical timer: ' + since);
+        await waitFor(b.page, (since) => NB.board.lists[0].notes[0].criticalSince == since, since);
 
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
