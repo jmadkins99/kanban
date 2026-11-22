@@ -119,6 +119,26 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), moved);
         assert.deepStrictEqual(await order(b.page), await order(a.page), 'B has the same Cards, Priorities, Arrivals and order');
 
+        // So do a Recurring Card's Schedule and Due date, and A's own copy
+        // coming back from the cloud isn't taken for a change.
+        const recurring = (page) => page.evaluate(() => {
+            for (const l of NB.board.lists) for (const n of l.notes) if (n.text == 'live from A') return [n.priority, n.schedule, n.due];
+        });
+        await a.page.evaluate(() => {
+            const $c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            setPriority($c, 'recurring');
+            setSchedule($c, Schedule.make(2, 'weeks', Schedule.today()));
+            saveBoard();
+        });
+        const sent = await recurring(a.page);
+        assert.strictEqual(sent[0], 'recurring');
+        assert.ok(sent[1] && sent[2], 'A has a Schedule and Due date: ' + JSON.stringify(sent));
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'live from A' && n.schedule)));
+        assert.deepStrictEqual(await recurring(b.page), sent, 'B has the same Schedule and Due date');
+        const revA = await a.page.evaluate(() => NB.board.revision);
+        await new Promise((r) => setTimeout(r, 3000));
+        assert.strictEqual(await a.page.evaluate(() => NB.board.revision), revA, "A's echo from the cloud makes no new revision");
+
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),
             new Promise((r) => setTimeout(r, 20000, 'never'))]), 'fresh', "the server's board was seen");

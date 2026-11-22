@@ -52,6 +52,14 @@ It's Nullboard with a few changes:
   unless set), shown as a Jira-style icon at its left, in History too
   (original SVGs in `js/priority.js`, not Atlassian's). In edit mode the icon
   is a dropdown; clicking away saves the text and Priority as one Undo step.
+- **Recurring cards**: picking Recurring shows a Schedule line, "Every N
+  days / weeks / months starting <date>" (`js/schedule.js`). It follows the
+  calendar: weeks keep the start's weekday, months its day of the month
+  (the 31st falls on the last day of shorter months). Saving sets the card's
+  Due date to the first Schedule date on or after today. Due today, it stays
+  put; due later, it moves to Backlog (by name, any case; else the first list)
+  and shows "Next: <date>". Editing the Schedule later only changes the Due
+  date, and another Priority drops both.
 - **Lists sort themselves**: Recurring, Critical, Medium, then Low from the
   top, first in, first out within each. A card that arrives in a list, or
   changes Priority, goes to the bottom of its tier. Done ignores Priority and
