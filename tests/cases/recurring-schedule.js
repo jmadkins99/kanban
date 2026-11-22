@@ -1,9 +1,10 @@
 // A Recurring Card has a Schedule and a Due date. Picking Recurring in edit
 // mode shows "Every [N] [days / weeks / months] starting [date]"; other
 // Priorities hide it. Saving a Card as Recurring sets its Due date to the
-// first Schedule date on or after today: due today, it stays where it is;
-// due later, it moves to Backlog (found by name, or the first List) and shows
-// "Next: <date>". Editing the Schedule later only changes the Due date, and
+// first Schedule date on or after today: due today, it stays where it is
+// (Backlog included); due later, it moves to Backlog (found by name, or the
+// first List) and shows "Next: <date>". A Card in Done stays there with its
+// XP until the Auto-submit. Editing the Schedule later only changes the Due date, and
 // another Priority drops both, leaving the Card where it is. Both are stored
 // on the Card, so they survive export/import and History.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
@@ -11,7 +12,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle } = require('../lib');
+const { openApp, settle, moveCard } = require('../lib');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -30,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(300);
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
-    const BACKLOG = 0, TODO = 1, WIP = 2;
+    const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
     const EDITING = '.wrap .board .card.editing';
     const clickAway = async () => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
     const lists = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => getText($(l).find('.head .text'))).get());
@@ -121,6 +122,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         assert.strictEqual(n.due, '2028-02-23', 'due today');
         assert.strictEqual(await slot('water plants'), null, 'no "Next:" outside Backlog');
 
+        // Saved in Backlog as Recurring and due today, it stays in Backlog too.
+        await addCard(BACKLOG, 'stretch');
+        await pick('Recurring');
+        await setSchedule(1, 'days', '2028-02-01');
+        await clickAway();
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+        await sleep(100);
+        await settle(page);
+        assert.strictEqual(await where('stretch'), BACKLOG, 'due today and saved in Backlog, it isn\'t moved to To-Do');
+        assert.strictEqual((await saved('stretch')).due, '2028-02-23');
+
         // A new Card due later moves to Backlog and shows "Next:".
         await addCard(WIP, 'pay rent');
         await pick('Recurring');
@@ -208,6 +220,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await clickAway();
         assert.strictEqual(await where('clean gutters'), 0, 'no Backlog: the first List');
         assert.match(await slot('clean gutters'), NEXT('(May 1|1 May)'), 'and it shows "Next:" there');
+
+        // A Card in Done changed to Recurring stays in Done with its XP; it
+        // goes back to wait at the next Auto-submit, like any finished one.
+        await addCard(WIP, 'oil hinges');
+        await clickAway();
+        await moveCard(page, WIP, await index(WIP, 'oil hinges'), 1);
+        await settle(page);
+        const xp = (await saved('oil hinges')).xp, total = await page.evaluate(() => XP.total());
+        assert.ok(xp > 0, 'it earned XP in Done');
+        await edit('oil hinges');
+        await pick('Recurring');
+        await setSchedule(1, 'weeks', '2028-03-01');
+        await clickAway();
+        assert.strictEqual(await where('oil hinges'), DONE, 'changed to Recurring in Done, it stays in Done');
+        n = await saved('oil hinges');
+        assert.deepStrictEqual([n.priority, n.due, n.xp], ['recurring', '2028-03-01', xp], 'with its Due date and its XP unchanged');
+        assert.strictEqual(await page.evaluate(() => XP.total()), total, 'the XP total is unchanged');
+        await page.evaluate(() => { NB.board.day = '2028-02-21'; NB.storage.saveBoard(NB.board); }); // Feb 22 is filed already
+        await app.reload();
+        await sleep(500);
+        assert.strictEqual(await where('oil hinges'), 0, 'at the Auto-submit it goes back to wait (no Backlog: the first List)');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

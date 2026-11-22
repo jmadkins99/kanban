@@ -3041,39 +3041,46 @@
 		return $b.length ? $b : $('.wrap .board .list').first();
 	}
 
-	// A finished Recurring Card goes back to Backlog to wait for its next Due
-	// date: the first Schedule date after both its current one and `day`, the
-	// day it was finished, so missed dates don't pile up. Call before saving.
+	// A finished Recurring Card goes back to wait for its next Due date: the
+	// first Schedule date after its current one, after `day` (the day it was
+	// finished) and after yesterday, so missed dates don't pile up and it's
+	// never due on a day already gone. Due today, it goes straight to To-Do
+	// (if there is one); otherwise to Backlog. Call before saving.
 	function returnRecurring($card, day)
 	{
-		var m = cardMeta($card);
-		m.due = Schedule.after(m.schedule, m.due > day ? m.due : day);
-		backlogList().find('.cards').append($card);
-		cardArrived($card);
-		restartCriticalTimer($card);
+		var m = cardMeta($card), s = m.schedule, today = Schedule.today();
+		m.due = [Schedule.after(s, m.due || day), Schedule.after(s, day), Schedule.onOrAfter(s, today)].sort().pop();
+		var $todo = todoList();
+		moveCardTo($card, m.due <= today && $todo.length ? $todo : backlogList());
 	}
 
-	// Recurring Cards in Backlog whose Due date has come move to To-Do, if
-	// there is one. A Card moved out of Backlog early is left where it is.
-	// Saves if any moved.
+	// The List named To-Do, if there is one that isn't also where Recurring
+	// Cards wait (see backlogList).
+	function todoList()
+	{
+		var $todo = listTitled(isTodoTitle);
+		return $todo[0] == backlogList()[0] ? $() : $todo;
+	}
+
+	// Recurring Cards that were waiting in Backlog before their Due date came
+	// move to To-Do once it has, if there is a To-Do. One that arrived in
+	// Backlog on or after its Due date (put back by hand, or saved there as
+	// Recurring due today) is left alone, as is one moved out of Backlog
+	// early. Saves if any moved.
 	function moveDueToTodo()
 	{
-		var $todo = listTitled(isTodoTitle), $backlog = backlogList(), today = Schedule.today();
-		if (! $todo.length || $todo[0] == $backlog[0])
+		var $todo = todoList(), today = Schedule.today();
+		if (! $todo.length)
 			return;
 
-		var $due = $backlog.find('.card').filter(function(){
+		var $due = backlogList().find('.card').filter(function(){
 			var m = cardMeta($(this));
-			return Priority.of(m) == 'recurring' && m.due && m.due <= today;
+			return isRecurring(m) && m.due && m.due <= today && (m.arrival || 0) < Schedule.startOf(m.due);
 		});
 		if (! $due.length)
 			return;
 
-		$due.each(function(){
-			$todo.find('.cards').append(this);
-			cardArrived($(this));
-			restartCriticalTimer($(this));
-		});
+		$due.each(function(){ moveCardTo($(this), $todo); });
 		saveBoard();
 	}
 
@@ -3101,12 +3108,16 @@
 		};
 	}
 
+	// Whether a Card, by its saved fields, is Recurring or Critical.
+	function isRecurring(m) { return Priority.of(m) == 'recurring'; }
+	function isCritical(m)  { return Priority.of(m) == 'critical'; }
+
 	// A Recurring Card not in Done is Late once its Due date has ended. It's
 	// worked out each time, never stored, and isn't a Priority of its own.
 	// Pass the Card's saved fields; a Card in Done is never Late.
 	function isLate(m, today)
 	{
-		return Priority.of(m) == 'recurring' && !! m.due && m.due < (today || Schedule.today());
+		return isRecurring(m) && !! m.due && m.due < (today || Schedule.today());
 	}
 
 	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
@@ -3182,15 +3193,21 @@
 	}
 
 	// A Card just saved as Recurring (new, or changed to it) waits in Backlog
-	// unless it's due today. Call before saving.
+	// unless it's due today. One in Done stays, keeping its XP, and goes back
+	// to wait at the next Auto-submit. Call before saving.
 	function sendToBacklogUnlessDue($card)
 	{
-		if (cardMeta($card).due <= Schedule.today())
+		var $from = $card.closest('.list'), $to = backlogList();
+		if (cardMeta($card).due <= Schedule.today() || $from.hasClass('done-list') || $from[0] == $to[0])
 			return;
-		var $to = backlogList();
-		if ($to[0] == $card.closest('.list')[0])
-			return;
-		$to.find('.cards').append($card);
+		moveCardTo($card, $to);
+	}
+
+	// Puts a Card at the end of another List as a fresh Arrival, its Critical
+	// timer starting over. Call before saving.
+	function moveCardTo($card, $list)
+	{
+		$list.find('.cards').append($card);
 		cardArrived($card);
 		restartCriticalTimer($card);
 	}
@@ -5185,9 +5202,7 @@
 				var $to = dir < 0 ? $list.prev('.list') : $list.next('.list');
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
-				$to.find('.cards').append($card);
-				cardArrived($card);
-				restartCriticalTimer($card);
+				moveCardTo($card, $to);
 				cardMoved($card, fromDone);
 				saveBoard();
 			},

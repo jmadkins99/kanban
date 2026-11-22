@@ -1,10 +1,12 @@
 // Recurring Cards come back on their own. When the midnight Auto-submit
 // clears Done, a finished Recurring Card is filed in that day's History like
-// any other, then goes to Backlog with a fresh Arrival and its next Due date:
-// the first Schedule date after both its current Due date and the day it was
-// finished, so missed occurrences don't pile up. A Recurring Card in Backlog
-// whose Due date has come moves to To-Do by itself, at midnight or when the
-// tab next opens. One moved out of Backlog early is left alone. Lists are
+// any other, then goes back with a fresh Arrival and its next Due date: the
+// first Schedule date after its current Due date, the day it was finished and
+// yesterday, so missed occurrences don't pile up and it's never due on a day
+// already gone. Due today, it goes straight to To-Do; otherwise to Backlog. A
+// Recurring Card waiting in Backlog from before its Due date moves to To-Do by
+// itself once the day comes, at midnight or when the tab next opens. One moved
+// out of Backlog early, or put back there by hand, is left alone. Lists are
 // found by name, any case: "backlog"; "to-do", "todo" or "to do". With no
 // Backlog the Card returns to the first List; with no To-Do it stays put.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
@@ -111,6 +113,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await sleep(300);
         assert.deepStrictEqual(await board(), b, 'the same after a reload');
 
+        // Put back in Backlog by hand on its Due date, it stays there.
+        await moveCard(page, 1, (await board())[1].indexOf('weekly review'), -1);
+        await settle(page);
+        await wake();
+        assert.ok((await board())[0].includes('weekly review'), 'moved back to Backlog by hand, it isn\'t moved again: ' + JSON.stringify(await board()));
+        await app.reload();
+        await sleep(300);
+        await settle(page);
+        assert.ok((await board())[0].includes('weekly review'), 'nor after a reload');
+        await moveCard(page, 0, (await board())[0].indexOf('weekly review'), 1);
+        await settle(page);
+        b = await board();
+
         // Closed over the Due date: on opening, it moves. " TODO " is To-Do too.
         await rename(1, ' TODO ');
         await setClock(2028, 12, 1, 9, 0);
@@ -146,6 +161,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         b = await board();
         assert.ok(b[0].includes('water plants'), 'no To-Do: it stays in Backlog: ' + JSON.stringify(b));
         assert.strictEqual((await saved('water plants')).due, '2028-12-03');
+
+        // Finished on Monday Dec 4, the tab reopened on Wednesday Dec 13: the
+        // next Due date is never one already gone by. Weekly on Mondays comes
+        // back due Dec 18, not Dec 11; daily is due today and goes to To-Do.
+        await rename(1, 'To-Do');
+        await page.evaluate(() => {
+            const r = (text, schedule) => ({ text, priority: 'recurring', schedule, due: '2028-12-04', arrival: 1 });
+            NB.board.lists[3].notes = [
+                r('mow lawn',  { every: 1, start: '2028-11-06', unit: 'weeks' }),
+                r('feed fish', { every: 1, start: '2028-11-01', unit: 'days' }),
+            ];
+            NB.board.day = '2028-12-04';
+            NB.storage.saveBoard(NB.board);
+        });
+        await setClock(2028, 12, 13, 9, 0);
+        await app.reload();
+        await sleep(300);
+        await settle(page);
+        b = await board();
+        assert.strictEqual((await saved('mow lawn')).due, '2028-12-18', 'weekly: the next Monday from today, not a past one');
+        assert.ok(b[0].includes('mow lawn'), 'it waits in Backlog: ' + JSON.stringify(b));
+        assert.strictEqual((await saved('feed fish')).due, '2028-12-13', 'daily: due today');
+        assert.ok(b[1].includes('feed fish'), 'due today, it goes straight to To-Do: ' + JSON.stringify(b));
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
