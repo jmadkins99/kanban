@@ -142,9 +142,10 @@
 						title: l.title || '',
 						// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 						notes: (l.notes || []).map(function (n) {
-							var o = { text: n.text || '', raw: !! n.raw, min: !! n.min };
-							// plus any per-card state (WIP timer, XP), in a fixed key order
-							Object.keys(n).sort().forEach(function (k) { if (! (k in o) && n[k] != null) o[k] = n[k]; });
+							var o = { text: n.text || '' };
+							// plus any per-card state (WIP timer, XP), in a fixed key order. Nullboard's raw and
+							// collapsed flags are no longer shown, so they're left out.
+							Object.keys(n).sort().forEach(function (k) { if (! (k in o) && k != 'raw' && k != 'min' && n[k] != null) o[k] = n[k]; });
 							return o;
 						})
 					};

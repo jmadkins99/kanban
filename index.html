@@ -107,12 +107,6 @@
 	}
 
 	/***/
-	@keyframes shake {
-		33%  { margin-left: -5px; }
-		66%  { margin-left:  5px; }
-		100% { margin-left:  0px; }
-	}
-
 	a {
 		text-decoration: none;
 		transition: color 200ms;
@@ -127,11 +121,6 @@
 	}
 
 	/***/
-	.ding {
-		animation-name: shake;
-		animation-duration: 200ms;
-	}
-
 	.no-user-select {
 		-webkit-touch-callout: none;
 		-webkit-user-select: none;
@@ -431,32 +420,9 @@
 	/***/
 	.board .head .text a,
 	.board .card .text a {
-		color: inherit;
-		cursor: default;
-		transition: none;
-	}
-
-	@keyframes whoomp {
-		0%   { color: inherit; }
-		30%  { color: #888;    }
-		100% { color: inherit; }
-	}
-
-	.board .head .text a:hover,
-	.board .card .text a:hover {
-		animation-name: whoomp;
-		animation-duration: 700ms;
-	}
-
-	.reveal .board .head .text a,
-	.reveal .board .card .text a {
 		color: #1489db;
 		cursor: pointer;
-	}
-
-	.reveal .board .head .text a:hover,
-	.reveal .board .card .text a:hover {
-		animation-name: none;
+		transition: none;
 	}
 
 	/***/
@@ -530,49 +496,6 @@
 
 	.board .card .ops:hover .teaser {
 		display: none;
-	}
-
-	/***/
-	.board .card.raw {
-		background: transparent;
-		box-shadow: none;
-		font-weight: 500;
-	}
-
-	.board .card.raw.editing {
-		background: #fff;
-	}
-
-	.board .card.raw .text {
-	}
-
-	/***/
-	.board .card.collapsed {
-		padding-bottom: 6px;
-	}
-
-	.board .card.collapsed .text,
-	.card-dragster.collapsed .text {
-		max-height: calc( var(--lh) * 1px );
-		overflow: hidden;
-		padding-bottom: 0;
-	}
-
-	.board .card.collapsed .ops {
-		opacity: 1;
-	}
-
-	.board .card.collapsed .ops .teaser {
-		padding: 1px 3px 0 1px;
-	}
-
-	.board .card.collapsed .ops .teaser:before {
-		content: '_';
-		top: 1px;
-	}
-
-	.board .card.collapsed:hover .ops .teaser:before {
-		content: '\2261';
 	}
 
 	/***/
@@ -1234,10 +1157,6 @@
 			outline: 1px solid #555;
 
 		}
-		.board .card .raw {
-			outline: none;
-			text-shadow: none;
-		}
 
 		.board .head .text a,
 		.board .card .text a {
@@ -1302,32 +1221,11 @@
 		text-shadow: 0 0 4px #0008;
 	}
 
-	.theme-dark .reveal .board .head .text a,
-	.theme-dark .reveal .board .card .text a {
+	.theme-dark .board .head .text a,
+	.theme-dark .board .card .text a {
 		color: var(--accent-pale);
 	}
 
-	@keyframes whoomp-dark {
-		0%   { color: inherit; }
-		30%  { color: #fff;    }
-		100% { color: inherit; }
-	}
-
-	.theme-dark .board .head .text a:hover,
-	.theme-dark .board .card .text a:hover {
-		animation-name: whoomp-dark;
-	}
-
-
-	.theme-dark .board .card.raw {
-		background: transparent;
-		box-shadow: none;
-	}
-
-	.theme-dark .board .card.raw .text {
-		color: #e6e6f2;
-		text-shadow: 0 0 4px #0008;
-	}
 
 	.theme-dark .board .card .ops .teaser {
 		color: #b8b8d0;
@@ -1337,10 +1235,6 @@
 		background: #12121f;
 		border-left: 1px solid #0b0b16;
 		border-bottom: 1px solid #0b0b16;
-	}
-
-	.theme-dark .board .card.raw .ops .bulk {
-		border: none;
 	}
 
 	.theme-dark .board .card .ops .bulk a {
@@ -1657,11 +1551,6 @@
 		border-bottom: none;
 	}
 
-	.history-card.raw {
-		color: #e6e6f2;
-		font-weight: 600;
-	}
-
 	/*
 	 *	XP bar: World of Warcraft classic's experience bar, recreated in CSS
 	 *	(colours read from Blizzard's own values and classic's bar texture).
@@ -1891,8 +1780,6 @@
 				<a href=# class=teaser></a>
 				<div class=bulk>
 					<a href=# class='del-card warn'>X</a>
-					<a href=# class='raw-card'>R</a>
-					<a href=# class='collapse'>_</a>
 				</div>
 			</div>
 			<div class=text> </div>
@@ -2869,8 +2756,6 @@
 	function Card(text)
 	{
 		this.text = text;
-		this.raw  = false;
-		this.min  = false;
 	}
 
 	function List(title)
@@ -3422,7 +3307,7 @@
 	}
 
 	/*
-	 *	Per-card state beyond text/raw/min (e.g. wip: when it entered WIP)
+	 *	Per-card state beyond text (e.g. wip: when it entered WIP)
 	 *	rides on the card element as .data('meta') and is saved as extra
 	 *	fields on the card.
 	 */
@@ -3607,8 +3492,6 @@
 			$list.find('.card').not('.swap-out').each(function(){
 				var $card = $(this)
 				var n = l.addCard( getText($card.find('.text')) );
-				n.raw = $card.hasClass('raw');
-				n.min = $card.hasClass('collapsed');
 				Object.assign(n, cardMeta($card));
 			});
 		});
@@ -3704,10 +3587,9 @@
 			list.notes.forEach(function(n){
 				var $n = $cdiv.clone();
 				setText( $n.find('.text'), n.text );
-				if (n.raw) $n.addClass('raw');
-				if (n.min) $n.addClass('collapsed');
 				var meta = Object.assign({}, n);
-				delete meta.text; delete meta.raw; delete meta.min;
+				delete meta.text;
+				delete meta.raw; delete meta.min; // Nullboard's raw and collapsed looks are gone; the next save drops them
 				$n.data('meta', meta);
 				$l_cards.append($n);
 			});
@@ -4316,9 +4198,6 @@
 		var $card = $text.parent();
 		var $edit = $card.find('.edit');
 
-		$card[0]._collapsed = $card.hasClass('collapsed');
-		$card.removeClass('collapsed');
-
 		$edit.val( getText($text) );
 		$edit.width( $text.width() );
 
@@ -4328,15 +4207,14 @@
 		$edit.focus();
 	}
 
-	function stopEditing($edit, via_escape, via_xclick)
+	// Leaving edit mode saves; there's no cancel, and the menu's Undo takes it back.
+	function stopEditing($edit, via_xclick)
 	{
 		var $item = $edit.parent();
 		if (! $item.hasClass('editing'))
 			return;
 
 		$item.removeClass('editing');
-		if ($item[0]._collapsed)
-			$item.addClass('collapsed')
 
 		//
 		var $text = $item.find('.text');
@@ -4346,13 +4224,6 @@
 		//
 		var brand_new = $item.hasClass('brand-new');
 		$item.removeClass('brand-new');
-
-		if (via_escape)
-		{
-			if (brand_new)
-				$item.closest('.card, .list, .board').remove();
-			return;
-		}
 
 		if (via_xclick && brand_new && !text_now.length)
 		{
@@ -4374,38 +4245,6 @@
 		//
 		if (brand_new && $item.hasClass('list'))
 			addCard($item);
-	}
-
-	function handleTab(ev)
-	{
-		var $this = $(this);
-		var $card = $this.closest('.card');
-		var $sibl = ev.shiftKey ? $card.prev() : $card.next();
-
-		if ($sibl.length)
-		{
-			stopEditing($this, false, false);
-			startEditing($sibl.find('.text'));
-		}
-	}
-
-	//
-	function setRevealState(ev)
-	{
-		var raw = ev.originalEvent;
-		var do_reveal = raw.getModifierState && (raw.getModifierState( 'CapsLock' ) || raw.getModifierState( 'Control' ));
-
-		if (do_reveal) $('body').addClass('reveal');
-		else           $('body').removeClass('reveal');
-	}
-
-	//
-	function showDing()
-	{
-		$('body')
-		.addClass('ding')
-		.delay(250)
-		.queue(function(){ $(this).removeClass('ding').dequeue(); });
 	}
 
 	/*
@@ -4775,38 +4614,6 @@
 	/*
 	 *	event handlers
 	 */
-	$(window).on('blur', function(){
-		$('body').removeClass('reveal');
-	});
-
-	$(document).on('keydown', function(ev){
-		setRevealState(ev);
-	});
-
-	$(document).on('keyup', function(ev){
-
-		var raw = ev.originalEvent;
-
-		setRevealState(ev);
-
-		if (ev.target.nodeName == 'TEXTAREA' ||
-		    ev.target.nodeName == 'INPUT')
-			return;
-
-		if (ev.ctrlKey && (raw.code == 'KeyZ'))
-		{
-			var ok = ev.shiftKey ? redoBoard() : undoBoard();
-			if (! ok)
-				showDing();
-		}
-		else
-		if (ev.ctrlKey && (raw.code == 'KeyY'))
-		{
-			if (! redoBoard())
-				showDing();
-		}
-	});
-
 	$('.wrap').on('click', '.board .text', function(ev){
 
 		if (this.was_dragged)
@@ -4824,126 +4631,20 @@
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .card .text a', function(ev){
-
-		if (! $('body').hasClass('reveal'))
-			return true;
-
+	// A link opens in a new tab, rather than opening the card menu or editing a title.
+	$('.wrap').on('click', '.board .text a', function(ev){
 		ev.stopPropagation();
 		return true;
 	});
 
 	//
+	// Enter, on its own, finishes a List or board title; in a Card it's a new line.
 	$('.wrap').on('keydown', '.board .edit', function(ev){
 
-		var $this = $(this);
-		var $card = $this.closest('.card');
-		var $list = $this.closest('.list');
-
-		var isCard = $card.length > 0;
-		var isList = $list.length > 0;
-
-		// esc
-		if (ev.keyCode == 27)
+		var plain = ! (ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey);
+		if (ev.keyCode == 13 && plain && ! $(this).closest('.card').length)
 		{
-			stopEditing($this, true, false);
-			return false;
-		}
-
-		// tab
-		if (ev.keyCode == 9)
-		{
-			handleTab.call(this, ev);
-			return false;
-		}
-
-		// done
-		if (ev.keyCode == 13 && ev.altKey ||
-		    ev.keyCode == 13 && ev.shiftKey && ! ev.ctrlKey)
-		{
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + (add after / add before)
-		if (ev.keyCode == 13 && ev.ctrlKey)
-		{
-			stopEditing($this, false, false);
-
-			if (isCard)
-			{
-				if (ev.shiftKey) // ctrl-shift-enter
-					addCard($list, null, $card);
-				else
-					addCard($list, $card);
-			}
-			else
-			if (isList)
-			{
-				$card = $list.find('.card').last();
-				addCard($list, $card);
-			}
-			else
-			{
-				addList();
-			}
-
-			return false;
-		}
-
-		// done on Enter if editing board or list title
-		if (ev.keyCode == 13 && ! isCard)
-		{
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + collapse
-		if (isCard && ev.altKey && ev.key == 'ArrowUp')
-		{
-			var $item = $this.parent();
-			$item[0]._collapsed = true;
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + expand
-		if (isCard && ev.altKey && ev.key == 'ArrowDown')
-		{
-			var $item = $this.parent();
-			$item[0]._collapsed = false;
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// done + toggle 'raw'
-		if (isCard && ev.altKey && ev.keyCode == 82)
-		{
-			$this.parent().toggleClass('raw');
-			stopEditing($this, false, false);
-			return false;
-		}
-
-		// ctrl-shift-8
-		if (isCard && ev.key == '*' && ev.ctrlKey)
-		{
-			var have = this.value;
-			var pos  = this.selectionStart;
-			var want = have.substr(0, pos) + '\u2022 ' + have.substr(this.selectionEnd);
-			$this.val(want);
-			this.selectionStart = this.selectionEnd = pos + 2;
-			return false;
-		}
-
-		return true;
-	});
-
-	$('.wrap').on('keypress', '.board .edit', function(ev){
-
-		// tab
-		if (ev.keyCode == 9)
-		{
-			handleTab.call(this, ev);
+			stopEditing($(this), false);
 			return false;
 		}
 	});
@@ -4951,7 +4652,7 @@
 	//
 	$('.wrap').on('blur', '.board .edit', function(ev){
 		if (document.activeElement != this)
-			stopEditing($(this), false, true);
+			stopEditing($(this), true);
 		else
 			; // switch away from the browser window
 	});
@@ -5028,18 +4729,6 @@
 		return false;
 	});
 
-	$('.wrap').on('click', '.board .raw-card', function(){
-		$(this).closest('.card').toggleClass('raw');
-		saveBoard();
-		return false;
-	});
-
-	$('.wrap').on('click', '.board .collapse', function(){
-		$(this).closest('.card').toggleClass('collapsed');
-		saveBoard();
-		return false;
-	});
-
 	//
 	$('.wrap').on('mousedown', '.board .card .text, .board .card .cm-panel', function(ev){
 		NB.cardDrag.prime($(this).closest('.card')[0], ev);
@@ -5069,7 +4758,6 @@
 	});
 
 	$(document).on('mousemove', function(ev){
-		setRevealState(ev);
 		NB.cardDrag.onMouseMove(ev);
 		NB.varAdjust.onMouseMove(ev);
 	});
@@ -5430,7 +5118,7 @@
 				$('<div class=history-list-title>').text(l.title || '(untitled list)').appendTo($l);
 				// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 				l.notes.forEach(function(n){
-					$('<div class=history-card>').toggleClass('raw', !! n.raw).text(n.text).appendTo($l);
+					$('<div class=history-card>').text(n.text).appendTo($l);
 				});
 			});
 
