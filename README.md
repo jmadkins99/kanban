@@ -45,6 +45,10 @@ It's Nullboard with a few changes:
   unless set), shown as a Jira-style icon at its left, in History too
   (original SVGs in `js/priority.js`, not Atlassian's). In edit mode the icon
   is a dropdown; clicking away saves the text and Priority as one Undo step.
+- **Lists sort themselves**: Recurring, Critical, Medium, then Low from the
+  top, first in, first out within each. A card that arrives in a list, or
+  changes Priority, goes to the bottom of its tier. Done ignores Priority and
+  keeps the order cards arrived in, so it reads as the day in order.
 - **Big screens**: everything scales with the screen's height from a 1080p
   baseline (1.33x on a 3440x1440 ultrawide, full-screen or half); a font
   size set in UI preferences still wins.

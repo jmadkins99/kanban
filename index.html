@@ -2937,6 +2937,49 @@
 	}
 
 	/*
+	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
+	 *	then first in, first out by Arrival, when the Card entered its List.
+	 *	Done ignores Priority, so it reads as the day in order.
+	 */
+	function cardOrder(done)
+	{
+		return function(a, b){
+			var tier = done ? 0 : Priority.LEVELS.indexOf(Priority.of(a)) - Priority.LEVELS.indexOf(Priority.of(b));
+			return tier || (a.arrival || 0) - (b.arrival || 0);
+		};
+	}
+
+	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
+	// them in increasing order down their List, so its order is kept.
+	function orderBoard(board)
+	{
+		board.lists.forEach(function(list){
+			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
+			var last = 0;
+			list.notes.forEach(function(n){
+				if (typeof n.arrival != 'number') n.arrival = last + 1;
+				last = n.arrival;
+			});
+			list.notes.sort( cardOrder(isDoneTitle(list.title)) );
+		});
+	}
+
+	// Puts each List's Cards on screen in order, moving only the ones out of place.
+	function orderCards()
+	{
+		$('.wrap .board .list').each(function(){
+			var $cards = $(this).find('.cards');
+			var order = cardOrder( $(this).hasClass('done-list') );
+			var cards = $cards.children('.card').get();
+			var want = cards.slice().sort(function(a, b){ return order(cardMeta($(a)), cardMeta($(b))); });
+			want.forEach(function(card, i){
+				var at = $cards.children('.card')[i];
+				if (at !== card) $cards[0].insertBefore(card, at);
+			});
+		});
+	}
+
+	/*
 	 *	Per-card state beyond text (e.g. wip: when it entered WIP)
 	 *	rides on the card element as .data('meta') and is saved as extra
 	 *	fields on the card.
@@ -2957,11 +3000,20 @@
 			.attr({ 'aria-label': 'Priority: ' + Priority.label(p), title: Priority.label(p) });
 	}
 
-	// Changes a Card's Priority; call before saving.
+	// Changes a Card's Priority; call before saving. That counts as a new
+	// Arrival, so it joins the back of its new tier.
 	function setPriority($card, p)
 	{
 		cardMeta($card).priority = Priority.of({ priority: p });
 		showPriority($card);
+		cardArrived($card);
+	}
+
+	// A Card just entered its List (or changed Priority), so it goes to the
+	// bottom of its tier once saved. Call before saving.
+	function cardArrived($card)
+	{
+		cardMeta($card).arrival = Date.now();
 	}
 
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
@@ -3125,6 +3177,7 @@
 	{
 		markLists();
 		trackCards();
+		orderCards();
 
 		var $board = $('.wrap .board');
 		var board = Object.assign(new Board(), NB.board); // id, revision & title
@@ -3221,6 +3274,8 @@
 
 		$b[0].board_id = board.id;
 		setText( $b.find('.head .text'), board.title );
+
+		orderBoard(board); // undo, redo, sync and imports all land here
 
 		board.lists.forEach(function(list){
 
@@ -4835,6 +4890,7 @@
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
 				$to.find('.cards').append($card);
+				cardArrived($card);
 				cardMoved($card, fromDone);
 				saveBoard();
 			},

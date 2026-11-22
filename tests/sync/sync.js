@@ -8,7 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { openApp } = require('../lib');
+const { openApp, moveCard } = require('../lib');
 
 const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 
@@ -107,6 +107,13 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
         assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
         assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
+
+        // So does each Card's Arrival: a Card A moves lands in the same place on B.
+        const order = (page) => page.evaluate(() => NB.board.lists.map((l) => l.notes.map((n) => [n.text, n.priority, n.arrival])));
+        const moved = await a.page.evaluate(() => NB.board.lists[0].notes[NB.board.lists[0].notes.length - 1].text);
+        await moveCard(a.page, 0, -1, 1);
+        await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), moved);
+        assert.deepStrictEqual(await order(b.page), await order(a.page), 'B has the same Cards, Priorities, Arrivals and order');
 
         // Auto-submit waits for the cloud's board when signed in; that wait ends.
         assert.strictEqual(await Promise.race([b.page.evaluate(() => cloudSync.boardFresh.then(() => 'fresh')),

@@ -37,7 +37,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await setPriority(1, 'Medium');
         await setPriority(2, 'Recurring');
         const want = await shown();
-        assert.deepStrictEqual(want.map((c) => c[1]), ['Priority: Critical', 'Priority: Medium', 'Priority: Recurring']);
+        assert.deepStrictEqual(want.map((c) => c[1]), ['Priority: Recurring', 'Priority: Critical', 'Priority: Medium'], 'sorted by Priority');
 
         // A reload keeps them.
         await app.reload();
@@ -47,9 +47,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const exported = await page.evaluate(() => decodeURIComponent(exportBoard().blob.replace(/^data:[^,]*,/, '')));
         fs.writeFileSync(file, exported);
         await setPriority(0, 'Low');
-        assert.strictEqual((await shown())[0][1], 'Priority: Low');
+        assert.strictEqual((await shown())[0][1], 'Priority: Critical', 'the Recurring Card is Low now');
         await (await page.$('.config .imp-board-select')).uploadFile(file);
-        await page.waitForFunction(() => $('.wrap .board .card-prio').first().attr('aria-label') == 'Priority: Critical');
+        await page.waitForFunction(() => $('.wrap .board .card-prio').first().attr('aria-label') == 'Priority: Recurring');
         assert.deepStrictEqual(await shown(), want, 'kept through export and import');
 
         // The day is filed (the board last changed days ago): History shows the icons.
