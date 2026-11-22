@@ -1,5 +1,6 @@
 // A first visit starts with four empty lists: Backlog, To-Do, WIP, Done,
 // already stored (so a reload keeps them) and working as WIP and Done.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

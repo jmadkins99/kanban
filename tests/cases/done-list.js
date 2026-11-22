@@ -1,6 +1,7 @@
 // A list named "done" (any case) strikes through its cards, including ones
 // moved in. Once the board's day is over, auto-submit snapshots the board
 // with the Done cards in it, then clears the Done list, without asking.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
 

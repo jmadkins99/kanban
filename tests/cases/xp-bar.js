@@ -4,6 +4,7 @@
 // before clearing Done, and an Undo of that can't count it twice. The
 // WoW-style bar shows "Lvl N, XP a/b, p%" in 20 bubbles, adjustable in UI
 // preferences.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

@@ -16,7 +16,10 @@ const { openApp, settle } = require('../lib');
         const pick = async (list, label) => {
             const seen = dialogs.length;
             await page.evaluate((list, label) => setTimeout(() => $('.wrap .list').eq(list).find(`.head .bulk a:contains(${label})`).click()), list, label);
-            while (dialogs.length == seen) await new Promise((r) => setTimeout(r, 20));
+            for (let i = 0; dialogs.length == seen; i++) {
+                assert.ok(i < 250, `no prompt after clicking ${label}`);
+                await new Promise((r) => setTimeout(r, 20));
+            }
         };
         await pick(0, 'Clear');
         await settle(page);

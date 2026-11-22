@@ -85,7 +85,7 @@
 		--fs: 11;                        /* font-size   */
 		--lh: calc( var(--fs) * 1.25 );  /* line-height */
 		--fs-head: 13;                   /* font-size of board heading */
-		--fs-nops: 8;                    /* font-size of the card ops */
+		--fs-cops: 8;                    /* font-size of the card ops */
 		--lw: calc(22 * var(--fs) + 40); /* .list width */
 	}
 
@@ -514,7 +514,7 @@
 		background: #fff;
 		border-left: none;
 		padding: 1px 0 2px 5px;
-		font-size: calc( var(--fs-nops) * 1px );
+		font-size: calc( var(--fs-cops) * 1px );
 		font-weight: 500;
 		border-left: 1px solid #ddd;
 		border-bottom: 1px solid #ddd;
@@ -3685,7 +3685,7 @@
 		var $wrap = $('.wrap');
 		var $bdiv = $('tt .board');
 		var $ldiv = $('tt .list');
-		var $ndiv = $('tt .card');
+		var $cdiv = $('tt .card');
 
 		var $b = $bdiv.clone();
 		var $b_lists = $b.find('.lists');
@@ -3702,7 +3702,7 @@
 
 			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 			list.notes.forEach(function(n){
-				var $n = $ndiv.clone();
+				var $n = $cdiv.clone();
 				setText( $n.find('.text'), n.text );
 				if (n.raw) $n.addClass('raw');
 				if (n.min) $n.addClass('collapsed');
@@ -4260,9 +4260,9 @@
 		return $('tt .encoder').text(raw).html();
 	}
 
-	function setText($card, text)
+	function setText($text, text)
 	{
-		$card.attr('_text', text);
+		$text.attr('_text', text);
 
 		text = htmlEncode(text);
 
@@ -4280,12 +4280,12 @@
 			});
 		}
 
-		$card.html(text); // ? text : ' ');
+		$text.html(text); // ? text : ' ');
 	}
 
-	function getText($card)
+	function getText($text)
 	{
-		return $card.attr('_text');
+		return $text.attr('_text');
 	}
 
 	function removeTextSelection()
@@ -4625,7 +4625,7 @@
 		var ui = Math.max(1, Math.min(2, screen.height / 1080));
 		var $html = $('html');
 
-		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-nops': (8 * ui).toFixed(2) });
+		$html.css({ '--ui': ui.toFixed(3), '--fs-head': (13 * ui).toFixed(2), '--fs-cops': (8 * ui).toFixed(2) });
 		if (! $html.hasClass('fs-set'))
 			$html.css('--fs', (11 * ui).toFixed(2));
 

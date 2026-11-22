@@ -1,6 +1,7 @@
 // A card's XP grows with its time in WIP: 2500 + 57.5 per whole minute of
 // its last WIP visit (a flat amount at every level), capped at 8 hours. The
 // +XP badge shows the amount it actually earned.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

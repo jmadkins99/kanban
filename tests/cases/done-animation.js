@@ -1,6 +1,7 @@
 // Dragging a card into a Done list plays the celebration: the card's gold
 // aura, a "+2500 XP" badge and a full-screen flash, gone after ~2 s.
 // Reordering inside Done, or dragging out of it, doesn't celebrate.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

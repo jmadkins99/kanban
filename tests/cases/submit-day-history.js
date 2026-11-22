@@ -2,6 +2,7 @@
 // that day has ended (the tab open at midnight, or the next time it opens)
 // the whole board is snapshotted into History under that day. No button, no
 // prompt, no jump to History. History pages by week, and delete removes a day.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

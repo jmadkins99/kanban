@@ -2,6 +2,7 @@
 // card, per card, counting from when that card entered the list. It
 // survives a reload, stops when the card leaves (keeping that visit's
 // length), and starts over from 0 if the card comes back.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 

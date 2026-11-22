@@ -3,6 +3,7 @@
 // hovering alone opens nothing. Move offers left/right arrows, greyed out at the board's ends, and
 // a move into Done counts like a drag (XP + celebration). A click on a card
 // opens the menu rather than editing; Edit edits; Delete deletes.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
 

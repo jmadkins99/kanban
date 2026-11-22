@@ -3,6 +3,7 @@
 // a card dragged from WIP to Done earned the base 2500 whatever its WIP
 // time, reordering inside Done took XP back, and inside WIP reset timers.
 // And a drop mid-animation saved the outgoing copy too, as a duplicate.
+// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp } = require('../lib');
 
