@@ -93,7 +93,8 @@
     $(containerSelector)
       // A click (a tap on a phone) opens the menu; on desktop, moving off the card closes it.
       .on('mouseleave', '.card', function () { close(this); })
-      .on('click', '.card', function (e) { if (!$(e.target).closest('.cm-panel').length) open(this); })
+      // Not while the Card is being edited: the menu would show once the edit ends.
+      .on('click', '.card', function (e) { if (!$(e.target).closest('.cm-panel').length && !$(this).hasClass('editing')) open(this); })
       .on('click', '.cm-panel button', function (e) {
         e.preventDefault();
         if (this.disabled) return;
