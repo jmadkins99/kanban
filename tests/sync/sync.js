@@ -3,7 +3,8 @@
 // - the first one's local board goes up to an empty cloud;
 // - the second one gets it (as a new revision, so Undo still has its own),
 //   and its local History days get imported;
-// - board and History changes then show up live on the other browser;
+// - board and History changes then show up live on the other browser, the
+//   board with the day it last changed, which Auto-submit files it under;
 // - the rules let only the owner in, and only to the documents the app uses.
 const assert = require('assert');
 const fs = require('fs');
@@ -101,6 +102,9 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         // Live board: an edit on A shows up on B without a reload.
         await editFirstCard(a.page, 'live from A');
         await waitFor(b.page, () => NB.board.lists[0].notes[0].text == 'live from A');
+        // ...with the day it last changed, so B's midnight Auto-submit files
+        // it and clears Done even if A is closed by then.
+        assert.strictEqual(await b.page.evaluate(() => NB.board.day), await a.page.evaluate(() => NB.board.day), 'B has the day A stamped the board with');
 
         // A Card's Priority goes across too, and B shows its icon.
         await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });

@@ -133,10 +133,14 @@
 		sync.boardFresh = new Promise(function (r) { fresh = r; });
 
 		// Firestore hands maps back with sorted keys, so compare a fixed shape.
+		// It includes the day the board last changed: without it a board from
+		// another device arrives undated, and Auto-submit (rollDay) skips it,
+		// so Done never clears at midnight.
 		function canon(b)
 		{
 			return JSON.stringify({
 				title: b.title || '',
+				day:   b.day || null,
 				lists: (b.lists || []).map(function (l) {
 					return {
 						title: l.title || '',
