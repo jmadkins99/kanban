@@ -9,7 +9,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { openApp, moveCard } = require('../lib');
+const { openApp, moveCard, editCard, clickAway } = require('../lib');
 
 const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 
@@ -105,6 +105,23 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         // ...with the day it last changed, so B's midnight Auto-submit files
         // it and clears Done even if A is closed by then.
         assert.strictEqual(await b.page.evaluate(() => NB.board.day), await a.page.evaluate(() => NB.board.day), 'B has the day A stamped the board with');
+
+        // B's board landing while A edits a Card waits for the edit; then A's
+        // save is the later one, so it wins on A, in the cloud and on B. It
+        // used to be applied the moment A clicked away, before A's batched
+        // push, and the Card snapped back (or a new one vanished).
+        await a.page.setViewport({ width: 1280, height: 1000 });
+        const second = '.wrap .board .list:nth-child(1) .card:nth-child(2)';
+        await editCard(a.page, second);
+        await a.page.keyboard.down('Control'); await a.page.keyboard.press('a'); await a.page.keyboard.up('Control');
+        await a.page.keyboard.type('typed on A');
+        await b.page.evaluate(() => { setText($('.wrap .board .list').last().find('.card .text').last(), 'saved on B meanwhile'); saveBoard(); });
+        await new Promise((r) => setTimeout(r, 2500)); // B's board reaches A mid-edit
+        assert.strictEqual(await a.page.evaluate(() => $('.wrap .board .card.editing').length), 1, 'A is still editing');
+        await clickAway(a.page);
+        await waitFor(b.page, () => NB.board.lists[0].notes.some((n) => n.text == 'typed on A'));
+        assert.ok(await a.page.evaluate(() => NB.board.lists[0].notes.some((n) => n.text == 'typed on A')), "A keeps its edit");
+        assert.ok((await cloudBoard(a.page)).lists[0].notes.some((n) => n.text == 'typed on A'), 'and so does the cloud');
 
         // A Card's Priority goes across too, and B shows its icon.
         await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
