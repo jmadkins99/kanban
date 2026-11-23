@@ -1696,6 +1696,174 @@
 		outline: 1px solid var(--accent-hi);
 	}
 
+	/* The Card editor, a touch screen's way to edit a Card: the Card itself,
+	   lifted into a big window near the top, over a dimmed board. Its inputs
+	   are 16px or more, as iOS zooms in on anything smaller. */
+	.prio-word {
+		display: none;
+	}
+
+	.card-editor-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 30;
+		background: rgba(0, 0, 0, .55);
+		cursor: pointer; /* or iOS Safari doesn't pass its taps on to the page */
+	}
+
+	.board .card.in-editor {
+		position: fixed;
+		z-index: 31;
+		top: calc(12px + env(safe-area-inset-top, 0px));
+		left: 12px;
+		right: 12px;
+		max-height: calc(100vh - 24px);
+		overflow-y: auto;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		margin: 0;
+		padding: 16px;
+		border-radius: 12px;
+		outline: none;
+		box-shadow: 0 12px 40px rgba(0, 0, 0, .6);
+		font-size: 16px;
+		cursor: default;
+		user-select: text;
+		-webkit-user-select: text;
+	}
+
+	.theme-dark .board .card.in-editor {
+		background: #12121f;
+		outline: 1px solid var(--accent-muted);
+	}
+
+	.board .card.in-editor .card-prio {
+		display: none;
+	}
+
+	.board .card.in-editor .edit {
+		order: 1;
+		width: 100%;
+		min-height: 52px;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 12px;
+		border: 1px solid #8eaedd;
+		border-radius: 8px;
+		font-size: 16px;
+		line-height: 1.4;
+	}
+
+	.theme-dark .board .card.in-editor .edit {
+		border-color: var(--accent-muted);
+	}
+
+	.board .card.in-editor .edit:focus {
+		outline: 1px solid #8eaedd;
+	}
+
+	.theme-dark .board .card.in-editor .edit:focus {
+		outline-color: var(--accent-hi);
+	}
+
+	.board .card.in-editor .prio-pick,
+	.board .card.in-editor.prio-picking .prio-pick {
+		order: 2;
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 8px;
+		position: static;
+		padding: 0;
+		background: none;
+		box-shadow: none;
+	}
+
+	.board .card.in-editor .prio-pick button {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		width: auto;
+		height: 64px;
+		padding: 8px 2px;
+		border: 1px solid #d0d6de;
+		border-radius: 10px;
+		color: inherit;
+	}
+
+	.theme-dark .board .card.in-editor .prio-pick button {
+		border-color: #2a2a3a;
+		color: #b8b8d0;
+	}
+
+	.board .card.in-editor .prio-pick .prio-icon {
+		width: 24px;
+		height: 24px;
+	}
+
+	.board .card.in-editor .prio-word {
+		display: block;
+		font-size: 13px;
+		line-height: 1;
+	}
+
+	.board .card.in-editor .prio-pick button[aria-checked=true] {
+		background: rgba(142, 174, 221, .3);
+		box-shadow: 0 0 0 2px #8eaedd inset;
+	}
+
+	.theme-dark .board .card.in-editor .prio-pick button[aria-checked=true] {
+		background: rgba(var(--accent-rgb), .35);
+		box-shadow: 0 0 0 2px var(--accent-hi) inset;
+		color: #e6e6f2;
+	}
+
+	.board .card.in-editor.sched-on .card-schedule {
+		order: 3;
+		gap: 8px;
+		padding: 0;
+		margin: 0;
+		font-size: 16px;
+	}
+
+	.board .card.in-editor .card-schedule input,
+	.board .card.in-editor .card-schedule select {
+		height: 40px;
+		padding: 0 8px;
+		border-radius: 6px;
+		font-size: 16px;
+	}
+
+	.board .card.in-editor .card-schedule .sched-every {
+		width: 64px;
+	}
+
+	.board .card.in-editor .card-del {
+		order: 4;
+		position: static;
+		width: 100%;
+		height: 48px;
+		border-radius: 10px;
+		background: rgba(196, 48, 72, .16);
+		color: #d23a52;
+		font: 600 0/1 var(--ff, sans-serif); /* hides the ×, for the word */
+	}
+
+	.board .card.in-editor .card-del::before {
+		content: 'Delete';
+		font-size: 16px;
+	}
+
+	/* and nothing else zooms either: List and board titles */
+	@media (pointer: coarse) {
+		.board .head .edit {
+			font-size: 16px;
+		}
+	}
+
 	/* History shows the icon before each Card's text too. */
 	.history-card {
 		display: flex;
@@ -4121,7 +4289,88 @@
 		if ($card.hasClass('card'))
 			showScheduleLine($card, Priority.of(cardMeta($card)));
 
+		if ($card.hasClass('card') && touchScreen())
+			openCardEditor($card);
+
 		$edit.focus();
+	}
+
+	/*
+	 *	Card editor: on a touch screen a Card is edited in a big window near
+	 *	the top of the screen instead of in place, with the four Priorities as
+	 *	big buttons and Delete at the bottom. A tap outside it, Enter or Back
+	 *	saves and closes it; there's no Done.
+	 */
+	function touchScreen()
+	{
+		return !! (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+	}
+
+	function inCardEditor($card)
+	{
+		return $card.hasClass('in-editor');
+	}
+
+	var editorHistory = false; // Back closes the editor: an entry it pushed
+	var editorPops = 0;        // popstates of entries it took back itself
+
+	function openCardEditor($card)
+	{
+		$card.addClass('in-editor').attr({ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Card editor' });
+		$card.children('.edit').css({ width: '', height: '' }).attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
+		fillPriorityPick($card, Priority.of(cardMeta($card)));
+		$('<div class=card-editor-backdrop>').appendTo('body');
+
+		if (! editorHistory && window.history && history.pushState)
+		{
+			history.pushState({ cardEditor: true }, '');
+			editorHistory = true;
+		}
+	}
+
+	function closeCardEditor($card)
+	{
+		$card.removeClass('in-editor').removeAttr('role aria-modal aria-label');
+		$card.children('.edit').removeAttr('placeholder enterkeyhint');
+		$('.card-editor-backdrop').remove();
+
+		if (editorHistory)
+		{
+			editorHistory = false;
+			editorPops++;
+			history.back();
+		}
+	}
+
+	// Leaving the editor saves, like clicking away from a Card on desktop.
+	function leaveCardEditor()
+	{
+		var $card = $('.wrap .board .card.in-editor');
+		if ($card.length)
+			stopEditing($card.children('.edit'), true);
+	}
+
+	$(document).on('click', '.card-editor-backdrop', function(){
+		leaveCardEditor();
+		return false;
+	});
+
+	$(window).on('popstate', function(){
+		if (editorPops) { editorPops--; return; }
+		if (! editorHistory) return;
+		editorHistory = false; // Back already took the entry
+		leaveCardEditor();
+	});
+
+	// The Priority dropdown's (or the editor's) four choices, `picked` checked.
+	function fillPriorityPick($card, picked)
+	{
+		$card.find('.prio-pick').empty().append( Priority.LEVELS.map(function(p){
+			var badge = Priority.badge(p);
+			return $('<button type=button role=radio>').attr(badge.attrs)
+				.attr({ 'data-priority': p, 'aria-checked': String(p == picked) })
+				.html(badge.icon + '<span class=prio-word>' + Priority.label(p) + '</span>');
+		}) );
 	}
 
 	// Edit mode's Schedule line, "Every [N] [unit] starting [date]", shown
@@ -4157,12 +4406,19 @@
 			return;
 
 		var sched_on = $item.hasClass('sched-on');
+		var in_editor = inCardEditor($item);
+		if (in_editor)
+			closeCardEditor($item);
 		$item.removeClass('editing prio-picking sched-on');
 
 		//
 		var $text = $item.find('.text');
 		var text_now = $edit.val().trimRight();
 		var text_was = getText( $text );
+
+		// emptying a Card's name in the editor keeps the old one; Delete deletes
+		if (in_editor && ! text_now.length && ! $item.hasClass('brand-new'))
+			text_now = text_was;
 
 		// a Card's Priority, as picked in the dropdown, saves with its text
 		var prio_now = $item.data('prioEdit');
@@ -4553,9 +4809,28 @@
 	$('.wrap').on('keydown', '.board .edit', function(ev){
 
 		var plain = ! (ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey);
-		if (ev.keyCode == 13 && plain && ! $(this).closest('.card').length)
+		var $card = $(this).closest('.card');
+		if (ev.keyCode == 13 && plain && ! $card.length)
 		{
 			stopEditing($(this), false);
+			return false;
+		}
+
+		// in the Card editor, a name is one line: Enter saves and closes
+		if (ev.keyCode == 13 && plain && inCardEditor($card))
+		{
+			stopEditing($(this), true);
+			return false;
+		}
+	});
+
+	// Phone keyboards don't always say which key Enter was, but they do say
+	// it would break the line.
+	$('.wrap').on('beforeinput', '.board .card.in-editor .edit', function(ev){
+		var type = ev.originalEvent.inputType;
+		if (type == 'insertLineBreak' || type == 'insertParagraph')
+		{
+			stopEditing($(this), true);
 			return false;
 		}
 	});
@@ -4576,6 +4851,9 @@
 
 		if (ev.relatedTarget && this.contains(ev.relatedTarget))
 			return; // e.g. into the Schedule line
+
+		if (inCardEditor($(this)))
+			return; // the editor closes on a tap outside it, Enter or Back
 
 		stopEditing($(this).children('.edit'), true);
 	});
@@ -4661,14 +4939,7 @@
 
 	$('.wrap').on('click', '.board .card.editing .card-prio', function(){
 		var $card = $(this).closest('.card');
-		var picked = $card.data('prioEdit') || Priority.of(cardMeta($card));
-
-		$card.find('.prio-pick').empty().append( Priority.LEVELS.map(function(p){
-			var badge = Priority.badge(p);
-			return $('<button type=button role=radio>').attr(badge.attrs)
-				.attr({ 'data-priority': p, 'aria-checked': String(p == picked) }).html(badge.icon);
-		}) );
-
+		fillPriorityPick($card, $card.data('prioEdit') || Priority.of(cardMeta($card)));
 		$card.toggleClass('prio-picking');
 		return false;
 	});
@@ -4678,6 +4949,7 @@
 		var p = $(this).data('priority');
 
 		$card.data('prioEdit', p).removeClass('prio-picking');
+		$(this).attr('aria-checked', 'true').siblings().attr('aria-checked', 'false');
 		showPriority($card, p);
 		showScheduleLine($card, p);
 		return false;
@@ -4701,6 +4973,8 @@
 			return false;
 
 		var brand_new = $card.hasClass('brand-new');
+		if (inCardEditor($card))
+			closeCardEditor($card);
 		$card.removeClass('editing brand-new');
 
 		if (brand_new) // never saved, so nothing to save
