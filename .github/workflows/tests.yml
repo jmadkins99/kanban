@@ -39,9 +39,24 @@ jobs:
         working-directory: tests
         run: bash sync.sh
 
-  deploy:
+  # The site's files, packed as the "github-pages" artifact. A job of its own,
+  # GitHub's starter layout: deploy-pages in the same job looked for the
+  # artifact half a second after it was uploaded, found none (GitHub hadn't
+  # listed it yet) and failed #44's and #45's deploys. A re-run can't recover
+  # from that, since it uploads a second artifact of the same name; start a
+  # fresh run instead.
+  build:
     needs: test
     if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,9 +66,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
       - uses: actions/deploy-pages@v4
         id: deploy
