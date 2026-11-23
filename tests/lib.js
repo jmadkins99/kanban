@@ -188,4 +188,42 @@ const setPriority = async (page, card, priority) => {
     await clickAway(page);
 };
 
-module.exports = { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority };
+// Taps the way an iPhone does, which Chrome's touch emulation doesn't: iOS
+// keeps :hover on the last element tapped until the next tap, even when the
+// page changes under it, and each tap first moves :hover to its target. If
+// that makes anything appear (a menu opening on :hover, say), the tap stops
+// there and no click follows. Call after each load: it turns every :hover
+// rule into [data-ios-hover], which it then sets on the tapped element and
+// its ancestors. Returns tap(selector), which resolves to 'click' or 'hover'.
+const iosTapper = async (page) => {
+    await page.evaluate(() => {
+        const walk = (rules) => [...rules].forEach((r) => {
+            if (r.cssRules) walk(r.cssRules);
+            if (r.selectorText && r.selectorText.includes(':hover')) r.selectorText = r.selectorText.replace(/:hover/g, '[data-ios-hover]');
+        });
+        [...document.styleSheets].forEach((s) => { try { walk(s.cssRules); } catch (e) {} }); // cross-origin fonts
+    });
+    const shown = () => page.evaluate(() => {
+        window.iosIds = window.iosIds || 0;
+        return [...document.querySelectorAll('body *')].map((e) => {
+            e.iosId = e.iosId || ++window.iosIds;
+            return e.getClientRects().length && getComputedStyle(e).visibility != 'hidden' ? e.iosId : 0;
+        }).filter(Boolean);
+    });
+    return async (selector) => {
+        const box = await (await page.$(selector)).boundingBox();
+        const x = box.x + box.width / 2, y = box.y + box.height / 2;
+        const before = new Set(await shown());
+        await page.evaluate((x, y) => {
+            const hit = document.elementFromPoint(x, y);
+            document.querySelectorAll('[data-ios-hover]').forEach((e) => e.removeAttribute('data-ios-hover'));
+            for (let e = hit; e; e = e.parentElement) e.setAttribute('data-ios-hover', '');
+        }, x, y);
+        if ((await shown()).some((id) => ! before.has(id)))
+            return 'hover';
+        await page.touchscreen.tap(x, y);
+        return 'click';
+    };
+};
+
+module.exports = { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
