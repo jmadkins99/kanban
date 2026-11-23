@@ -170,6 +170,16 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
         assert.ok(await page.evaluate(() => parseFloat(getComputedStyle(document.activeElement).fontSize)) >= 16, "the editor's name box is 16px or more");
         await tapOutside();
 
+        // A phone keyboard whose Enter only says it would break the line
+        // saves and closes too.
+        await addCard(0);
+        await page.keyboard.type('fix bike');
+        await page.evaluate(() => document.activeElement.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertLineBreak', bubbles: true, cancelable: true })));
+        await sleep(100);
+        await settle(page);
+        assert.strictEqual(await editorOpen(), false, 'a line break closes the editor');
+        assert.deepStrictEqual((await saved(0)).filter((n) => n[0] == 'fix bike'), [['fix bike', 'low']], 'and saves the Card, on one line');
+
         // Desktop keeps editing in place.
         await page.setViewport({ width: 1280, height: 1000 });
         await app.reload();

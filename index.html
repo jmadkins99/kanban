@@ -1708,6 +1708,7 @@
 		inset: 0;
 		z-index: 30;
 		background: rgba(0, 0, 0, .55);
+		cursor: pointer; /* or iOS Safari doesn't pass its taps on to the page */
 	}
 
 	.board .card.in-editor {
@@ -4316,7 +4317,7 @@
 	function openCardEditor($card)
 	{
 		$card.addClass('in-editor').attr({ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Card editor' });
-		$card.children('.edit').css({ width: '', height: '' }).attr('placeholder', 'Name of the Card').trigger('input');
+		$card.children('.edit').css({ width: '', height: '' }).attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
 		fillPriorityPick($card, Priority.of(cardMeta($card)));
 		$('<div class=card-editor-backdrop>').appendTo('body');
 
@@ -4330,7 +4331,7 @@
 	function closeCardEditor($card)
 	{
 		$card.removeClass('in-editor').removeAttr('role aria-modal aria-label');
-		$card.children('.edit').removeAttr('placeholder');
+		$card.children('.edit').removeAttr('placeholder enterkeyhint');
 		$('.card-editor-backdrop').remove();
 
 		if (editorHistory)
@@ -4817,6 +4818,17 @@
 
 		// in the Card editor, a name is one line: Enter saves and closes
 		if (ev.keyCode == 13 && plain && inCardEditor($card))
+		{
+			stopEditing($(this), true);
+			return false;
+		}
+	});
+
+	// Phone keyboards don't always say which key Enter was, but they do say
+	// it would break the line.
+	$('.wrap').on('beforeinput', '.board .card.in-editor .edit', function(ev){
+		var type = ev.originalEvent.inputType;
+		if (type == 'insertLineBreak' || type == 'insertParagraph')
 		{
 			stopEditing($(this), true);
 			return false;
