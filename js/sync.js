@@ -184,6 +184,12 @@
 			if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
 				return setTimeout(function () { applyBoard(c); }, 1000);
 
+			// This device has saved since (often the very edit it waited
+			// for), and that save's push is still batched: the later save
+			// wins, so it goes up rather than being overwritten here.
+			if (timer)
+				return;
+
 			var b = JSON.parse(c);
 			b.format   = NB.blobVersion;
 			b.id       = NB.board.id;
