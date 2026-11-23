@@ -327,12 +327,15 @@
 		z-index: 1;
 	}
 
-	.board .head .menu:hover .bulk {
+	/* Shut while the Card editor is open. iOS keeps :hover on "+ Card" then,
+	   and the editor's first tap, moving it off the menu, would bring the ≡
+	   back: iOS takes a tap that makes something appear as a hover only. */
+	body:not(.card-editor-open) .board .head .menu:hover .bulk {
 		display: block;
 		opacity: 1;
 	}
 
-	.board .head .menu:hover .teaser {
+	body:not(.card-editor-open) .board .head .menu:hover .teaser {
 		display: none;
 	}
 
@@ -4320,6 +4323,7 @@
 		$card.children('.edit').css({ width: '', height: '' }).attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
 		fillPriorityPick($card, Priority.of(cardMeta($card)));
 		$('<div class=card-editor-backdrop>').appendTo('body');
+		$('body').addClass('card-editor-open'); // shuts the ≡ menus, see .menu:hover
 
 		if (! editorHistory && window.history && history.pushState)
 		{
@@ -4333,6 +4337,7 @@
 		$card.removeClass('in-editor').removeAttr('role aria-modal aria-label');
 		$card.children('.edit').removeAttr('placeholder enterkeyhint');
 		$('.card-editor-backdrop').remove();
+		$('body').removeClass('card-editor-open');
 
 		if (editorHistory)
 		{
