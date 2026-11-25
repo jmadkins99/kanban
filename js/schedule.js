@@ -14,6 +14,7 @@
  * Schedule.after(s, day)     the first Schedule date strictly after `day`
  * Schedule.firstDue(s)       the Due date a Card saved today gets: onOrAfter today
  * Schedule.today()           today, local
+ * Schedule.tomorrow()        the day after today, local
  * Schedule.make(every, unit, start) a tidy Schedule from what was typed
  * Schedule.label(day)        a short date for "Next: <date>", e.g. "Mar 6"
  * Schedule.startOf(day)      the moment `day` starts: local midnight before it, in ms
@@ -78,6 +79,12 @@
     return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
   }
 
+  function tomorrow()
+  {
+    var t = parts(today());
+    return key(t.y, t.m, t.d + 1);
+  }
+
   function firstDue(s) { return onOrAfter(s, today()); }
 
   function make(every, unit, start)
@@ -110,5 +117,5 @@
     return new Date(p.y, p.m, p.d + 1).getTime();
   }
 
-  window.Schedule = { onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, make: make, label: label, startOf: startOf, endOf: endOf };
+  window.Schedule = { onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, tomorrow: tomorrow, make: make, label: label, startOf: startOf, endOf: endOf };
 })();
