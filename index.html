@@ -65,6 +65,7 @@
   </script>
   <style>
 
+	/* @section Base: accent colours, fonts, links */
 	/* Gym-tracker's accent family; accentColor.js overwrites these per day. */
 	:root {
 		--accent: #3a2a5a;
@@ -141,6 +142,7 @@
 		clear: both;
 	}
 
+	/* @section Board, its head and Lists */
 	/***/
 	.board {
 		min-width: calc( var(--lw) * 1px );
@@ -363,6 +365,7 @@
 		display: none;
 	}
 
+	/* @section Cards */
 	/***/
 	.board .card {
 		background: #fff;
@@ -421,6 +424,7 @@
 		resize: none;
 	}
 
+	/* @section Logo and config menu */
 	/***/
 	.logo {
 		position: absolute;
@@ -779,6 +783,7 @@
 		cursor: row-resize !important;
 	}
 
+	/* @section Overlays: license, about, backups */
 	/***/
 	.overlay {
 		position: fixed;
@@ -1013,6 +1018,7 @@
 		cursor: default;
 	}
 
+	/* @section Print */
 	/***/
 
 	@media print {
@@ -1041,6 +1047,7 @@
 		}
 	}
 
+	/* @section Dark theme */
 	/*
 	 *	Dark mode
 	 */
@@ -1180,6 +1187,7 @@
 		display: none;
 	}
 
+	/* @section Submit bar, level and rank */
 	/*
 	 *	Kanban additions: daily accent, Submit Day, History.
 	 *	Values follow gym-tracker's css/styles.css.
@@ -1259,6 +1267,7 @@
 		letter-spacing: 0.02em;
 	}
 
+	/* @section History */
 	/***/
 	.history {
 		zoom: var(--ui);
@@ -1376,6 +1385,7 @@
 		border-bottom: none;
 	}
 
+	/* @section XP bar */
 	/*
 	 *	XP bar: World of Warcraft classic's experience bar, recreated in CSS
 	 *	(colours read from Blizzard's own values and classic's bar texture).
@@ -1448,6 +1458,7 @@
 		.xp-bar__fill { transition: none; }
 	}
 
+	/* @section Card timers and tags: WIP, Critical, Next */
 	/* A list named "wip", in any case, shows a live timer on each card. */
 	.board .list.wip-list .card .text {
 		padding-right: calc(72px * var(--ui));
@@ -1506,6 +1517,7 @@
 		display: none;
 	}
 
+	/* @section Card Priority icons, Card editor Delete */
 	/* Delete shows only in the Card editor (see .in-editor below). */
 	.board .card .card-del {
 		display: none;
@@ -1537,6 +1549,7 @@
 		pointer-events: none; /* a tap on it is a tap on the Card */
 	}
 
+	/* @section Card editor */
 	/* The Card editor's four Priority buttons. */
 	.board .card .prio-pick {
 		display: none;
@@ -2011,6 +2024,7 @@
 
 <script type="text/javascript">
 
+	// @section Config and Storage
 	function AppConfig()
 	{
 		this.verLast      = null;           // last used codeVersion
@@ -2731,6 +2745,7 @@
 		}
 	}
 
+	// @section Backup storage
 	/*
 	 *
 	 */
@@ -2909,6 +2924,7 @@
 
 <script type="text/javascript">
 
+	// @section Data model: Card, List, Board
 	function Card(text)
 	{
 		this.text = text;
@@ -3019,6 +3035,7 @@
 		return false;
 	});
 
+	// @section Cards and Lists: add, delete, Backlog / To-Do / WIP / Done
 	/*
 	 *	cards / lists / boards
 	 */
@@ -3174,6 +3191,7 @@
 		});
 	}
 
+	// @section List order
 	/*
 	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
 	 *	then first in, first out by Arrival, when the Card entered its List.
@@ -3219,6 +3237,7 @@
 		});
 	}
 
+	// @section Card state: Priority, Schedule, moves, timers
 	/*
 	 *	Per-card state beyond text (e.g. wip: when it entered WIP)
 	 *	rides on the card element as .data('meta') and is saved as extra
@@ -3375,6 +3394,7 @@
 		}
 	}
 
+	// @section Lists and Boards: clear, move, open, save, undo, show
 	function clearList($list, sure)
 	{
 		var $cards = $list.find('.card');
@@ -3630,6 +3650,7 @@
 		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
 	}
 
+	// @section First-visit board
 	/*
 	 *	the board a first visit starts with
 	 */
@@ -3642,6 +3663,7 @@
 		return board;
 	}
 
+	// @section Board export and import
 	/*
 	 *	board export / import
 	 */
@@ -3713,6 +3735,7 @@
 		openBoard(board.id);
 	}
 
+	// @section Backups
 	/*
 	 *
 	 */
@@ -4036,6 +4059,7 @@
 		});
 	}
 
+	// @section Page title, undo/redo buttons, board index
 	/*
 	 *
 	 */
@@ -4138,6 +4162,7 @@
 		$link.attr('href', link);
 	}
 
+	// @section Generic utils
 	/*
 	 *	generic utils
 	 */
@@ -4198,6 +4223,7 @@
 		});
 	}
 
+	// @section Editing: List and board titles
 	/*
 	 *	editing: a List or board title in place, a Card in the Card editor
 	 */
@@ -4223,6 +4249,7 @@
 		$edit.focus();
 	}
 
+	// @section Card editor
 	/*
 	 *	Card editor: every Card is edited in a big window near the top of the
 	 *	screen instead of in place, with the four Priorities as big buttons and
@@ -4402,6 +4429,7 @@
 			addCard($item);
 	}
 
+	// @section Overlay and license popup
 	/*
 	 *	overlay
 	 */
@@ -4468,6 +4496,7 @@
 		return bulk.trim();
 	}
 
+	// @section Layout
 	/*
 	 *	adjust this and that
 	 */
@@ -4559,6 +4588,7 @@
 		adjustLayout();
 	}
 
+	// @section Font and UI scale prefs
 	/*
 	 *	font size prefs (the font itself is fixed: gym-tracker's system stack)
 	 */
@@ -4726,6 +4756,7 @@
 	/*
 	 *	event handlers
 	 */
+	// @section Handlers: editing titles, Card editor keys
 	$('.wrap').on('click', '.board .text', function(ev){
 
 		if ($(this).closest('.card').length) // cards: a click opens the card menu, whose Edit edits
@@ -4799,6 +4830,7 @@
 			$(this).height(this.scrollHeight - delta);
 	});
 
+	// @section Handlers: boards, undo/redo, Lists
 	//
 
 	$('.config').on('click', '.load-board', function(){
@@ -4849,6 +4881,7 @@
 		return false;
 	});
 
+	// @section Handlers: + Card, Card editor buttons
 	//
 	$('.wrap').on('click', '.board .add-card', function(){
 		addCard( $(this).closest('.list') );
@@ -4898,6 +4931,7 @@
 	});
 
 
+	// @section Handlers: config menu and prefs
 	//
 	$('.config').on('mousedown', '.ui-fs .val', function(ev){
 		var org = getFontSize();
@@ -5016,6 +5050,7 @@
 		return false;
 	});
 
+	// @section Handlers: overlays, window keys
 	//
 	$('.overlay').click(function(ev){
 		if (ev.originalEvent.target != this)
@@ -5057,6 +5092,7 @@
 
 	$('body').on('dragstart', function(){ return false; });
 
+	// @section Init
 	/*
 	 *	the init()
 	 */
@@ -5151,6 +5187,7 @@
 
 <script type="text/javascript">
 
+	// @section Submit Day and History
 	/*
 	 *	Submit Day + History. A submitted day is a snapshot of the whole
 	 *	board, stored in localStorage under 'nullboard.history'.
@@ -5351,6 +5388,7 @@
 		return false;
 	});
 
+	// @section Card menu hookup (cardmenu.js)
 	/*
 	 *	Card menu (cardmenu.js): click a card, or tap it on a phone, for
 	 *	‹ Edit ›. The arrows step it one list left or right.
