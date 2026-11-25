@@ -1,4 +1,5 @@
-/* CardMenu: tap options panel for kanban cards, one row of ⬅️ Edit ➡️. Needs jQuery.
+/* CardMenu: tap options panel for kanban cards, one row of ‹ Edit ›, the arrows
+ * drawn as thin chevrons like the Priority icons. Needs jQuery.
  * CardMenu.attach(containerSelector, { onMove(cardEl, dir), onEdit(cardEl) })
  */
 (function ($) {
@@ -16,7 +17,7 @@
     '  box-shadow: inset 0 -1px 0 rgba(var(--accent-rgb), .9), inset 0 1px 0 rgba(255,255,255,.04), 0 6px 18px rgba(0,0,0,.45); }',
     '.cm-open > .cm-panel > .cm-sheet { transform: none; }',
 
-    /* one row: ⬅️ Edit ➡️, the arrows narrow and Edit taking the rest */
+    /* one row: ‹ Edit ›, the arrows narrow and Edit taking the rest */
     '.cm-row { position: absolute; inset: 0; display: flex; flex-direction: row; align-items: center;',
     '  gap: 2px; padding: 6px; }',
 
@@ -36,7 +37,12 @@
     '.cm-panel button:hover:not(:disabled), .cm-panel button:focus-visible { color: var(--accent-pale);',
     '  background: rgba(var(--accent-rgb), .55); outline: none; }',
     '.cm-panel button[data-cm=edit]:hover::after, .cm-panel button[data-cm=edit]:focus-visible::after { left: calc(50% - 1.1em); width: 2.2em; }',
-    '.cm-panel button[data-cm=left], .cm-panel button[data-cm=right] { font-size: 20px; letter-spacing: 0; padding: 0; }',
+    /* the arrows: chevrons in the accent's pale shade, the one that shows on the dark sheet */
+    '.cm-panel button[data-cm=left], .cm-panel button[data-cm=right] { display: flex; align-items: center; justify-content: center;',
+    '  letter-spacing: 0; padding: 0; color: var(--accent-pale); }',
+    '.cm-panel button[data-cm=left]:hover:not(:disabled), .cm-panel button[data-cm=right]:hover:not(:disabled),',
+    '.cm-panel button[data-cm=left]:focus-visible, .cm-panel button[data-cm=right]:focus-visible { color: #e6e6f2; }',
+    '.cm-arrow { display: block; width: calc(20px * var(--ui, 1)); height: calc(20px * var(--ui, 1)); max-height: 100%; }',
     '.cm-panel button:disabled { filter: grayscale(1); opacity: .22; cursor: not-allowed; }',
 
     /* short cards: size the row to the card */
@@ -46,14 +52,20 @@
     '  .cm-panel button[data-cm=edit] { font-size: clamp(10px, 34cqh, calc(11px * var(--ui, 1))); letter-spacing: .18em;',
     '    padding: 0 .3em 0 calc(.3em + .18em); }',
     '  .cm-panel button[data-cm=edit]::after { bottom: 14%; }',
-    '  .cm-panel button[data-cm=left], .cm-panel button[data-cm=right] { font-size: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); }',
+    '  .cm-arrow { width: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); height: clamp(13px, 55cqh, calc(20px * var(--ui, 1))); }',
     '}'
   ].join('\n');
 
+  // A chevron in the Priority icons' style: a thin line in the current colour.
+  function chevron(d) {
+    return '<svg class="cm-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
   var PANEL = '<div class="cm-panel"><div class="cm-sheet"><div class="cm-row">' +
-    '<button type="button" data-cm="left" aria-label="Move left">⬅️</button>' +
+    '<button type="button" data-cm="left" aria-label="Move left">' + chevron('M10 3.5L5.5 8l4.5 4.5') + '</button>' +
     '<button type="button" data-cm="edit">Edit</button>' +
-    '<button type="button" data-cm="right" aria-label="Move right">➡️</button>' +
+    '<button type="button" data-cm="right" aria-label="Move right">' + chevron('M6 3.5L10.5 8 6 12.5') + '</button>' +
     '</div></div></div>';
 
   var injected = false;

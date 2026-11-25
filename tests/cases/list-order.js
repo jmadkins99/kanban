@@ -27,7 +27,7 @@ const LISTS = [
     await sleep(300);
 
     // Picks a Priority for the Card with this text, the way a person does:
-    // tap it, Edit, the Priority dropdown, then click away.
+    // tap it, Edit, the Priority in the Card editor, then click away.
     const pick = async (text, priority) => {
         const at = await page.evaluate((text) => {
             const $c = $('.wrap .board .card').filter((_, c) => $(c).find('.text').attr('_text') == text);

@@ -1,8 +1,10 @@
-// Only two keys do anything: Enter finishes a List or board title, and Esc
-// closes an overlay. Nullboard's other hotkeys (Tab, Shift/Alt+Enter, Esc to
-// cancel, Ctrl+Enter, Ctrl+Shift+Enter, Alt+Up/Down, Alt+R, Ctrl+Shift+8,
-// Ctrl+Z/Y/Shift+Z) do nothing, on Cards and on List titles. Clicking away
-// from an edit saves it, and the menu's Undo and Redo take it back.
+// Only a few keys do anything. Enter finishes a List or board title; in the
+// Card editor, Enter (or Shift+Enter, which would break the one-line name)
+// and Esc save and close it. Esc also closes an overlay. Nullboard's other
+// hotkeys (Tab, Alt+Enter, Esc to cancel, Ctrl+Enter, Ctrl+Shift+Enter,
+// Alt+Up/Down, Alt+R, Ctrl+Shift+8, Ctrl+Z/Y/Shift+Z) do nothing, on Cards
+// and on List titles. Clicking away from an edit saves it, and the menu's
+// Undo and Redo take it back.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
@@ -49,16 +51,20 @@ const REMOVED = [
     const menu = (cls) => page.evaluate((cls) => $('.wrap .board > .head .' + cls).click(), cls);
 
     try {
-        // On a Card in edit mode, each removed hotkey leaves it as it was.
+        // On a Card in the Card editor, each removed hotkey leaves it as it
+        // was. Esc saves and closes the editor, like a click outside, and so
+        // does anything that would break the line, as a Card's name is one
+        // line; with nothing typed, the board stays as it was.
+        const CLOSES = ['Escape', 'Shift+Enter'];
         for (const keys of REMOVED) {
             await editCard(card(0, 1));
             const before = await state();
-            assert.deepStrictEqual(before.editing, ['0:1'], 'the Card is in edit mode');
+            assert.deepStrictEqual(before.editing, ['0:1'], 'the Card is in the Card editor');
             await combo(keys);
             const after = await state();
-            if (keys[keys.length - 1] == 'Tab') { // the browser moves focus away, which leaves edit mode
-                after.editing = before.editing;
-                after.typed = before.typed;
+            if (CLOSES.includes(keys.join('+'))) {
+                assert.deepStrictEqual(after, Object.assign({}, before, { editing: [], typed: '' }), keys.join('+') + ' closes the editor and changes nothing');
+                continue;
             }
             assert.deepStrictEqual(after, before, keys.join('+') + ' does nothing on a Card');
             await clickAway();
