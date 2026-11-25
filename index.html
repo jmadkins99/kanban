@@ -4240,7 +4240,7 @@
 	function openCardEditor($card)
 	{
 		$card.addClass('in-editor').attr({ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Card editor' });
-		$card.children('.edit').attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
+		$card.children('.edit').attr({ enterkeyhint: 'done' }).trigger('input'); // no placeholder: an empty name shows empty
 		fillPriorityPick($card, Priority.of(cardMeta($card)));
 		$('<div class=card-editor-backdrop>').appendTo('body');
 		$('body').addClass('card-editor-open'); // shuts the ≡ menus, see .menu:hover
@@ -4255,7 +4255,7 @@
 	function closeCardEditor($card)
 	{
 		$card.removeClass('in-editor').removeAttr('role aria-modal aria-label');
-		$card.children('.edit').removeAttr('placeholder enterkeyhint');
+		$card.children('.edit').removeAttr('enterkeyhint');
 		$('.card-editor-backdrop').remove();
 		$('body').removeClass('card-editor-open');
 

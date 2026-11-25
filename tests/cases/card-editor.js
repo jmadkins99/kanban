@@ -27,7 +27,7 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
 
     try {
         // "+ Card" opens the editor: big, near the top, the name box focused
-        // and empty with its placeholder, and Low picked.
+        // and empty, with no placeholder or hint, and Low picked.
         const before = await saved(0);
         await addCard(0);
         assert.strictEqual(await editorOpen(), true, '"+ Card" opens the Card editor');
@@ -42,7 +42,7 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
             };
         }, EDITOR);
         assert.deepStrictEqual(look, {
-            wide: true, nearTop: true, focused: true, value: '', placeholder: 'Name of the Card',
+            wide: true, nearTop: true, focused: true, value: '', placeholder: '',
             picked: ['Priority: Low'],
             choices: ['Priority: Recurring', 'Priority: Critical', 'Priority: Medium', 'Priority: Low'],
             bigChoices: true,

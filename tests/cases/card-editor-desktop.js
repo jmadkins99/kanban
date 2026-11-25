@@ -54,7 +54,7 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
         await addCard(0);
         assert.strictEqual(await editorOpen(), true, '"+ Card" opens the Card editor');
         assert.strictEqual(await inPlace(), 0, 'nothing edits in place');
-        assert.strictEqual(await page.evaluate(() => document.activeElement.value), '', 'a new Card starts empty');
+        assert.deepStrictEqual(await page.evaluate(() => [document.activeElement.value, document.activeElement.placeholder]), ['', ''], 'a new Card starts empty, with no placeholder or hint');
         await clickAway(page);
 
         // Enter, Esc and a click outside each save the name and close the
