@@ -1500,7 +1500,7 @@
 	}
 
 	/* A Recurring card waiting in Backlog shows "Next: <date>" there, in the
-	   Recurring icon's purple. */
+	   Recurring icon's purple; a Critical one with a Due date, in red. */
 	.board .card.next-waiting .text {
 		padding-right: calc(92px * var(--ui));
 	}
@@ -1510,6 +1510,13 @@
 		background: rgba(135, 119, 217, 0.35);
 		border-color: #8777d9;
 		color: #e4e0ff;
+	}
+
+	/* A Critical Card waiting there for its Due date: the same, in red. */
+	.board .card .wip-timer.next.next-critical:not(:empty) {
+		background: rgba(222, 53, 11, 0.55);
+		border-color: #ff5630;
+		color: #ffd5cc;
 	}
 
 	.board .card.editing .wip-timer,
@@ -1573,12 +1580,15 @@
 	}
 
 	/* The Card editor's Schedule line under a Recurring Card's name:
-	   "Every [N] [days / weeks / months] starting [date]". */
-	.board .card .card-schedule {
+	   "Every [N] [days / weeks / months] starting [date]", and the Due line
+	   under a Critical Card's: "Due [date]", empty or tomorrow on. */
+	.board .card .card-schedule,
+	.board .card .card-due {
 		display: none;
 	}
 
-	.board .card.editing.sched-on .card-schedule {
+	.board .card.editing.sched-on .card-schedule,
+	.board .card.editing.due-on .card-due {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
@@ -1591,7 +1601,8 @@
 	}
 
 	.board .card .card-schedule input,
-	.board .card .card-schedule select {
+	.board .card .card-schedule select,
+	.board .card .card-due input {
 		font: inherit;
 		color: inherit;
 		height: calc(20px * var(--ui));
@@ -1607,12 +1618,14 @@
 		width: calc(42px * var(--ui));
 	}
 
-	.theme-dark .board .card.editing.sched-on .card-schedule {
+	.theme-dark .board .card.editing.sched-on .card-schedule,
+	.theme-dark .board .card.editing.due-on .card-due {
 		color: #a0a0bc;
 	}
 
 	.theme-dark .board .card .card-schedule input,
-	.theme-dark .board .card .card-schedule select {
+	.theme-dark .board .card .card-schedule select,
+	.theme-dark .board .card .card-due input {
 		background: #1c1c30;
 		border-color: var(--accent-muted);
 		color: #e6e6f2;
@@ -1620,12 +1633,14 @@
 	}
 
 	.board .card .card-schedule input:focus,
-	.board .card .card-schedule select:focus {
+	.board .card .card-schedule select:focus,
+	.board .card .card-due input:focus {
 		outline: 1px solid #8eaedd;
 	}
 
 	.theme-dark .board .card .card-schedule input:focus,
-	.theme-dark .board .card .card-schedule select:focus {
+	.theme-dark .board .card .card-schedule select:focus,
+	.theme-dark .board .card .card-due input:focus {
 		outline: 1px solid var(--accent-hi);
 	}
 
@@ -1750,7 +1765,8 @@
 		color: #e6e6f2;
 	}
 
-	.board .card.in-editor.sched-on .card-schedule {
+	.board .card.in-editor.sched-on .card-schedule,
+	.board .card.in-editor.due-on .card-due {
 		order: 3;
 		gap: 8px;
 		padding: 0;
@@ -1759,7 +1775,8 @@
 	}
 
 	.board .card.in-editor .card-schedule input,
-	.board .card.in-editor .card-schedule select {
+	.board .card.in-editor .card-schedule select,
+	.board .card.in-editor .card-due input {
 		height: 40px;
 		padding: 0 8px;
 		border-radius: 6px;
@@ -1949,6 +1966,7 @@
 			<div class=card-schedule>Every <input type=number class=sched-every min=1 step=1 aria-label="Every how many">
 				<select class=sched-unit aria-label="Days, weeks or months"><option value=days>days</option><option value=weeks>weeks</option><option value=months>months</option></select>
 				starting <input type=date class=sched-start aria-label="Starting"></div>
+			<div class=card-due>Due <input type=date class=due-date aria-label="Due date"></div>
 			<span class=wip-timer></span>
 			<button type=button class=card-del aria-label="Delete Card">&times;</button>
 		</div>
@@ -3163,9 +3181,11 @@
 		return $todo[0] == backlogList()[0] ? $() : $todo;
 	}
 
-	// Recurring Cards in Backlog whose Due date has come move on to To-Do, if
-	// there is one, unless they arrived on or after it (see js/recurring.js).
-	// A Card moved out of Backlog early is left where it is. Saves if any moved.
+	// Cards in Backlog whose Due date has come move on to To-Do, if there is
+	// one, unless they arrived on or after it (see js/recurring.js). A Critical
+	// one loses its Due date there, its Critical timer counting from the start
+	// of that day, so every device agrees. A Card moved out of Backlog early
+	// is left where it is. Saves if any moved.
 	function moveDueToTodo()
 	{
 		var $todo = todoList(), today = Schedule.today();
@@ -3178,7 +3198,15 @@
 		if (! $due.length)
 			return;
 
-		$due.each(function(){ moveCardTo($(this), $todo); });
+		$due.each(function(){
+			var m = cardMeta($(this));
+			moveCardTo($(this), $todo);
+			if (Priority.isCritical(m))
+			{
+				m.criticalSince = Schedule.startOf(m.due);
+				delete m.due;
+			}
+		});
 		saveBoard();
 	}
 
@@ -3259,7 +3287,8 @@
 
 	// Changes a Card's Priority; call before saving. That counts as a new
 	// Arrival, so it joins the back of its new tier.
-	// Only a Recurring Card has a Schedule and Due date.
+	// Only a Recurring Card has a Schedule and Due date; a Critical Card is
+	// given its Due date, if any, after (see setCriticalDue).
 	function setPriority($card, p)
 	{
 		var m = cardMeta($card);
@@ -3278,8 +3307,18 @@
 		m.due = Schedule.firstDue(schedule);
 	}
 
-	// A Card just saved as Recurring (new, or changed to it) waits in Backlog
-	// unless it's due today. One in Done stays, keeping its XP, and goes back
+	// Gives a Critical Card the Due date `day` ('YYYY-MM-DD', tomorrow or
+	// later) to wait in Backlog for, or none when `day` is empty, so it's an
+	// ordinary Critical Card. Call before saving.
+	function setCriticalDue($card, day)
+	{
+		var m = cardMeta($card);
+		if (day) m.due = day;
+		else delete m.due;
+	}
+
+	// A Card just saved as Recurring (new, or changed to it), or Critical with
+	// a new Due date, waits in Backlog unless it's due today. One in Done stays, keeping its XP, and goes back
 	// to wait at the next Auto-submit. Call before saving.
 	function sendToBacklogUnlessDue($card)
 	{
@@ -3309,10 +3348,11 @@
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
 	// A card that isn't in Done (any more) holds no XP.
 	// A Critical card outside WIP and Done is waiting, and its Critical timer
-	// counts from criticalSince; any other card has none.
+	// counts from criticalSince; any other card has none, nor does one with a
+	// Due date still to come.
 	function trackCards()
 	{
-		var now = Date.now();
+		var now = Date.now(), today = Schedule.today();
 
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
@@ -3322,7 +3362,7 @@
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
-				var waiting = ! wip && ! done && Priority.isCritical(m);
+				var waiting = ! wip && ! done && Priority.isCritical(m) && ! (m.due > today);
 				if (waiting && ! m.criticalSince) { m.criticalSince = now; }
 				if (! waiting) { delete m.criticalSince; }
 			});
@@ -3358,8 +3398,8 @@
 	// One timer slot per card: the WIP timer in WIP, the red Critical timer
 	// while a Critical card waits elsewhere, otherwise none. Recomputed from
 	// the stored start each tick, so a sleeping laptop is right on waking.
-	// A Recurring Card waiting in Backlog for a later Due date shows
-	// "Next: <date>" there instead. A Late Card (red icon) shows the red
+	// A Recurring or Critical Card waiting in Backlog for a later Due date
+	// shows "Next: <date>" there instead, purple or red. A Late Card (red icon) shows the red
 	// Critical timer from the end of its Due date, or the WIP timer in WIP.
 	// A Card that has just turned Late moves up its List.
 	var lateUnsorted = false;
@@ -3375,13 +3415,14 @@
 				var m = cardMeta($(this));
 				var late = ! done && Recurring.isLate(m, today);
 				var critical = ! wip && ! done && (late || Priority.isCritical(m) && !! m.criticalSince);
-				var waitsForDue = inBacklog && ! wip && ! done && Priority.isRecurring(m) && !! m.due && m.due > today;
+				var waitsForDue = inBacklog && ! wip && ! done && (Priority.isRecurring(m) || Priority.isCritical(m)) && !! m.due && m.due > today;
 				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
 				if ($(this).hasClass('late') != late) lateUnsorted = true;
 				$(this).toggleClass('late', late)
 				       .toggleClass('critical-waiting', critical)
 				       .toggleClass('next-waiting', waitsForDue)
 				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', waitsForDue)
+				       .toggleClass('next-critical', waitsForDue && Priority.isCritical(m))
 				       .text(since ? formatTimer(now - since) : waitsForDue ? 'Next: ' + Schedule.label(m.due) : '');
 			});
 		});
@@ -4238,6 +4279,7 @@
 		if ($card.hasClass('card'))
 		{
 			showScheduleLine($card, Priority.of(cardMeta($card)));
+			showDueLine($card, Priority.of(cardMeta($card)));
 			openCardEditor($card);
 		}
 		else
@@ -4356,6 +4398,23 @@
 		$card.toggleClass('sched-on', on);
 	}
 
+	// The Card editor's Due line, "Due [date]", shown while the picked Priority
+	// is Critical. Empty, or the Card's Due date if it's Critical already; the
+	// earliest day it takes is tomorrow.
+	function showDueLine($card, p)
+	{
+		var on = Priority.isCritical({ priority: p });
+		var $line = $card.find('.card-due');
+		if (! on && $line[0].contains(document.activeElement))
+			$card.children('.edit').focus(); // before hiding it, so the focus isn't lost
+		if (on && ! $card.hasClass('due-on'))
+		{
+			var m = cardMeta($card);
+			$line.find('.due-date').attr('min', Schedule.tomorrow()).val(Priority.isCritical(m) && m.due || '');
+		}
+		$card.toggleClass('due-on', on);
+	}
+
 	// The Schedule as filled in on the line.
 	function scheduleLine($card)
 	{
@@ -4370,10 +4429,11 @@
 			return;
 
 		var sched_on = $item.hasClass('sched-on');
+		var due_on = $item.hasClass('due-on');
 		var in_editor = inCardEditor($item);
 		if (in_editor)
 			closeCardEditor($item);
-		$item.removeClass('editing sched-on');
+		$item.removeClass('editing sched-on due-on');
 
 		//
 		var $text = $item.find('.text');
@@ -4393,6 +4453,12 @@
 		var sched_now = sched_on ? scheduleLine($item) : null;
 		var sched_changed = sched_now && JSON.stringify(sched_now) != JSON.stringify(cardMeta($item).schedule);
 
+		// and a Critical Card's Due date, if any: a day tomorrow or later
+		var due_now = due_on ? $item.find('.due-date').val() : null;
+		if (due_on && ! (/^\d{4}-\d\d-\d\d$/.test(due_now) && due_now >= Schedule.tomorrow()))
+			due_now = '';
+		var due_changed = due_on && due_now != (Priority.isCritical(cardMeta($item)) && cardMeta($item).due || '');
+
 		//
 		var brand_new = $item.hasClass('brand-new');
 		$item.removeClass('brand-new');
@@ -4403,7 +4469,7 @@
 			return;
 		}
 
-		if (text_now != text_was || brand_new || prio_changed || sched_changed)
+		if (text_now != text_was || brand_new || prio_changed || sched_changed || due_changed)
 		{
 			setText( $text, text_now );
 
@@ -4413,8 +4479,12 @@
 			if (sched_now && (sched_changed || prio_changed || brand_new))
 				setSchedule($item, sched_now);
 
-			// saved as Recurring, new or changed to it; an edited Schedule alone doesn't move it
-			if (sched_now && (prio_changed || brand_new))
+			if (due_on)
+				setCriticalDue($item, due_now);
+
+			// saved as Recurring, new or changed to it; an edited Schedule alone doesn't move it.
+			// Saved Critical with a new Due date, it goes to wait for it.
+			if (sched_now && (prio_changed || brand_new) || due_now && due_changed)
 				sendToBacklogUnlessDue($item);
 
 			if ($item.parent().hasClass('board'))
@@ -4813,8 +4883,8 @@
 			; // switch away from the browser window
 	});
 
-	// The Schedule line's words keep the focus where it is, like the Priority buttons.
-	$('.wrap').on('mousedown', '.board .card-schedule', function(ev){
+	// The Schedule and Due lines' words keep the focus where it is, like the Priority buttons.
+	$('.wrap').on('mousedown', '.board .card-schedule, .board .card-due', function(ev){
 		if (! $(ev.target).is(':input'))
 			ev.preventDefault();
 	});
@@ -4902,6 +4972,7 @@
 		$(this).attr('aria-checked', 'true').siblings().attr('aria-checked', 'false');
 		showPriority($card, p);
 		showScheduleLine($card, p);
+		showDueLine($card, p);
 		return false;
 	});
 
@@ -5401,6 +5472,8 @@
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
 				moveCardTo($card, $to);
+				if (Priority.isCritical(cardMeta($card)))
+					setCriticalDue($card, ''); // moved by hand, it stops waiting for its day
 				cardMoved($card, fromDone);
 				saveBoard();
 			},

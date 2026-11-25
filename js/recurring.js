@@ -12,10 +12,11 @@
  *                                  after yesterday, so missed dates don't pile
  *                                  up and it's never due on a day gone by
  * Recurring.movesOn(card, today)   whether a Card in Backlog moves on to To-Do
- *                                  by itself: its Due date has come, and it was
- *                                  waiting there before that day began. One
- *                                  put back by hand, or saved there due today,
- *                                  stays.
+ *                                  by itself: it has a Due date (Recurring, or
+ *                                  Critical waiting for a day), the day has
+ *                                  come, and it was waiting there before that
+ *                                  day began. One put back by hand, or saved
+ *                                  there due today, stays.
  */
 (function () {
   function isLate(card, today) {
@@ -28,7 +29,7 @@
   }
 
   function movesOn(card, today) {
-    return Priority.isRecurring(card) && !! card.due && card.due <= (today || Schedule.today()) &&
+    return !! card.due && card.due <= (today || Schedule.today()) &&
       (card.arrival || 0) < Schedule.startOf(card.due);
   }
 
