@@ -59,12 +59,12 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         await page.click(EDITING + ' .sched-every');
         await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
         await page.keyboard.type(String(every));
-        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'typing in the Schedule keeps edit mode');
+        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'typing in the Schedule keeps the Card editor open');
         await page.select(EDITING + ' .sched-unit', unit);
         await page.click(EDITING + ' .sched-start');
         await page.$eval(EDITING + ' .sched-start', (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }, start);
         await sleep(50);
-        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'picking a start date keeps edit mode');
+        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'picking a start date keeps the Card editor open');
     };
     const NEXT = (re) => new RegExp('^Next: ' + re + '$');
 
@@ -89,7 +89,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         const words = await page.evaluate((s) => { const r = $(s).find('.card-schedule')[0].getBoundingClientRect(); return { x: r.left + 3, y: r.top + r.height / 2 }; }, EDITING);
         await page.mouse.click(words.x, words.y);
         await sleep(50);
-        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'clicking the Schedule line keeps edit mode');
+        assert.ok(await page.evaluate((s) => $(s).length == 1, EDITING), 'clicking the Schedule line keeps the Card editor open');
 
         // Weekly from a Wednesday, which today is: due today, it stays in To-Do.
         await setSchedule(1, 'weeks', '2028-02-02');
@@ -122,7 +122,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
 
         // Editing the Schedule only changes the Due date and "Next:".
         await edit('pay rent');
-        assert.strictEqual(await scheduleShown(), true, 'a Recurring Card shows its Schedule line in edit mode');
+        assert.strictEqual(await scheduleShown(), true, 'a Recurring Card shows its Schedule line in the Card editor');
         assert.deepStrictEqual(await page.evaluate((s) => [$(s).find('.sched-every').val(), $(s).find('.sched-unit').val(), $(s).find('.sched-start').val()], EDITING),
             ['1', 'months', '2028-03-01'], 'filled with its Schedule');
         await setSchedule(2, 'weeks', '2028-02-27');
@@ -141,7 +141,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         await addCard(TODO, 'review week');
         await clickAway();
         await edit('review week');
-        assert.strictEqual(await scheduleShown(), false, 'a Low Card in edit mode has no Schedule line');
+        assert.strictEqual(await scheduleShown(), false, 'a Low Card in the Card editor has no Schedule line');
         await pick('Recurring');
         await setSchedule(1, 'weeks', '2028-02-25');
         await clickAway();

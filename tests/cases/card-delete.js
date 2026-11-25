@@ -17,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     const first = '.wrap .board .list:nth-child(1) .card:nth-child(1)';
     const texts = () => page.evaluate(() => NB.board.lists[0].notes.map((n) => n.text));
-    const xShown = (sel) => page.evaluate((sel) => $(sel).find('.card-del').is(':visible'), sel);
+    const deleteShown = (sel) => page.evaluate((sel) => $(sel).find('.card-del').is(':visible'), sel);
     const edit = async (sel) => {
         await page.click(sel + ' .text');
         await sleep(450);
@@ -27,11 +27,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     try {
         // Not editing: no Delete.
-        assert.strictEqual(await xShown(first), false, 'no Delete outside the Card editor');
+        assert.strictEqual(await deleteShown(first), false, 'no Delete outside the Card editor');
 
         // In the editor: Delete, the editor's last and widest control.
         await edit(first);
-        assert.strictEqual(await xShown(first), true, 'Delete shown in the Card editor');
+        assert.strictEqual(await deleteShown(first), true, 'Delete shown in the Card editor');
         const box = await page.evaluate((sel) => {
             const a = $(sel)[0].getBoundingClientRect(), b = $(sel).find('.card-del')[0].getBoundingClientRect();
             const others = $(sel).children(':visible').not('.card-del').get().map((e) => e.getBoundingClientRect().bottom);
@@ -51,7 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         // OK deletes it.
         page.removeAllListeners('dialog');
         page.on('dialog', (d) => { dialogs.push(d.message().trim()); d.accept(); });
-        if (!(await xShown(first))) await edit(first);
+        if (!(await deleteShown(first))) await edit(first);
         await page.click(first + ' .card-del');
         await sleep(600);
         await settle(page);
@@ -68,7 +68,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.evaluate(() => $('.wrap .board .list').eq(0).find('.add-card').click());
         await sleep(100);
         const fresh = '.wrap .board .card.editing';
-        assert.strictEqual(await xShown(fresh), true, 'a new Card has Delete too');
+        assert.strictEqual(await deleteShown(fresh), true, 'a new Card has Delete too');
         await page.click(fresh + ' .card-del');
         await sleep(600);
         await settle(page);

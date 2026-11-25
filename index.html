@@ -1534,10 +1534,6 @@
 		width: calc( var(--lh) * 1px + 4px );
 		height: calc( var(--lh) * 1px + 4px );
 		padding: 2px;
-		margin: 0;
-		border: 0;
-		border-radius: 3px;
-		background: transparent;
 		pointer-events: none; /* a tap on it is a tap on the Card */
 	}
 
@@ -1698,10 +1694,6 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 8px;
-		position: static;
-		padding: 0;
-		background: none;
-		box-shadow: none;
 	}
 
 	.board .card.in-editor .prio-pick button {
@@ -4207,7 +4199,7 @@
 	}
 
 	/*
-	 *	inline editing
+	 *	editing: a List or board title in place, a Card in the Card editor
 	 */
 	function startEditing($text, ev)
 	{
@@ -4215,15 +4207,17 @@
 		var $edit = $card.find('.edit');
 
 		$edit.val( getText($text) );
-		$edit.width( $text.width() );
-
-		$edit.height( $text.height() );
 		$card.addClass('editing');
 
 		if ($card.hasClass('card'))
 		{
 			showScheduleLine($card, Priority.of(cardMeta($card)));
 			openCardEditor($card);
+		}
+		else
+		{
+			$edit.width( $text.width() );
+			$edit.height( $text.height() );
 		}
 
 		$edit.focus();
@@ -4246,7 +4240,7 @@
 	function openCardEditor($card)
 	{
 		$card.addClass('in-editor').attr({ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Card editor' });
-		$card.children('.edit').css({ width: '', height: '' }).attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
+		$card.children('.edit').attr({ placeholder: 'Name of the Card', enterkeyhint: 'done' }).trigger('input');
 		fillPriorityPick($card, Priority.of(cardMeta($card)));
 		$('<div class=card-editor-backdrop>').appendTo('body');
 		$('body').addClass('card-editor-open'); // shuts the ≡ menus, see .menu:hover
@@ -4273,7 +4267,7 @@
 		}
 	}
 
-	// Leaving the editor saves, like clicking away from a Card on desktop.
+	// Leaving the editor saves, however it's left.
 	function leaveCardEditor()
 	{
 		var $card = $('.wrap .board .card.in-editor');
@@ -4286,9 +4280,13 @@
 		return false;
 	});
 
-	// Esc too, from anywhere in it, the Schedule line's inputs included.
-	$(document).on('keydown', '.wrap .board .card.in-editor', function(ev){
-		if (ev.keyCode != 27)
+	// Esc too, wherever the focus is while it's open: in the Schedule line,
+	// or nowhere after a click on a blank part of it. And Enter when the
+	// focus isn't in one of its inputs or buttons (the name's Enter is below).
+	$(document).on('keydown', function(ev){
+		if (! $('.wrap .board .card.in-editor').length)
+			return;
+		if (ev.keyCode != 27 && ! (ev.keyCode == 13 && ! $(ev.target).is(':input')))
 			return;
 		leaveCardEditor();
 		return false;

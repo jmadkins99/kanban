@@ -6,7 +6,7 @@
 // place, as they aren't Cards.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, sleep, clickAway } = require('../lib');
+const { openApp, settle, sleep, clickAway, editCard } = require('../lib');
 
 const EDITOR = '[role=dialog][aria-label="Card editor"]';
 
@@ -21,12 +21,7 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
     const saved = (list) => page.evaluate((list) => NB.board.lists[list].notes.map((n) => [n.text, n.priority]), list);
     const editorOpen = () => page.evaluate((sel) => $(sel).is(':visible'), EDITOR);
     const inPlace = () => page.evaluate((sel) => $('.wrap .board .card.editing').not(sel).length, EDITOR);
-    const edit = async (sel) => {
-        await page.click(sel + ' .text');
-        await sleep(450);
-        await page.click(sel + ' [data-cm=edit]');
-        await sleep(100);
-    };
+    const edit = (sel) => editCard(page, sel);
     const addCard = async (list) => {
         await page.hover(`.wrap .board .list:nth-child(${list + 1}) > .head .menu`);
         await sleep(100);
@@ -45,11 +40,11 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
             $(sel).find('[role=radio][aria-checked=true]').attr('aria-label')], EDITOR),
             [before[0][0], true, 'Priority: Low'], 'filled in with the Card, its name focused');
 
-        // On a wide window it isn't a stretched phone screen: at most 600px
+        // On a wide window it isn't a stretched phone screen: at most 560px
         // wide, centred, near the top.
         const box = await page.evaluate((sel) => {
             const r = $(sel)[0].getBoundingClientRect();
-            return { narrow: r.width >= 360 && r.width <= 600, centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) <= 2, nearTop: r.top >= 0 && r.top < innerHeight * 0.2 };
+            return { narrow: r.width >= 360 && r.width <= 560, centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) <= 2, nearTop: r.top >= 0 && r.top < innerHeight * 0.2 };
         }, EDITOR);
         assert.deepStrictEqual(box, { narrow: true, centred: true, nearTop: true }, 'its size and place on a wide window');
         await clickAway(page);
@@ -82,6 +77,25 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
             await settle(page);
             assert.strictEqual((await saved(0))[0][0], name, "the menu's Undo takes it back");
             assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('cm-open'), card(0, 0)), false, 'the card menu stays shut');
+        }
+
+        // A click on a blank part of the editor takes the focus off the name;
+        // Esc and Enter still save and close it.
+        for (const key of ['Escape', 'Enter']) {
+            await edit(card(0, 0));
+            await page.keyboard.press('End');
+            await page.keyboard.type('!');
+            const r = await page.evaluate((sel) => { const b = $(sel)[0].getBoundingClientRect(); return [b.left + 6, b.bottom - 6]; }, EDITOR);
+            await page.mouse.click(r[0], r[1]);
+            await sleep(50);
+            assert.strictEqual(await editorOpen(), true, 'a click inside keeps it open');
+            await page.keyboard.press(key);
+            await sleep(100);
+            await settle(page);
+            assert.strictEqual(await editorOpen(), false, key + ' after a click on its blank part closes it');
+            assert.strictEqual((await saved(0))[0][0], name + '!', 'and saves');
+            await page.evaluate(() => $('.wrap .board .undo-board').click());
+            await settle(page);
         }
 
         // A Priority clicked shows as picked and saves on a click outside.

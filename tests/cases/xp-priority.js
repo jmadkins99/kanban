@@ -20,7 +20,7 @@ const { openApp, moveCard, sleep, setPriority: setPriorityOn } = require('../lib
     await page.evaluate(() => { LevelUp.play = () => {}; });
 
     const card = (list, i) => `.wrap .board .list:nth-child(${list + 1}) .card:nth-child(${i + 1})`;
-    // Edit the Card, pick a Priority from its dropdown, click away.
+    // Edit the Card, pick a Priority in the Card editor, click away.
     const setPriority = (sel, priority) => setPriorityOn(page, sel, priority);
     // Where the Card with this text sits in List `list`.
     const indexOf = (list, text) => page.evaluate((list, text) => NB.board.lists[list].notes.findIndex((n) => n.text == text), list, text);
