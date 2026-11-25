@@ -137,6 +137,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
 
         // Changing the date: it stays in Backlog, its tag follows. It survives a reload.
         await edit('renew passport');
+        assert.strictEqual(await page.evaluate((s) => $(s).find('.wip-timer').is(':visible'), EDITING), false, 'its tag hides in the Card editor');
         assert.strictEqual(await page.evaluate((s) => $(s).find('.card-due input[type=date]').val(), EDITING), '2028-03-02', 'the date field holds its Due date');
         assert.strictEqual(await dueMin(), '2028-02-26', 'still no earlier than tomorrow');
         await setDue('2028-03-05');
@@ -148,6 +149,13 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         s = await slot('renew passport');
         assert.ok(s && /^Next: (Mar 5|5 Mar)$/.test(s.text) && s.red, 'after a reload it still shows its red "Next:": ' + JSON.stringify(s));
         assert.strictEqual((await saved('renew passport')).due, '2028-03-05', 'and keeps its Due date');
+
+        // A typed day that isn't still to come (today, Feb 25) doesn't take: the Card keeps its date.
+        await edit('renew passport');
+        await setDue('2028-02-25');
+        await clickAway();
+        assert.strictEqual((await saved('renew passport')).due, '2028-03-05', 'a typed day not still to come keeps the Due date it had');
+        assert.strictEqual(await where('renew passport'), BACKLOG);
 
         // Clearing the date: an ordinary Critical Card, its timer starting.
         await edit('renew passport');

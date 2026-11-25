@@ -1492,7 +1492,8 @@
 		padding-right: calc(72px * var(--ui));
 	}
 
-	.board .card .wip-timer.critical:not(:empty) {
+	.board .card .wip-timer.critical:not(:empty),
+	.board .card .wip-timer.next.next-critical:not(:empty) {
 		display: block;
 		background: rgba(222, 53, 11, 0.55);
 		border-color: #ff5630;
@@ -1512,14 +1513,9 @@
 		color: #e4e0ff;
 	}
 
-	/* A Critical Card waiting there for its Due date: the same, in red. */
-	.board .card .wip-timer.next.next-critical:not(:empty) {
-		background: rgba(222, 53, 11, 0.55);
-		border-color: #ff5630;
-		color: #ffd5cc;
-	}
-
-	.board .card.editing .wip-timer,
+	/* None of them in the Card editor: as specific as the rules above that
+	   show them, and after them, so it wins. */
+	.board .list .card.editing .wip-timer:not(:empty),
 	.board .card.editing .cm-panel {
 		display: none;
 	}
@@ -3318,8 +3314,9 @@
 	}
 
 	// A Card just saved as Recurring (new, or changed to it), or Critical with
-	// a new Due date, waits in Backlog unless it's due today. One in Done stays, keeping its XP, and goes back
-	// to wait at the next Auto-submit. Call before saving.
+	// a new Due date, waits in Backlog unless it's due today. One in Done
+	// stays, keeping its XP; a Recurring one goes back to wait at the next
+	// Auto-submit. Call before saving.
 	function sendToBacklogUnlessDue($card)
 	{
 		var $from = $card.closest('.list'), $to = backlogList();
@@ -3349,7 +3346,8 @@
 	// A card that isn't in Done (any more) holds no XP.
 	// A Critical card outside WIP and Done is waiting, and its Critical timer
 	// counts from criticalSince; any other card has none, nor does one with a
-	// Due date still to come.
+	// Due date still to come. One whose Due date has come, still in Backlog
+	// (no To-Do to move on to), counts from the start of that day.
 	function trackCards()
 	{
 		var now = Date.now(), today = Schedule.today();
@@ -3362,8 +3360,8 @@
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
-				var waiting = ! wip && ! done && Priority.isCritical(m) && ! (m.due > today);
-				if (waiting && ! m.criticalSince) { m.criticalSince = now; }
+				var waiting = ! wip && ! done && Priority.isCritical(m) && ! Recurring.waitsForDue(m, today);
+				if (waiting && ! m.criticalSince) { m.criticalSince = m.due ? Schedule.startOf(m.due) : now; }
 				if (! waiting) { delete m.criticalSince; }
 			});
 		});
@@ -3399,8 +3397,9 @@
 	// while a Critical card waits elsewhere, otherwise none. Recomputed from
 	// the stored start each tick, so a sleeping laptop is right on waking.
 	// A Recurring or Critical Card waiting in Backlog for a later Due date
-	// shows "Next: <date>" there instead, purple or red. A Late Card (red icon) shows the red
-	// Critical timer from the end of its Due date, or the WIP timer in WIP.
+	// shows "Next: <date>" there instead, purple or red. A Late Card (red
+	// icon) shows the red Critical timer from the end of its Due date, or the
+	// WIP timer in WIP.
 	// A Card that has just turned Late moves up its List.
 	var lateUnsorted = false;
 
@@ -3415,7 +3414,7 @@
 				var m = cardMeta($(this));
 				var late = ! done && Recurring.isLate(m, today);
 				var critical = ! wip && ! done && (late || Priority.isCritical(m) && !! m.criticalSince);
-				var waitsForDue = inBacklog && ! wip && ! done && (Priority.isRecurring(m) || Priority.isCritical(m)) && !! m.due && m.due > today;
+				var waitsForDue = inBacklog && ! wip && ! done && Recurring.waitsForDue(m, today);
 				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
 				if ($(this).hasClass('late') != late) lateUnsorted = true;
 				$(this).toggleClass('late', late)
@@ -4453,11 +4452,13 @@
 		var sched_now = sched_on ? scheduleLine($item) : null;
 		var sched_changed = sched_now && JSON.stringify(sched_now) != JSON.stringify(cardMeta($item).schedule);
 
-		// and a Critical Card's Due date, if any: a day tomorrow or later
+		// and a Critical Card's Due date, if any: a day tomorrow or later. A
+		// typed day that isn't still to come keeps the date it had.
+		var due_was = Priority.isCritical(cardMeta($item)) && cardMeta($item).due || '';
 		var due_now = due_on ? $item.find('.due-date').val() : null;
-		if (due_on && ! (/^\d{4}-\d\d-\d\d$/.test(due_now) && due_now >= Schedule.tomorrow()))
-			due_now = '';
-		var due_changed = due_on && due_now != (Priority.isCritical(cardMeta($item)) && cardMeta($item).due || '');
+		if (due_now && ! (/^\d{4}-\d\d-\d\d$/.test(due_now) && due_now >= Schedule.tomorrow()))
+			due_now = due_was;
+		var due_changed = due_on && due_now != due_was;
 
 		//
 		var brand_new = $item.hasClass('brand-new');
