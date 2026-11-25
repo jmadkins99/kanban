@@ -95,7 +95,7 @@ const settle = (page) => page.evaluate(() => new Promise((r) => $(':animated').p
 
 // Moves Card `index` of List `list` (negative counts from the end) `steps`
 // Lists over, negative to the left, the way a person does: a tap on the Card,
-// then ⬅️ or ➡️ in its menu, once per List.
+// then the left or right arrow in its menu, once per List.
 const moveCard = (page, list, index, steps) => page.evaluate((list, index, steps) => {
     const card = $('.wrap .board .list').eq(list).find('.card').eq(index)[0];
     if (!card) throw new Error(`no Card ${index} in List ${list}`);
@@ -162,17 +162,15 @@ const seedBoard = (board, history) => `(${(board, history) => {
 // A click on empty page, which ends editing and saves.
 const clickAway = async (page) => { await page.mouse.click(1270, 990); await sleep(50); await settle(page); };
 
-// Picks `priority` ('Critical', any case) in the Priority dropdown of the
-// Card at selector `card`, which is in edit mode: its icon, then the choice.
+// Picks `priority` ('Critical', any case) in the Card editor, open on the
+// Card at selector `card`: a click on that Priority's button.
 const pickPriority = async (page, card, priority) => {
-    await page.click(card + ' .card-prio');
-    await sleep(50);
     await page.click(`${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`);
     await sleep(50);
 };
 
-// Opens the Card at selector `card` in edit mode, the way a person does: a
-// tap on it, then Edit in its menu.
+// Opens the Card at selector `card` in the Card editor, the way a person
+// does: a tap on it, then Edit in its menu.
 const editCard = async (page, card) => {
     await page.click(card + ' .text');
     await sleep(450);
@@ -180,7 +178,7 @@ const editCard = async (page, card) => {
     await sleep(100);
 };
 
-// Changes the Priority of the Card at selector `card`: Edit, the dropdown,
+// Changes the Priority of the Card at selector `card`: Edit, the Priority,
 // then a click away to save.
 const setPriority = async (page, card, priority) => {
     await editCard(page, card);

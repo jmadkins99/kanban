@@ -45,14 +45,20 @@ It's Nullboard with a few changes:
   (`js/ranks.js`), not the game's art. Reaching a new level by finishing a card
   plays a WoW-inspired level-up (`js/levelup.js`).
 - **Card menu**: clicking a card (tapping it on a phone) slides down one row,
-  ⬅️ Edit ➡️ (`js/cardmenu.js`), and moving off the card closes it. The
-  arrows step it one list left or right, greyed out at the first and last
-  list. Cards don't drag. In edit mode a small × at the card's right edge
-  deletes it, asking first if it has text.
+  ‹ Edit › (`js/cardmenu.js`), the arrows drawn as thin chevrons in the
+  day's accent colour, and moving off the card closes it. The arrows step it
+  one list left or right, greyed out at the first and last list. Cards don't
+  drag.
+- **Card editor**: Edit, or "+ Card", opens the card in a big window over a
+  dimmed board, on desktop and phone alike: its name, the four Priorities
+  as big buttons, the Schedule line when Recurring, and Delete (asking first
+  if it has text). Enter, Esc, a click outside or Back saves and closes it;
+  there's no cancel, as Undo takes an edit back. Cards don't edit in place;
+  list and board titles still do.
 - **Priority**: every card is Recurring, Critical, Medium or Low (Low
   unless set), shown as a Jira-style icon at its left, in History too
-  (original SVGs in `js/priority.js`, not Atlassian's). In edit mode the icon
-  is a dropdown; clicking away saves the text and Priority as one Undo step.
+  (original SVGs in `js/priority.js`, not Atlassian's). Closing the Card
+  editor saves the name and Priority as one Undo step.
 - **Recurring cards**: picking Recurring shows a Schedule line, "Every N
   days / weeks / months starting <date>" (`js/schedule.js`). It follows the
   calendar: weeks keep the start's weekday, months its day of the month

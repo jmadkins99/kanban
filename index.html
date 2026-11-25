@@ -1506,33 +1506,9 @@
 		display: none;
 	}
 
-	/* Edit mode's small × at the card's right edge deletes it. */
+	/* Delete shows only in the Card editor (see .in-editor below). */
 	.board .card .card-del {
 		display: none;
-	}
-
-	.board .card.editing .card-del {
-		display: block;
-		position: absolute;
-		top: 2px;
-		right: 0;
-		width: 16px;
-		height: 18px;
-		padding: 0;
-		margin: 0;
-		border: 0;
-		border-radius: 3px;
-		background: transparent;
-		color: #8a8aa6;
-		font: 600 calc(14px * var(--ui))/1 sans-serif;
-		cursor: pointer;
-	}
-
-	.board .card.editing .card-del:hover,
-	.board .card.editing .card-del:focus-visible {
-		color: #f2d4dc;
-		background: rgba(140, 40, 60, .45);
-		outline: none;
 	}
 
 	/* Priority icons, coloured as Jira colours them. */
@@ -1545,8 +1521,7 @@
 	/* A Late Card's circular arrow is red. */
 	.board .card.late .card-prio .prio-recurring { color: #ff5630; }
 
-	/* The icon at the Card's very left, level with its first line; in edit mode
-	   it's the dropdown that picks the Priority. */
+	/* The icon at the Card's very left, level with its first line. */
 	.board .card .text,
 	.board .card .edit {
 		padding-left: calc( var(--lh) * 1px + 12px );
@@ -1566,59 +1541,13 @@
 		pointer-events: none; /* a tap on it is a tap on the Card */
 	}
 
-	.board .card.editing .card-prio {
-		pointer-events: auto;
-		cursor: pointer;
-		box-shadow: 0 0 0 1px #8eaedd;
-	}
-
-	.board .card.editing .card-prio:hover,
-	.board .card.editing .card-prio:focus-visible,
-	.board .card.prio-picking .card-prio {
-		background: rgba(142, 174, 221, .3);
-		outline: none;
-	}
-
-	.theme-dark .board .card.editing .card-prio {
-		box-shadow: 0 0 0 1px var(--accent-muted);
-	}
-
-	.theme-dark .board .card.editing .card-prio:hover,
-	.theme-dark .board .card.editing .card-prio:focus-visible,
-	.theme-dark .board .card.prio-picking .card-prio {
-		background: rgba(var(--accent-rgb), .35);
-	}
-
-	/* The dropdown's choices: a row of the four icons, opening beside it. */
+	/* The Card editor's four Priority buttons. */
 	.board .card .prio-pick {
 		display: none;
 	}
 
-	.board .card.editing.prio-picking .prio-pick {
-		display: flex;
-		position: absolute;
-		z-index: 6;
-		left: calc( var(--lh) * 1px + 10px );
-		top: 1px;
-		gap: 2px;
-		padding: 2px;
-		border-radius: 4px;
-		background: #fff;
-		box-shadow: 0 1px 4px #0006, 0 0 1px #0004;
-	}
-
-	.theme-dark .board .card.editing.prio-picking .prio-pick {
-		background: #1c1c30;
-		box-shadow: 0 2px 8px #000c, 0 0 0 1px var(--accent-muted);
-	}
-
 	.board .card .prio-pick button {
-		width: calc( var(--lh) * 1px + 6px );
-		height: calc( var(--lh) * 1px + 6px );
-		padding: 3px;
 		margin: 0;
-		border: 0;
-		border-radius: 3px;
 		background: transparent;
 		cursor: pointer;
 	}
@@ -1634,15 +1563,7 @@
 		background: rgba(var(--accent-rgb), .35);
 	}
 
-	.board .card .prio-pick button[aria-checked=true] {
-		box-shadow: 0 0 0 1px #8eaedd inset;
-	}
-
-	.theme-dark .board .card .prio-pick button[aria-checked=true] {
-		box-shadow: 0 0 0 1px var(--accent-hi) inset;
-	}
-
-	/* Edit mode's Schedule line under a Recurring Card's text:
+	/* The Card editor's Schedule line under a Recurring Card's name:
 	   "Every [N] [days / weeks / months] starting [date]". */
 	.board .card .card-schedule {
 		display: none;
@@ -1699,9 +1620,9 @@
 		outline: 1px solid var(--accent-hi);
 	}
 
-	/* The Card editor, a touch screen's way to edit a Card: the Card itself,
-	   lifted into a big window near the top, over a dimmed board. Its inputs
-	   are 16px or more, as iOS zooms in on anything smaller. */
+	/* The Card editor, the way to edit a Card: the Card itself, lifted into a
+	   big window near the top, over a dimmed board. Its inputs are 16px or
+	   more, as iOS zooms in on anything smaller. */
 	.prio-word {
 		display: none;
 	}
@@ -1720,13 +1641,14 @@
 		top: calc(12px + env(safe-area-inset-top, 0px));
 		left: 12px;
 		right: 12px;
+		max-width: 560px; /* centred on a wide window, by the auto margins */
 		max-height: calc(100vh - 24px);
 		overflow-y: auto;
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		margin: 0;
+		margin: 0 auto;
 		padding: 16px;
 		border-radius: 12px;
 		outline: none;
@@ -1771,8 +1693,7 @@
 		outline-color: var(--accent-hi);
 	}
 
-	.board .card.in-editor .prio-pick,
-	.board .card.in-editor.prio-picking .prio-pick {
+	.board .card.in-editor .prio-pick {
 		order: 2;
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
@@ -1846,10 +1767,14 @@
 
 	.board .card.in-editor .card-del {
 		order: 4;
-		position: static;
+		display: block;
 		width: 100%;
 		height: 48px;
+		padding: 0;
+		margin: 0;
+		border: 0;
 		border-radius: 10px;
+		cursor: pointer;
 		background: rgba(196, 48, 72, .16);
 		color: #d23a52;
 		font: 600 0/1 var(--ff, sans-serif); /* hides the ×, for the word */
@@ -1858,6 +1783,12 @@
 	.board .card.in-editor .card-del::before {
 		content: 'Delete';
 		font-size: 16px;
+	}
+
+	.board .card.in-editor .card-del:hover,
+	.board .card.in-editor .card-del:focus-visible {
+		background: rgba(196, 48, 72, .3);
+		outline: none;
 	}
 
 	/* and nothing else zooms either: List and board titles */
@@ -2006,7 +1937,7 @@
 		</div>
 
 		<div class=card>
-			<button type=button class=card-prio aria-haspopup=true></button>
+			<span class=card-prio role=img></span>
 			<div class=prio-pick role=radiogroup aria-label=Priority></div>
 			<div class=text> </div>
 			<textarea class=edit spellcheck=false></textarea>
@@ -3308,7 +3239,7 @@
 		return m;
 	}
 
-	// The Card's Priority icon at its left edge; in edit mode it's the dropdown that changes it.
+	// The Card's Priority icon at its left edge.
 	function showPriority($card, p)
 	{
 		var badge = Priority.badge(p || cardMeta($card).priority);
@@ -4290,25 +4221,20 @@
 		$card.addClass('editing');
 
 		if ($card.hasClass('card'))
+		{
 			showScheduleLine($card, Priority.of(cardMeta($card)));
-
-		if ($card.hasClass('card') && touchScreen())
 			openCardEditor($card);
+		}
 
 		$edit.focus();
 	}
 
 	/*
-	 *	Card editor: on a touch screen a Card is edited in a big window near
-	 *	the top of the screen instead of in place, with the four Priorities as
-	 *	big buttons and Delete at the bottom. A tap outside it, Enter or Back
+	 *	Card editor: every Card is edited in a big window near the top of the
+	 *	screen instead of in place, with the four Priorities as big buttons and
+	 *	Delete at the bottom. A click or tap outside it, Enter, Esc or Back
 	 *	saves and closes it; there's no Done.
 	 */
-	function touchScreen()
-	{
-		return !! (window.matchMedia && matchMedia('(pointer: coarse)').matches);
-	}
-
 	function inCardEditor($card)
 	{
 		return $card.hasClass('in-editor');
@@ -4360,6 +4286,14 @@
 		return false;
 	});
 
+	// Esc too, from anywhere in it, the Schedule line's inputs included.
+	$(document).on('keydown', '.wrap .board .card.in-editor', function(ev){
+		if (ev.keyCode != 27)
+			return;
+		leaveCardEditor();
+		return false;
+	});
+
 	$(window).on('popstate', function(){
 		if (editorPops) { editorPops--; return; }
 		if (! editorHistory) return;
@@ -4367,7 +4301,7 @@
 		leaveCardEditor();
 	});
 
-	// The Priority dropdown's (or the editor's) four choices, `picked` checked.
+	// The Card editor's four Priority choices, `picked` checked.
 	function fillPriorityPick($card, picked)
 	{
 		$card.find('.prio-pick').empty().append( Priority.LEVELS.map(function(p){
@@ -4378,7 +4312,7 @@
 		}) );
 	}
 
-	// Edit mode's Schedule line, "Every [N] [unit] starting [date]", shown
+	// The Card editor's Schedule line, "Every [N] [unit] starting [date]", shown
 	// while the picked Priority is Recurring. It starts from the Card's
 	// Schedule, or every 1 week from today.
 	function showScheduleLine($card, p)
@@ -4386,7 +4320,7 @@
 		var on = Priority.isRecurring({ priority: p });
 		var $line = $card.find('.card-schedule');
 		if (! on && $line[0].contains(document.activeElement))
-			$card.children('.edit').focus(); // before hiding it, so hiding doesn't end editing
+			$card.children('.edit').focus(); // before hiding it, so the focus isn't lost
 		if (on && ! $card.hasClass('sched-on'))
 		{
 			var s = cardMeta($card).schedule || Schedule.make(1, 'weeks', Schedule.today());
@@ -4414,7 +4348,7 @@
 		var in_editor = inCardEditor($item);
 		if (in_editor)
 			closeCardEditor($item);
-		$item.removeClass('editing prio-picking sched-on');
+		$item.removeClass('editing sched-on');
 
 		//
 		var $text = $item.find('.text');
@@ -4425,7 +4359,7 @@
 		if (in_editor && ! text_now.length && ! $item.hasClass('brand-new'))
 			text_now = text_was;
 
-		// a Card's Priority, as picked in the dropdown, saves with its text
+		// a Card's Priority, as picked in the editor, saves with its text
 		var prio_now = $item.data('prioEdit');
 		$item.removeData('prioEdit');
 		var prio_changed = $item.hasClass('card') && prio_now && prio_now != Priority.of(cardMeta($item));
@@ -4810,7 +4744,7 @@
 	});
 
 	//
-	// Enter, on its own, finishes a List or board title; in a Card it's a new line.
+	// Enter, on its own, finishes a List or board title, and saves and closes the Card editor.
 	$('.wrap').on('keydown', '.board .edit', function(ev){
 
 		var plain = ! (ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey);
@@ -4841,8 +4775,8 @@
 	});
 
 	//
-	// Clicking away ends editing. In a Card that means leaving the whole Card,
-	// so its Schedule line's inputs can take the focus without ending it.
+	// Clicking away from a List or board title ends editing it. (A Card's
+	// editor closes on a click outside it, Enter, Esc or Back.)
 	$('.wrap').on('focusout', '.board .head .edit', function(ev){
 		if (document.activeElement != this)
 			stopEditing($(this), true);
@@ -4850,20 +4784,7 @@
 			; // switch away from the browser window
 	});
 
-	$('.wrap').on('focusout', '.board .card.editing', function(ev){
-		if (this.contains(document.activeElement))
-			return; // switch away from the browser window
-
-		if (ev.relatedTarget && this.contains(ev.relatedTarget))
-			return; // e.g. into the Schedule line
-
-		if (inCardEditor($(this)))
-			return; // the editor closes on a tap outside it, Enter or Back
-
-		stopEditing($(this).children('.edit'), true);
-	});
-
-	// The Schedule line's words keep the focus where it is, like the dropdown.
+	// The Schedule line's words keep the focus where it is, like the Priority buttons.
 	$('.wrap').on('mousedown', '.board .card-schedule', function(ev){
 		if (! $(ev.target).is(':input'))
 			ev.preventDefault();
@@ -4936,36 +4857,24 @@
 		return false;
 	});
 
-	// Edit mode's Priority dropdown. Like the ×, pressing it keeps the focus in
-	// the textarea, so picking doesn't end editing; clicking away saves the pick.
-	$('.wrap').on('mousedown', '.board .card-prio, .board .prio-pick button', function(ev){
+	// The editor's Priority buttons. Like Delete, pressing one keeps the focus
+	// in the name; clicking away saves the pick.
+	$('.wrap').on('mousedown', '.board .prio-pick button', function(ev){
 		ev.preventDefault();
-	});
-
-	$('.wrap').on('click', '.board .card.editing .card-prio', function(){
-		var $card = $(this).closest('.card');
-		fillPriorityPick($card, $card.data('prioEdit') || Priority.of(cardMeta($card)));
-		$card.toggleClass('prio-picking');
-		return false;
 	});
 
 	$('.wrap').on('click', '.board .prio-pick button', function(){
 		var $card = $(this).closest('.card');
 		var p = $(this).data('priority');
 
-		$card.data('prioEdit', p).removeClass('prio-picking');
+		$card.data('prioEdit', p);
 		$(this).attr('aria-checked', 'true').siblings().attr('aria-checked', 'false');
 		showPriority($card, p);
 		showScheduleLine($card, p);
 		return false;
 	});
 
-	$('.wrap').on('mousedown', '.board .card.prio-picking .edit', function(){
-		$(this).closest('.card').removeClass('prio-picking');
-	});
-
-	// Edit mode's ×. Pressing it keeps the focus in the textarea, so the
-	// edit isn't saved (and its blur doesn't end editing) before the delete.
+	// The editor's Delete. Pressing it keeps the focus in the name.
 	$('.wrap').on('mousedown', '.board .card-del', function(ev){
 		ev.preventDefault();
 	});
@@ -5446,7 +5355,7 @@
 
 	/*
 	 *	Card menu (cardmenu.js): click a card, or tap it on a phone, for
-	 *	⬅️ Edit ➡️. The arrows step it one list left or right.
+	 *	‹ Edit ›. The arrows step it one list left or right.
 	 */
 	$(function(){
 		CardMenu.attach('.wrap', {

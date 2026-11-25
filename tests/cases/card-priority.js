@@ -1,7 +1,7 @@
 // Every Card has a Priority: Recurring, Critical, Medium or Low. Its icon sits
 // at the very left of the Card, before the text. "+ Card" starts a Card as Low.
-// In edit mode the icon is a dropdown; clicking away saves the text and the
-// Priority together, as one Undo step.
+// The Card editor offers the four as buttons; clicking away saves the name
+// and the Priority together, as one Undo step.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle, sleep, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
@@ -21,10 +21,10 @@ const { openApp, settle, sleep, clickAway: clickAwayOn, pickPriority, editCard }
     const saved = (list) => page.evaluate((list) => NB.board.lists[list].notes.map((n) => [n.text, n.priority]), list);
 
     try {
-        // "+ Card" opens a new Card in edit mode, with Low selected.
+        // "+ Card" opens a new Card in the Card editor, with Low picked.
         await page.evaluate(() => $('.wrap .board .list').eq(0).find('.add-card').click());
         await sleep(100);
-        assert.strictEqual(await page.evaluate(() => $('.wrap .board .card.editing .card-prio').attr('aria-label')), 'Priority: Low', 'a new Card starts as Low');
+        assert.strictEqual(await page.evaluate(() => $('.wrap .board .card.in-editor [role=radio][aria-checked=true]').attr('aria-label')), 'Priority: Low', 'a new Card starts as Low');
         await page.keyboard.type('a new Card');
         await clickAway();
         const n = (await saved(0)).length;
@@ -41,21 +41,19 @@ const { openApp, settle, sleep, clickAway: clickAwayOn, pickPriority, editCard }
         });
         assert.ok(box.left >= 0 && box.left < 12 && box.beforeText && box.inside, 'the icon is at the left, before the text ' + JSON.stringify(box));
 
-        // Edit, open the dropdown, pick Critical and change the text: the dropdown
-        // shows the new icon, and clicking away saves both.
+        // Edit, pick Critical and change the text: the editor shows the pick,
+        // and clicking away saves both.
         const first = '.wrap .board .list:nth-child(1) .card:nth-child(1)';
         const edit = (sel) => editCard(page, sel);
         const pick = (sel, priority) => pickPriority(page, sel, priority);
         const before = await saved(0);
         await edit(first);
-        await page.click(first + ' .card-prio');
-        await sleep(50);
         const options = await page.evaluate((sel) => $(sel).find('.prio-pick button:visible').map((_, b) => $(b).attr('aria-label')).get(), first);
-        assert.deepStrictEqual(options, ['Priority: Recurring', 'Priority: Critical', 'Priority: Medium', 'Priority: Low'], 'the dropdown offers the four Priorities');
+        assert.deepStrictEqual(options, ['Priority: Recurring', 'Priority: Critical', 'Priority: Medium', 'Priority: Low'], 'the editor offers the four Priorities');
         await page.click(`${first} .prio-pick button[aria-label="Priority: Critical"]`);
         await sleep(50);
         assert.strictEqual(await page.evaluate((sel) => $(sel).hasClass('editing'), first), true, 'still editing after picking');
-        assert.strictEqual(await page.evaluate((sel) => $(sel).find('.card-prio').attr('aria-label'), first), 'Priority: Critical', 'the dropdown shows the pick');
+        assert.strictEqual(await page.evaluate((sel) => $(sel).find('[role=radio][aria-checked=true]').attr('aria-label'), first), 'Priority: Critical', 'the editor shows the pick');
         assert.deepStrictEqual(await saved(0), before, 'nothing saved before clicking away');
         await page.keyboard.press('End');
         await page.keyboard.type(' now');

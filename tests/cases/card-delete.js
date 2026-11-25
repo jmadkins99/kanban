@@ -1,6 +1,6 @@
-// Deleting a Card: a small × at the Card's right-most edge, shown only in
-// edit mode. It asks first when the Card has text (OK deletes, Cancel keeps
-// it), deletes an empty one straight away, and Undo brings a deleted Card back.
+// Deleting a Card: Delete, at the bottom of the Card editor and only there.
+// It asks first when the Card has text (OK deletes, Cancel keeps it), deletes
+// an empty one straight away, and Undo brings a deleted Card back.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle } = require('../lib');
@@ -26,17 +26,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     };
 
     try {
-        // Not editing: no ×.
-        assert.strictEqual(await xShown(first), false, 'no × outside edit mode');
+        // Not editing: no Delete.
+        assert.strictEqual(await xShown(first), false, 'no Delete outside the Card editor');
 
-        // Editing: the × sits at the Card's right-most edge, inside it.
+        // In the editor: Delete, the editor's last and widest control.
         await edit(first);
-        assert.strictEqual(await xShown(first), true, '× shown in edit mode');
+        assert.strictEqual(await xShown(first), true, 'Delete shown in the Card editor');
         const box = await page.evaluate((sel) => {
             const a = $(sel)[0].getBoundingClientRect(), b = $(sel).find('.card-del')[0].getBoundingClientRect();
-            return { right: a.right - b.right, top: b.top - a.top, bottom: a.bottom - b.bottom, small: b.width <= 24 && b.height <= 24 };
+            const others = $(sel).children(':visible').not('.card-del').get().map((e) => e.getBoundingClientRect().bottom);
+            return { text: getComputedStyle($(sel).find('.card-del')[0], '::before').content, last: others.every((y) => y <= b.top), wide: b.width >= a.width * 0.8 };
         }, first);
-        assert.ok(box.right >= 0 && box.right < 8 && box.top >= 0 && box.bottom >= 0 && box.small, 'small × at the right edge ' + JSON.stringify(box));
+        assert.deepStrictEqual(box, { text: '"Delete"', last: true, wide: true }, 'Delete at the bottom of the editor');
 
         // Cancel on the prompt keeps the Card.
         const before = await texts();
@@ -67,7 +68,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.evaluate(() => $('.wrap .board .list').eq(0).find('.add-card').click());
         await sleep(100);
         const fresh = '.wrap .board .card.editing';
-        assert.strictEqual(await xShown(fresh), true, 'a new Card has the × too');
+        assert.strictEqual(await xShown(fresh), true, 'a new Card has Delete too');
         await page.click(fresh + ' .card-del');
         await sleep(600);
         await settle(page);

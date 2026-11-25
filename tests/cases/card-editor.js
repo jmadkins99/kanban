@@ -3,7 +3,8 @@
 // Card's name, its Priority as four big buttons, the Schedule line while
 // Recurring is picked, and Delete. There's no Done: a tap outside it, Enter
 // or Back saves and closes. Its inputs are 16px or more, so iOS doesn't zoom
-// in, and neither do List and board titles. Desktop keeps editing in place.
+// in, and neither do List and board titles. Desktop uses the same editor
+// (see card-editor-desktop).
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle, sleep } = require('../lib');
@@ -179,14 +180,6 @@ const EDITOR = '[role=dialog][aria-label="Card editor"]';
         await settle(page);
         assert.strictEqual(await editorOpen(), false, 'a line break closes the editor');
         assert.deepStrictEqual((await saved(0)).filter((n) => n[0] == 'fix bike'), [['fix bike', 'low']], 'and saves the Card, on one line');
-
-        // Desktop keeps editing in place.
-        await page.setViewport({ width: 1280, height: 1000 });
-        await app.reload();
-        await sleep(300);
-        await page.evaluate(() => $('.wrap .board .list').eq(0).find('.add-card').click());
-        await sleep(100);
-        assert.strictEqual(await page.evaluate((sel) => [$(sel).length, $('.wrap .board .card.editing').length], EDITOR).then((r) => r.join()), '0,1', 'no editor on desktop: the Card edits in place');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
