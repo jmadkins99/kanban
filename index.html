@@ -3360,8 +3360,8 @@
 
 	// One timer slot per card: the WIP timer in WIP, otherwise the red
 	// Critical timer, or "Next: <date>" in purple or red, as the Due date
-	// module shows it (Due.shows in js/due.js), or none. Recomputed from the
-	// stored start each tick, so a sleeping laptop is right on waking. A Late
+	// module shows it (Due.shows in js/due.js), or none. Recomputed from its
+	// start each tick, so a sleeping laptop is right on waking. A Late
 	// Card has a red icon.
 	// A Card that has just turned Late moves up its List.
 	var lateUnsorted = false;

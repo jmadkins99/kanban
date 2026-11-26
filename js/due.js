@@ -22,7 +22,10 @@
  *   { late, from, next, nextCritical, dueLine: { value, min } }. late: a
  *   Recurring Card past the end of its Due date, outside Done; it's a state,
  *   never stored, not a Priority. from: when its red Critical timer started
- *   (a Late Card's, the end of its Due date), null outside a waiting List.
+ *   (a Late Card's, the end of its Due date); null for a Card that isn't
+ *   waiting. A dated one whose day has come shows it from that midnight
+ *   before a save stores it, as settle would; an undated one shows none
+ *   until saved.
  *   next: the day it waits for in Backlog, for "Next: <date>", in red when
  *   nextCritical. dueLine: what the Card editor's Due line starts from (a
  *   Critical Card's Due date, or empty) and the earliest day it takes
@@ -155,9 +158,14 @@
   function settle(card, where, moment) {
     requireMoment(moment);
     var d = unchanged(card);
-    if (! waiting(card, where, moment)) d.criticalSince = null;
-    else if (! card.criticalSince) d.criticalSince = card.due ? Schedule.startOf(card.due) : moment.now;
+    d.criticalSince = waiting(card, where, moment) ? criticalStart(card) || moment.now : null;
     return d;
+  }
+
+  // When a waiting Critical Card's timer started: its criticalSince, or,
+  // before a save has stored one, the start of its Due date; null if neither.
+  function criticalStart(card) {
+    return card.criticalSince || (card.due ? Schedule.startOf(card.due) : null);
   }
 
   function waiting(card, where, moment) {
@@ -177,8 +185,8 @@
     requireMoment(moment);
     var late = isLate(card, where.role, moment);
     var next = where.role == 'backlog' && waitsForDue(card, moment) ? card.due : null;
-    var from = pastWaiting(where.role) ? null : late ? Schedule.endOf(card.due) :
-      Priority.isCritical(card) && card.criticalSince || null;
+    var from = late && ! pastWaiting(where.role) ? Schedule.endOf(card.due) :
+      waiting(card, where, moment) ? criticalStart(card) : null;
     return {
       late: late,
       from: from,
