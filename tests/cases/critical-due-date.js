@@ -160,6 +160,23 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.strictEqual(await dueShown(), false, 'Medium hides the date field');
         await clickAway();
 
+        // A date picked for tomorrow, the Card editor left open past midnight:
+        // saved the next morning, the Card acts as if saved the day before and
+        // moved on when its day began, its Critical timer from that midnight.
+        await addCard(TODO, 'feed cat');
+        await pick('Medium');
+        await clickAway();
+        await edit('feed cat');
+        await pick('Critical');
+        await setDue('2028-02-26');
+        await setClock(page, '2028-02-26 09:00');
+        await wake(page);
+        await clickAway();
+        n = await saved('feed cat');
+        assert.strictEqual(await where('feed cat'), TODO, 'it ends up in To-Do');
+        assert.deepStrictEqual([n.due, n.criticalSince], [undefined, new Date(2028, 1, 26).getTime()],
+            'with no Due date, its Critical timer from midnight');
+
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
         await app.close();
