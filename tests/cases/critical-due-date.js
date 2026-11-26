@@ -88,7 +88,6 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.strictEqual(await where('renew passport'), BACKLOG, 'with a date, it goes to Backlog');
         let n = await saved('renew passport');
         assert.deepStrictEqual([n.priority, n.due], ['critical', '2028-03-02'], 'saved Critical with its Due date');
-        assert.ok(!('criticalSince' in n), 'no Critical timer while it waits: ' + JSON.stringify(n));
         s = await slot('renew passport');
         assert.ok(s && /^Next: (Mar 2|2 Mar)$/.test(s.text), 'it shows "Next: <date>": ' + JSON.stringify(s));
         assert.ok(s.red, 'in red');
@@ -120,10 +119,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         s = await slot('book dentist');
         assert.ok(s && /^9h 0m \d+s$/.test(s.text) && s.red, 'so at 9:00 it reads 9h: ' + JSON.stringify(s));
 
-        // The next day nothing is Late.
         await setClock(page, '2028-02-25 09:00');
         await wake(page);
-        assert.strictEqual(await page.evaluate(() => $('.wrap .board .card.late').length), 0, 'no Card is Late');
 
         // Changing the date: its tag follows, and it survives a reload.
         await edit('renew passport');
@@ -138,13 +135,11 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.ok(s && /^Next: (Mar 5|5 Mar)$/.test(s.text) && s.red, 'after a reload it still shows its red "Next:": ' + JSON.stringify(s));
         assert.strictEqual((await saved('renew passport')).due, '2028-03-05', 'and keeps its Due date');
 
-        // Clearing the date: an ordinary Critical Card, its timer starting.
+        // Clearing the date: an ordinary Critical Card.
         await edit('renew passport');
         await setDue('');
         await clickAway();
         assert.ok(!('due' in await saved('renew passport')), 'the Due date is gone');
-        s = await slot('renew passport');
-        assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'its Critical timer starts: ' + JSON.stringify(s));
 
         // Moved out of Backlog early by hand: its timer starts from the move.
         await addCard(TODO, 'pick up keys');
@@ -172,7 +167,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
 
     // A board saved before Critical Cards had Due dates loads unchanged: its
     // Critical Card in Backlog keeps waiting with its timer, its Recurring one
-    // keeps its purple "Next:".
+    // keeps its "Next:".
     const since = new Date(2028, 1, 23, 8).getTime();
     const LISTS = [
         { title: 'Backlog', notes: [
@@ -186,10 +181,9 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         await sleep(300);
         const notes = await old.page.evaluate(() => NB.board.lists.map((l) => l.notes));
         assert.deepStrictEqual(notes, LISTS.map((l) => l.notes), 'its Cards load as they were saved');
-        const tags = await old.page.evaluate(() => $('.wrap .board .card .wip-timer').map((_, t) => ({ text: $(t).text(), next: $(t).hasClass('next'), red: $(t).hasClass('critical') || $(t).hasClass('next-critical') })).get());
-        assert.match(tags[0].text, /^Next: (Feb 29|29 Feb)$/, 'the Recurring Card still shows "Next:"');
-        assert.deepStrictEqual([tags[0].next, tags[0].red], [true, false], 'in purple');
-        assert.match(tags[1].text, /^2h 0m \d+s$/, 'the Critical Card still counts from when it began waiting');
+        const tags = await old.page.evaluate(() => $('.wrap .board .card .wip-timer').map((_, t) => $(t).text()).get());
+        assert.match(tags[0], /^Next: (Feb 29|29 Feb)$/, 'the Recurring Card still shows "Next:"');
+        assert.match(tags[1], /^2h 0m \d+s$/, 'the Critical Card still counts from when it began waiting');
         assert.deepStrictEqual(old.errors, [], 'no page errors');
     } finally {
         await old.close();

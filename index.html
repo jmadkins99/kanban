@@ -2016,7 +2016,6 @@
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
 <script src="js/priority.js"></script>
 <script src="js/schedule.js"></script>
-<script src="js/recurring.js"></script>
 <script src="js/due.js"></script>
 
 <script type="text/javascript">
@@ -3191,41 +3190,44 @@
 
 	// @section List order
 	/*
-	 *	Lists sort themselves: by Priority from the top (Priority.LEVELS order),
-	 *	then first in, first out by Arrival, when the Card entered its List.
-	 *	Late Cards (see js/recurring.js) go above them all. Done ignores
-	 *	Priority, so it reads as the day in order; a Card in Done is never Late.
+	 *	Lists sort themselves (docs/adr/0002): Late Cards first, then by
+	 *	Priority, then first in, first out by Arrival, when the Card entered
+	 *	its List. Done goes by Arrival alone, so it reads as the day in order.
+	 *	The order is the Due date module's (Due.order in js/due.js).
 	 */
-	function cardOrder(done)
-	{
-		var today = Schedule.today();
-		var tier = function(m){ return Recurring.isLate(m, today) ? -1 : Priority.LEVELS.indexOf(Priority.of(m)); };
-		return function(a, b){
-			return (done ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
-		};
-	}
 
-	// Sorts a saved board's Lists in place. Cards saved before Arrivals get
+	// Sorts a saved board's Lists in place, each List's role found from the
+	// titles as listWhere finds it on screen. Cards saved before Arrivals get
 	// them in increasing order down their List, so its order is kept.
 	function orderBoard(board)
 	{
-		board.lists.forEach(function(list){
+		var moment = dueMoment(), backlogAt = 0, todoAt = -1;
+		for (var i = board.lists.length - 1; i >= 0; i--)
+		{
+			if (isBacklogTitle(board.lists[i].title)) backlogAt = i;
+			if (isTodoTitle(board.lists[i].title)) todoAt = i;
+		}
+		board.lists.forEach(function(list, i){
+			var title = list.title;
+			var role = isDoneTitle(title) ? 'done' : isWipTitle(title) ? 'wip' :
+				i == backlogAt ? 'backlog' : i == todoAt ? 'todo' : 'other';
 			// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 			var last = 0;
 			list.notes.forEach(function(n){
 				if (typeof n.arrival != 'number') n.arrival = last + 1;
 				last = n.arrival;
 			});
-			list.notes.sort( cardOrder(isDoneTitle(list.title)) );
+			list.notes.sort( Due.order(role, moment) );
 		});
 	}
 
 	// Puts each List's Cards on screen in order, moving only the ones out of place.
 	function orderCards()
 	{
+		var moment = dueMoment();
 		$('.wrap .board .list').each(function(){
 			var $cards = $(this).find('.cards');
-			var order = cardOrder( $(this).hasClass('done-list') );
+			var order = Due.order(listWhere($(this)).role, moment);
 			var cards = $cards.children('.card').get();
 			var want = cards.slice().sort(function(a, b){ return order(cardMeta($(a)), cardMeta($(b))); });
 			want.forEach(function(card, i){
@@ -3266,14 +3268,20 @@
 		cardArrived($card);
 	}
 
-	// What the Due date module (js/due.js) is told about a Card's List: its
-	// one role, done > wip > backlog > todo > other, and whether there's a To-Do.
-	function dueWhere($card)
+	// What the Due date module (js/due.js) is told about a List: its one
+	// role, done > wip > backlog > todo > other, and whether there's a To-Do.
+	function listWhere($list)
 	{
-		var $list = $card.closest('.list'), $todo = todoList();
+		var $todo = todoList();
 		var role = $list.hasClass('done-list') ? 'done' : $list.hasClass('wip-list') ? 'wip' :
 			$list[0] == backlogList()[0] ? 'backlog' : $list[0] == $todo[0] ? 'todo' : 'other';
 		return { role: role, hasTodo: !! $todo.length };
+	}
+
+	// The same, for the List a Card is in.
+	function dueWhere($card)
+	{
+		return listWhere($card.closest('.list'));
 	}
 
 	// The moment the Due date module decides at: today, and now in ms.
@@ -3292,13 +3300,13 @@
 		if (d.to) { (d.to == 'todo' ? todoList() : backlogList()).find('.cards').append($card); cardArrived($card); }
 	}
 
-	// Puts a Card at the end of another List as a fresh Arrival, its Critical
-	// timer starting over. Call before saving.
+	// Puts a Card at the end of another List as a fresh Arrival. What the move
+	// does to its Due date and Critical timer is the Due date module's
+	// (Due.moved). Call before saving.
 	function moveCardTo($card, $list)
 	{
 		$list.find('.cards').append($card);
 		cardArrived($card);
-		restartCriticalTimer($card);
 	}
 
 	// A Card just entered its List (or changed Priority), so it goes to the
@@ -3311,25 +3319,22 @@
 	// A card entering a WIP list starts its timer; leaving stops it, keeping
 	// how long that visit lasted (wipMs). Coming back starts over from 0.
 	// A card that isn't in Done (any more) holds no XP.
-	// A Critical card outside WIP and Done is waiting, and its Critical timer
-	// counts from criticalSince; any other card has none, nor does one with a
-	// Due date still to come. One whose Due date has come, still in Backlog
-	// (no To-Do to move on to), counts from the start of that day.
+	// A Critical Card's timer starts or ends where it is, as the Due date
+	// module decides (Due.settle in js/due.js).
 	function trackCards()
 	{
-		var now = Date.now(), today = Schedule.today();
+		var moment = dueMoment(), now = moment.now;
 
 		$('.wrap .board .list').each(function(){
 			var wip  = $(this).hasClass('wip-list');
 			var done = $(this).hasClass('done-list');
+			var where = listWhere($(this));
 			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
 				if (wip && ! m.wip) { m.wip = now; }
 				if (! wip && m.wip) { m.wipMs = now - m.wip; delete m.wip; }
 				if (! done && m.xp) { delete m.xp; delete m.xpId; }
-				var waiting = ! wip && ! done && Priority.isCritical(m) && ! Recurring.waitsForDue(m, today);
-				if (waiting && ! m.criticalSince) { m.criticalSince = m.due ? Schedule.startOf(m.due) : now; }
-				if (! waiting) { delete m.criticalSince; }
+				applyDue($(this), Due.settle(m, where, moment));
 			});
 		});
 	}
@@ -3345,13 +3350,6 @@
 		if (window.Celebrate) Celebrate.done($card[0], xp);
 	}
 
-	// A card just moved into another list waits afresh: its Critical timer
-	// (if it's Critical and not in WIP or Done) starts over from 0 on saving.
-	function restartCriticalTimer($card)
-	{
-		delete cardMeta($card).criticalSince;
-	}
-
 	// gym-tracker's clock face: 0m 7s, 4m 12s, 1h 2m 3s
 	function formatTimer(ms)
 	{
@@ -3360,36 +3358,31 @@
 		return (h ? h + 'h ' : '') + m + 'm ' + (s % 60) + 's';
 	}
 
-	// One timer slot per card: the WIP timer in WIP, the red Critical timer
-	// while a Critical card waits elsewhere, otherwise none. Recomputed from
-	// the stored start each tick, so a sleeping laptop is right on waking.
-	// A Recurring or Critical Card waiting in Backlog for a later Due date
-	// shows "Next: <date>" there instead, purple or red. A Late Card (red
-	// icon) shows the red Critical timer from the end of its Due date, or the
-	// WIP timer in WIP.
+	// One timer slot per card: the WIP timer in WIP, otherwise the red
+	// Critical timer, or "Next: <date>" in purple or red, as the Due date
+	// module shows it (Due.shows in js/due.js), or none. Recomputed from the
+	// stored start each tick, so a sleeping laptop is right on waking. A Late
+	// Card has a red icon.
 	// A Card that has just turned Late moves up its List.
 	var lateUnsorted = false;
 
 	function tickTimers()
 	{
-		var now = Date.now(), today = Schedule.today(), backlog = backlogList()[0];
+		var moment = dueMoment();
 		$('.wrap .board .list').each(function(){
-			var wip  = $(this).hasClass('wip-list');
-			var done = $(this).hasClass('done-list');
-			var inBacklog = this == backlog;
+			var wip = $(this).hasClass('wip-list');
+			var where = listWhere($(this));
 			$(this).find('.card').each(function(){
 				var m = cardMeta($(this));
-				var late = ! done && Recurring.isLate(m, today);
-				var critical = ! wip && ! done && (late || Priority.isCritical(m) && !! m.criticalSince);
-				var waitsForDue = inBacklog && ! wip && ! done && Recurring.waitsForDue(m, today);
-				var since = wip ? m.wip : late ? Schedule.endOf(m.due) : critical ? m.criticalSince : null;
-				if ($(this).hasClass('late') != late) lateUnsorted = true;
-				$(this).toggleClass('late', late)
-				       .toggleClass('critical-waiting', critical)
-				       .toggleClass('next-waiting', waitsForDue)
-				       .find('.wip-timer').toggleClass('critical', critical).toggleClass('next', waitsForDue)
-				       .toggleClass('next-critical', waitsForDue && Priority.isCritical(m))
-				       .text(since ? formatTimer(now - since) : waitsForDue ? 'Next: ' + Schedule.label(m.due) : '');
+				var s = Due.shows(m, where, moment);
+				var since = wip ? m.wip : s.from;
+				if ($(this).hasClass('late') != s.late) lateUnsorted = true;
+				$(this).toggleClass('late', s.late)
+				       .toggleClass('critical-waiting', !! s.from)
+				       .toggleClass('next-waiting', !! s.next)
+				       .find('.wip-timer').toggleClass('critical', !! s.from).toggleClass('next', !! s.next)
+				       .toggleClass('next-critical', s.nextCritical)
+				       .text(since ? formatTimer(moment.now - since) : s.next ? 'Next: ' + Schedule.label(s.next) : '');
 			});
 		});
 

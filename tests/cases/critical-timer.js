@@ -1,9 +1,9 @@
 // A Critical Card shows a red Critical timer for how long it has waited to
-// reach WIP. It starts when the Card is made Critical, starts over whenever
-// the Card enters a List that isn't WIP or Done, gives way to the WIP timer
-// (in the day's accent) in WIP, and shows nothing in Done. A Card that stops
-// being Critical loses it. It counts from a stored start, so it's right after
-// a reload with the clock moved on.
+// reach WIP. When it starts, starts over and ends (in WIP, in Done, off
+// Critical) is the Due date module's, in due-date-rules.js; here, its callers
+// apply it: saved Critical, the Card shows the timer, counting up inside it on
+// the right; a move by hand starts it over. It counts from a stored start, so
+// it's right after a reload with the clock moved on, or an import.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const fs = require('fs');
@@ -21,7 +21,7 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
     await sleep(300);
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
-    const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
+    const BACKLOG = 0, TODO = 1;
     const clickAway = () => clickAwayOn(page);
     const sel = (list, i) => `.wrap .board .list:nth-child(${list + 1}) .card:nth-child(${i + 1})`;
     const addCard = async (list, text, priority) => {
@@ -50,10 +50,6 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
     const secs = (t) => { const m = /^(?:(\d+)h )?(\d+)m (\d+)s$/.exec(t); assert.ok(m, 'timer format: ' + t); return (+m[1] || 0) * 3600 + +m[2] * 60 + +m[3]; };
     const rgb = (c) => c.match(/\d+/g).slice(0, 3).map(Number);
     const isRed = (t) => { const [r, g, b] = rgb(t.bg); return r > 150 && g < 100 && b < 100; };
-    const accentHi = () => page.evaluate(() => {
-        const probe = $('<div>').css('color', 'var(--accent-hi)').appendTo('body');
-        const c = getComputedStyle(probe[0]).color; probe.remove(); return c;
-    });
 
     try {
         // Created as Critical in Backlog: a red timer from 0. A Low Card shows none.
@@ -79,40 +75,6 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         t = await timerOf(TODO, 'fix the gate');
         assert.match(t.text, /^0m [0-2]s$/, 'entering To-Do starts over: ' + t.text);
         assert.ok(isRed(t), 'still red');
-
-        // In WIP it's the WIP timer from 0, in the accent like any WIP Card.
-        await sleep(3100);
-        await move(TODO, 'fix the gate', 1);
-        await move(BACKLOG, 'calm', 2);
-        t = await timerOf(WIP, 'fix the gate');
-        const calm = await timerOf(WIP, 'calm');
-        assert.match(t.text, /^0m [0-2]s$/, 'the WIP timer starts at 0: ' + t.text);
-        assert.ok(!isRed(t), 'not red in WIP: ' + t.bg);
-        assert.deepStrictEqual([t.bg, t.border], [calm.bg, calm.border], 'looks like any WIP timer');
-        assert.strictEqual(t.border, await accentHi(), 'in the accent');
-
-        // Back to To-Do: the red timer from 0 again.
-        await sleep(3100);
-        await move(WIP, 'fix the gate', -1);
-        t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [0-2]s$/, 'back in To-Do it starts over: ' + t.text);
-        assert.ok(isRed(t), 'red again');
-
-        // Done shows no timer.
-        await move(TODO, 'fix the gate', 2);
-        assert.strictEqual(await timerOf(DONE, 'fix the gate'), null, 'no timer in Done');
-        await move(DONE, 'fix the gate', -2);
-        assert.ok(isRed(await timerOf(TODO, 'fix the gate')), 'out of Done, it waits again');
-
-        // Off Critical: gone. Critical again: from 0.
-        await sleep(3100);
-        await setPriority(TODO, await index(TODO, 'fix the gate'), 'Medium');
-        assert.strictEqual(await timerOf(TODO, 'fix the gate'), null, 'no timer once not Critical');
-        await sleep(3100);
-        await setPriority(TODO, await index(TODO, 'fix the gate'), 'Critical');
-        t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [0-2]s$/, 'Critical again starts from 0: ' + t.text);
-        assert.ok(isRed(t), 'and is red');
 
         // Its start is stored on the Card; reload with the clock 3h 25m on.
         const saved = await page.evaluate(() => NB.board.lists[1].notes.find((n) => n.text == 'fix the gate'));
