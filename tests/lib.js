@@ -148,7 +148,9 @@ const wake = async (page) => {
 
 // A seed for openApp that saves `board` ({ id, title, lists, day? }) to
 // localStorage as the board to open, and `history` (optional, a list of
-// History days) as History, on the first load only.
+// History days) as History, on the first load only. A Backlog Card whose Due
+// date has come moves on to To-Do at the first minute tick (Due.dayBegins),
+// unless its `arrival` is on or after the start of that day.
 const seedBoard = (board, history) => `(${(board, history) => {
     if (localStorage.getItem('nullboard.last_board')) return;
     board = Object.assign({ format: 20190412, revision: 1 }, board);
