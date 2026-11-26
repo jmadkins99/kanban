@@ -5,6 +5,9 @@
 //   and its local History days get imported;
 // - board and History changes then show up live on the other browser, the
 //   board with the day it last changed, which Auto-submit files it under;
+// - a board save from a device that hasn't seen the cloud's current board
+//   (offline, or queued offline and sent on a later open) is refused, and
+//   that device takes the cloud's board;
 // - the rules let only the owner in, and only to the documents the app uses.
 const assert = require('assert');
 const fs = require('fs');
@@ -139,6 +142,48 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await moveCard(a.page, 0, -1, 1);
         await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), moved);
         assert.deepStrictEqual(await order(b.page), await order(a.page), 'B has the same Cards, Priorities, Arrivals and order');
+
+        // A save from a device that hasn't seen the cloud's current board is
+        // refused: here B was offline while A moved a Card. `resume` brings B
+        // back: its network again, or a later open that sends the write
+        // queued offline.
+        const has = (lists, i, t) => lists[i].notes.some((n) => n.text == t);
+        const boardOf = (page) => page.evaluate(() => NB.board.lists);
+        async function staleSaveRefused(edit, resume) {
+            await b.page.evaluate(() => firebase.firestore().disableNetwork());
+            const t = await a.page.evaluate(() => NB.board.lists[0].notes[NB.board.lists[0].notes.length - 1].text);
+            await moveCard(a.page, 0, -1, 1);
+            await waitFor(a.page, (t) => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board')
+                .get({ source: 'server' }).then((s) => s.data().lists[1].notes.some((n) => n.text == t)), t);
+            await b.page.evaluate((edit) => { setText($('.wrap .board .list').last().find('.card .text').last(), edit); saveBoard(); }, edit);
+            await new Promise((r) => setTimeout(r, 1500)); // B's batched push is sent, queued while offline
+            await resume();
+            await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), t);
+            await new Promise((r) => setTimeout(r, 4000)); // B's stale write would have landed by now
+            // The cloud keeps A's move, and so do A and B.
+            assert.ok(has((await cloudBoard(a.page)).lists, 1, t), "the cloud keeps A's move");
+            assert.ok(has(await boardOf(a.page), 1, t), 'so does A');
+            assert.ok(has(await boardOf(b.page), 1, t), 'and B takes it');
+            // B took the cloud's board as a new revision, so Undo on B still gets back what B had.
+            const undoTo = await b.page.evaluate(() => {
+                const hist = NB.storage.getBoardIndex().get(NB.board.id).history; // newest first
+                const l = NB.storage.loadBoard(NB.board.id, hist[1]).lists;
+                return l[l.length - 1].notes[l[l.length - 1].notes.length - 1].text;
+            });
+            assert.strictEqual(undoTo, edit, "Undo has B's own");
+        }
+        await staleSaveRefused('saved on B offline', () => b.page.evaluate(() => firebase.firestore().enableNetwork()));
+        // B saving again just before it's back doesn't let its stale board
+        // win: that save's push is still batched when the refusal lands.
+        await staleSaveRefused('saved on B, then saved again', () => b.page.evaluate(() => {
+            setText($('.wrap .board .list').eq(2).find('.card .text').first(), 'saved again on B');
+            saveBoard();
+            return firebase.firestore().enableNetwork();
+        }));
+        await staleSaveRefused('saved on B, sent next open', async () => {
+            await b.reload();
+            assert.strictEqual(await ready(b.page), 'signed-in');
+        });
 
         // So do a Recurring Card's Schedule and Due date, and A's own copy
         // coming back from the cloud isn't taken for a change.
