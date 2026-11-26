@@ -302,6 +302,40 @@ const ROWS = [
             { text: 'critical', priority: 'critical', arrival: 2 },
         ], done, AT_10, undefined,
         ['low', 'critical', 'late']],
+
+    // Backlog reads as what's coming next (docs/adr/0003): Late; then
+    // Critical Cards with a Due date, earliest first; then Recurring, earliest
+    // Due date first; then Critical without one, Medium and Low by Arrival.
+    // Cards due the same day go by Arrival.
+    ['Backlog sorts Late, dated Critical, Recurring by Due date, then by Priority',
+        'order', [
+            { text: 'low', priority: 'low', arrival: 1 },
+            { text: 'medium', priority: 'medium', arrival: 2 },
+            { text: 'critical', priority: 'critical', arrival: 3 },
+            { text: 'recurring Mar 6', priority: 'recurring', arrival: 4, schedule: weekly, due: '2028-03-06' },
+            { text: 'critical Mar 9', priority: 'critical', arrival: 5, due: '2028-03-09' },
+            { text: 'recurring Feb 28 b', priority: 'recurring', arrival: 9, schedule: weekly, due: '2028-02-28' },
+            { text: 'recurring today', priority: 'recurring', arrival: 10, schedule: wednesdays, due: TODAY },
+            { text: 'critical Mar 1', priority: 'critical', arrival: 11, due: '2028-03-01' },
+            { text: 'late', priority: 'recurring', arrival: 12, schedule: weekly, due: '2028-02-21' },
+            { text: 'recurring Feb 28 a', priority: 'recurring', arrival: 6, schedule: weekly, due: '2028-02-28' },
+        ], backlog, AT_10, undefined,
+        ['late', 'critical Mar 1', 'critical Mar 9', 'recurring today', 'recurring Feb 28 a', 'recurring Feb 28 b',
+            'recurring Mar 6', 'critical', 'medium', 'low']],
+    ['in Backlog dated Critical Cards due the same day go by Arrival',
+        'order', [
+            { text: 'second', priority: 'critical', arrival: 8, due: '2028-03-01' },
+            { text: 'first', priority: 'critical', arrival: 2, due: '2028-03-01' },
+        ], backlog, AT_10, undefined,
+        ['first', 'second']],
+    ['outside Backlog the same Cards keep 0002\'s order',
+        'order', [
+            { text: 'recurring Mar 6', priority: 'recurring', arrival: 4, schedule: weekly, due: '2028-03-06' },
+            { text: 'critical Mar 9', priority: 'critical', arrival: 5, due: '2028-03-09' },
+            { text: 'recurring Feb 28', priority: 'recurring', arrival: 9, schedule: weekly, due: '2028-02-28' },
+            { text: 'critical', priority: 'critical', arrival: 3 },
+        ], todo, AT_10, undefined,
+        ['recurring Mar 6', 'recurring Feb 28', 'critical', 'critical Mar 9']],
     ['settle needs the moment too',
         'settle', { priority: 'critical' }, todo, { today: TODAY }, undefined, { threw: 'TypeError' }],
     ['shows needs the moment too',

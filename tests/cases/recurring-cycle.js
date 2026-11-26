@@ -62,7 +62,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         }, monthly1st, daily);
         await app.reload();
         await sleep(300);
-        assert.deepStrictEqual(await board(), [['file taxes', 'weekly review'], [], [], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
+        assert.deepStrictEqual(await board(), [['weekly review', 'file taxes'], [], [], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
 
         // Midnight with the tab open.
         await setClock('2028-11-16 00:00');
@@ -71,8 +71,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         assert.deepStrictEqual(await doneIn('2028-11-15'), ['pay rent', 'renew insurance', 'water plants', 'ordinary'], 'all of Done is in that day\'s History');
         let b = await board();
         assert.deepStrictEqual(b[3], [], 'Done is cleared');
-        assert.strictEqual(b[0][0], 'file taxes', 'returning Cards join the back of the tier');
-        assert.deepStrictEqual([...b[0].slice(1)].sort(), ['pay rent', 'renew insurance'], 'waiting Cards return to Backlog');
+        assert.deepStrictEqual(b[0], ['pay rent', 'renew insurance', 'file taxes'], 'waiting Cards return to Backlog, in Due date order');
         assert.deepStrictEqual([...b[1]].sort(), ['water plants', 'weekly review'], 'a finished Card due today, and one waiting for today, are in To-Do');
 
         assert.strictEqual((await saved('pay rent')).due, '2028-12-01', 'it comes back with its next Due date');
