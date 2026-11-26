@@ -260,6 +260,12 @@ const ROWS = [
             { text: 'no Priority', arrival: 0 },
         ], todo, AT_10, undefined,
         ['late', 'recurring', 'critical', 'medium 1', 'medium 2', 'no Priority', 'low']],
+    ['in WIP a Late Card still sorts first',
+        'order', [
+            { text: 'recurring', priority: 'recurring', arrival: 1, schedule: weekly, due: '2028-02-28' },
+            { text: 'late', priority: 'recurring', arrival: 3, schedule: weekly, due: '2028-02-21' },
+        ], wip, AT_10, undefined,
+        ['late', 'recurring']],
     ['Done sorts by Arrival alone',
         'order', [
             { text: 'low', priority: 'low', arrival: 1 },
@@ -267,6 +273,10 @@ const ROWS = [
             { text: 'critical', priority: 'critical', arrival: 2 },
         ], done, AT_10, undefined,
         ['low', 'critical', 'late']],
+    ['settle needs the moment too',
+        'settle', { priority: 'critical' }, todo, { today: TODAY }, undefined, { threw: 'TypeError' }],
+    ['shows needs the moment too',
+        'shows', { priority: 'critical' }, todo, { hour: 10 }, undefined, { threw: 'TypeError' }],
     ['order needs the moment too',
         'order', [], todo, { hour: 10 }, undefined, { threw: 'TypeError' }],
 ];

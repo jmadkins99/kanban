@@ -161,20 +161,23 @@
   }
 
   function waiting(card, where, moment) {
-    return where.role != 'wip' && where.role != 'done' && Priority.isCritical(card) && ! waitsForDue(card, moment);
+    return ! pastWaiting(where.role) && Priority.isCritical(card) && ! waitsForDue(card, moment);
   }
+
+  // WIP and Done: a Card there no longer waits, so it has no Critical timer.
+  function pastWaiting(role) { return role == 'wip' || role == 'done'; }
 
   function waitsForDue(card, moment) { return !! card.due && card.due > moment.today; }
 
-  function isLate(card, where, moment) {
-    return where.role != 'done' && Priority.isRecurring(card) && !! card.due && card.due < moment.today;
+  function isLate(card, role, moment) {
+    return role != 'done' && Priority.isRecurring(card) && !! card.due && card.due < moment.today;
   }
 
   function shows(card, where, moment) {
     requireMoment(moment);
-    var late = isLate(card, where, moment), outside = where.role == 'wip' || where.role == 'done';
+    var late = isLate(card, where.role, moment);
     var next = where.role == 'backlog' && waitsForDue(card, moment) ? card.due : null;
-    var from = outside ? null : late ? Schedule.endOf(card.due) :
+    var from = pastWaiting(where.role) ? null : late ? Schedule.endOf(card.due) :
       Priority.isCritical(card) && card.criticalSince || null;
     return {
       late: late,
@@ -189,8 +192,7 @@
 
   function order(role, moment) {
     requireMoment(moment);
-    var where = { role: role };
-    var tier = function (card) { return isLate(card, where, moment) ? -1 : Priority.LEVELS.indexOf(Priority.of(card)); };
+    var tier = function (card) { return isLate(card, role, moment) ? -1 : Priority.LEVELS.indexOf(Priority.of(card)); };
     return function (a, b) {
       return (role == 'done' ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
     };
