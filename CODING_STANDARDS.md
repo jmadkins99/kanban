@@ -9,8 +9,13 @@ When a rule moves into a module with its own table of rows (for example
 `tests/cases/due-date-rules.js` for `js/due.js`):
 
 - The rule is checked by its row, with the day passed in. The E2E click case
-  that checked the same rule loses that assertion, and keeps one wiring check:
-  that a click really reaches the module and its decision is applied.
+  that checked the same rule loses that assertion, and keeps its wiring
+  checks: that a click really reaches the module and its decision is applied.
+- A **wiring check** covers what the page does with a Decision: the class,
+  colour or text it draws, where the Card lands in the DOM, and that it
+  survives a reload. A row proves the Decision; only an E2E case proves the
+  page draws it. Keep one E2E assertion for each distinct thing the page
+  draws.
 - An E2E assertion left after the move is a wiring check, or it belongs to a
   rule still outside the module. Anything else is a rule asserted twice.
 - Every step comment in a case sits over the assertion it describes. When an
