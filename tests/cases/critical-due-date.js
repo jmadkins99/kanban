@@ -1,12 +1,13 @@
 // A Critical Card may be given a Due date: a day still to come when it starts
 // to matter. The Card editor shows an optional date field while Critical is
-// picked, tomorrow at the earliest. What saving decides (which typed days
-// take, whether it waits in Backlog, when the date goes) is the Due date
-// module's, in due-date-rules.js; here, the Card editor's save applies it:
-// saved with a date, the Card waits in Backlog with a red "Next: <date>" and
-// no Critical timer. When its day begins it moves on to To-Do, loses the
-// date, and its Critical timer counts from that midnight. Moving it out of
-// Backlog early by hand drops the date. It's one-time and never Late.
+// picked, tomorrow at the earliest. What happens to the date (which typed
+// days take, whether it waits in Backlog, what its day beginning, a move by
+// hand or the Auto-submit does to it) is the Due date module's, in
+// due-date-rules.js; here, its callers apply it: saved with a date, the Card
+// waits in Backlog with a red "Next: <date>" and no Critical timer. When its
+// day begins the minute tick moves it on to To-Do, its Critical timer
+// counting from that midnight. Moved out of Backlog early by hand, its timer
+// starts from the move. It's never Late.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
@@ -111,24 +112,17 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         n = await saved('call bank');
         assert.deepStrictEqual([n.priority, n.due, n.xp], ['critical', '2028-02-25', xp], 'with its date and XP');
 
-        // Its day begins: at 9:00 on Feb 24 it's in To-Do, without its date,
-        // its Critical timer counting from midnight. Done cleared at midnight
-        // took the finished one for good: it's one-time.
+        // Its day begins: at 9:00 on Feb 24 it's in To-Do, its Critical timer
+        // counting from midnight.
         await setClock(page, '2028-02-24 09:00');
         await wake(page);
         assert.strictEqual(await where('book dentist'), TODO, 'on its Due date it moves on to To-Do');
-        n = await saved('book dentist');
-        assert.ok(!('due' in n), 'without its Due date: ' + JSON.stringify(n));
-        assert.strictEqual(n.criticalSince, await page.evaluate(() => new Date(2028, 1, 24).getTime()), 'its Critical timer counts from midnight');
         s = await slot('book dentist');
         assert.ok(s && /^9h 0m \d+s$/.test(s.text) && s.red, 'so at 9:00 it reads 9h: ' + JSON.stringify(s));
-        assert.strictEqual(await where('renew passport'), BACKLOG, 'one due later still waits');
-        assert.strictEqual(await where('call bank'), -1, 'the finished one went with Done');
 
-        // The next day the finished one hasn't come back, and nothing is Late.
+        // The next day nothing is Late.
         await setClock(page, '2028-02-25 09:00');
         await wake(page);
-        assert.strictEqual(await where('call bank'), -1, 'it never comes back after Done clears');
         assert.strictEqual(await page.evaluate(() => $('.wrap .board .card.late').length), 0, 'no Card is Late');
 
         // Changing the date: its tag follows, and it survives a reload.
@@ -152,7 +146,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         s = await slot('renew passport');
         assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'its Critical timer starts: ' + JSON.stringify(s));
 
-        // Moved out of Backlog early by hand: the date goes, the timer starts from the move.
+        // Moved out of Backlog early by hand: its timer starts from the move.
         await addCard(TODO, 'pick up keys');
         await pick('Critical');
         await setDue('2028-03-10');
@@ -162,11 +156,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         await moveCard(page, BACKLOG, await index(BACKLOG, 'pick up keys'), 1);
         await settle(page);
         assert.strictEqual(await where('pick up keys'), TODO, 'moved to To-Do by hand');
-        n = await saved('pick up keys');
-        assert.ok(!('due' in n), 'without its Due date: ' + JSON.stringify(n));
-        assert.ok(Math.abs(n.criticalSince - await page.evaluate(() => Date.now())) < 5000, 'its Critical timer counts from the move');
         s = await slot('pick up keys');
-        assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'and shows: ' + JSON.stringify(s));
+        assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'its Critical timer counts from the move: ' + JSON.stringify(s));
 
         // Another Priority hides the date field.
         await edit('pick up keys');

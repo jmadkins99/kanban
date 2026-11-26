@@ -3160,16 +3160,6 @@
 		return $b.length ? $b : $('.wrap .board .list').first();
 	}
 
-	// A Recurring Card finished on `day` goes back to wait for its next Due
-	// date (see js/recurring.js). Due today, it goes straight to To-Do, if
-	// there is one; otherwise to Backlog. Call before saving.
-	function returnRecurring($card, day)
-	{
-		var m = cardMeta($card), $todo = todoList();
-		m.due = Recurring.nextDue(m, day);
-		moveCardTo($card, m.due <= Schedule.today() && $todo.length ? $todo : backlogList());
-	}
-
 	// The List named To-Do, if there is one that isn't also where Recurring
 	// Cards wait (see backlogList).
 	function todoList()
@@ -3178,33 +3168,16 @@
 		return $todo[0] == backlogList()[0] ? $() : $todo;
 	}
 
-	// Cards in Backlog whose Due date has come move on to To-Do, if there is
-	// one, unless they arrived on or after it (see js/recurring.js). A Critical
-	// one loses its Due date there, its Critical timer counting from the start
-	// of that day, so every device agrees. A Card moved out of Backlog early
-	// is left where it is. Saves if any moved.
+	// Cards in Backlog whose Due date has come move on to To-Do, as the Due
+	// date module decides (Due.dayBegins in js/due.js). Saves if any moved.
 	function moveDueToTodo()
 	{
-		var $todo = todoList(), today = Schedule.today();
-		if (! $todo.length)
-			return;
-
-		var $due = backlogList().find('.card').filter(function(){
-			return Recurring.movesOn(cardMeta($(this)), today);
+		var moment = dueMoment(), moved = false;
+		backlogList().find('.card').each(function(){
+			var d = Due.dayBegins(cardMeta($(this)), dueWhere($(this)), moment);
+			if (d.to) { applyDue($(this), d); moved = true; }
 		});
-		if (! $due.length)
-			return;
-
-		$due.each(function(){
-			var m = cardMeta($(this));
-			moveCardTo($(this), $todo);
-			if (Priority.isCritical(m))
-			{
-				m.criticalSince = Schedule.startOf(m.due);
-				delete m.due;
-			}
-		});
-		saveBoard();
+		if (moved) saveBoard();
 	}
 
 	function markLists()
@@ -5301,11 +5274,12 @@
 		// Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 		XP.bankCards( [].concat.apply([], NB.board.lists.filter(function(l){ return isDoneTitle(l.title); }).map(function(l){ return l.notes; })) );
 
-		// After the snapshot, which keeps them: Recurring Cards go back to wait, the rest go.
-		var $done = $('.wrap .board .list.done-list .card');
+		// After the snapshot, which keeps them: Recurring Cards go back to wait
+		// (Due.finished in js/due.js), the rest go.
+		var $done = $('.wrap .board .list.done-list .card'), moment = dueMoment();
 		$done.each(function(){
-			var m = cardMeta($(this));
-			if (Priority.isRecurring(m) && m.schedule) returnRecurring($(this), day);
+			var d = Due.finished(cardMeta($(this)), dueWhere($(this)), moment, day);
+			if (d) applyDue($(this), d);
 			else $(this).remove();
 		});
 		if ($done.length) saveBoard();
@@ -5457,8 +5431,7 @@
 				if (! $to.length) return;
 				var fromDone = $list.hasClass('done-list');
 				moveCardTo($card, $to);
-				if (Priority.isCritical(cardMeta($card)))
-					delete cardMeta($card).due; // moved by hand, it stops waiting for its day
+				applyDue($card, Due.moved(cardMeta($card), dueWhere($card), dueMoment()));
 				cardMoved($card, fromDone);
 				saveBoard();
 			},

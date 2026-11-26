@@ -11,7 +11,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
+const { openApp, settle, moveCard, sleep, fakeClock, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
 
 (async () => {
     // The page's clock reads Wednesday 2028-02-23, 10:00 local time.
@@ -98,15 +98,6 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         assert.deepStrictEqual(n.schedule, { every: 1, start: '2028-02-02', unit: 'weeks' }, 'the Schedule is saved');
         assert.deepStrictEqual(Object.keys(n.schedule), ['every', 'start', 'unit'], 'with its keys in order');
         assert.strictEqual(await slot('water plants'), null, 'no "Next:" outside Backlog');
-
-        // Saved in Backlog as Recurring and due today, it stays in Backlog too.
-        await addCard(BACKLOG, 'stretch');
-        await pick('Recurring');
-        await setSchedule(1, 'days', '2028-02-01');
-        await clickAway();
-        await wake(page);
-        assert.strictEqual(await where('stretch'), BACKLOG, 'due today and saved in Backlog, it isn\'t moved to To-Do');
-        assert.strictEqual((await saved('stretch')).due, '2028-02-23');
 
         // A new Card due later moves to Backlog and shows "Next:".
         await addCard(WIP, 'pay rent');

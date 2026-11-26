@@ -10,6 +10,12 @@
  * Due.edited(card, where, moment, picked)  saved in the Card editor, where
  *   picked = { priority, schedule|null, due|null (as typed), isNew, on }
  *   → Decision { to, due, schedule, criticalSince, changed }
+ * Due.moved(card, where, moment)  moved by hand (the card menu); `where` is
+ *   the List it landed in, and it stays there (to null)
+ * Due.dayBegins(card, where, moment)  the minute tick: a Card in Backlog
+ *   moves on to To-Do once its day has come
+ * Due.finished(card, where, moment, day)  the midnight Auto-submit, on a Card
+ *   in Done finished on `day`; null: it doesn't come back
  * Due.shows(card, where, moment)  the Due-date part of what a Card shows:
  *   { dueLine: { value, min } }, what the Card editor's Due line starts
  *   from (a Critical Card's Due date, or empty) and the earliest day it takes
@@ -18,11 +24,14 @@
  * field, and an unchanged value comes back as the very one passed in (so a
  * saved Card's keys only change order on a real delete). `to` is where the
  * Card moves ('todo' or 'backlog'), null when it stays; a move restarts its
- * Critical timer (criticalSince null). `changed`: the Schedule or Due date
- * picked differs from the Card's.
+ * Critical timer (criticalSince null), unless it's a Critical Card whose day
+ * has come, whose timer counts from that midnight. `changed` (edited only):
+ * the Schedule or Due date picked differs from the Card's.
  *
  * Arrival stays with the callers: they stamp it on every move and Priority
- * change. It's a List-order concept (docs/adr/0002), read here, not written.
+ * change. It's a List-order concept (docs/adr/0002), read here, not written:
+ * dayBegins moves on only a Card that arrived before its day began, so one
+ * put back by hand, or saved there due today, stays.
  */
 (function () {
   function requireMoment(moment) {
@@ -35,7 +44,8 @@
   function edited(card, where, moment, picked) {
     requireMoment(moment);
     var priority = Priority.of(picked), priorityChanged = priority != Priority.of(card);
-    var d = { to: null, due: orNull(card.due), schedule: orNull(card.schedule), criticalSince: orNull(card.criticalSince), changed: false };
+    var d = unchanged(card);
+    d.changed = false;
 
     if (Priority.isRecurring(picked)) {
       var s = picked.schedule;
@@ -80,6 +90,54 @@
     d.criticalSince = null;
   }
 
+  // Moved by hand: it stays where it landed, its Critical timer starting
+  // over, and a Critical Card stops waiting for its day.
+  function moved(card, where, moment) {
+    requireMoment(moment);
+    var d = unchanged(card);
+    if (Priority.isCritical(card)) d.due = null;
+    d.criticalSince = null;
+    return d;
+  }
+
+  // The minute tick: a Card in Backlog whose Due date has come moves on to
+  // To-Do, if there is one, unless it arrived on or after that day began.
+  function dayBegins(card, where, moment) {
+    requireMoment(moment);
+    var d = unchanged(card);
+    if (where.role != 'backlog' || ! where.hasTodo || ! card.due || card.due > moment.today ||
+        (card.arrival || 0) >= Schedule.startOf(card.due))
+      return d;
+    // A Critical one loses its Due date, its Critical timer counting from the
+    // start of that day, so every device agrees.
+    var critical = Priority.isCritical(card);
+    d.to = 'todo';
+    d.criticalSince = critical ? Schedule.startOf(card.due) : null;
+    if (critical) d.due = null;
+    return d;
+  }
+
+  // The midnight Auto-submit, on a Card in Done finished on `day`: a
+  // Recurring Card goes back to wait for its next Due date, the first
+  // Schedule date after its current one, after `day` and on or after today,
+  // so missed dates don't pile up and it's never due on a day gone by. Due
+  // today, it goes straight to To-Do, if there is one; otherwise to Backlog.
+  // Any other Card doesn't come back: null.
+  function finished(card, where, moment, day) {
+    requireMoment(moment);
+    if (! Priority.isRecurring(card) || ! card.schedule)
+      return null;
+    var s = card.schedule, d = unchanged(card);
+    d.due = [Schedule.after(s, card.due || day), Schedule.after(s, day), Schedule.onOrAfter(s, moment.today)].sort().pop();
+    d.to = d.due <= moment.today && where.hasTodo ? 'todo' : 'backlog';
+    d.criticalSince = null;
+    return d;
+  }
+
+  function unchanged(card) {
+    return { to: null, due: orNull(card.due), schedule: orNull(card.schedule), criticalSince: orNull(card.criticalSince) };
+  }
+
   function shows(card, where, moment) {
     requireMoment(moment);
     return {
@@ -89,5 +147,5 @@
 
   function dayAfter(day) { return Schedule.after({ every: 1, start: day, unit: 'days' }, day); }
 
-  window.Due = { edited: edited, shows: shows };
+  window.Due = { edited: edited, moved: moved, dayBegins: dayBegins, finished: finished, shows: shows };
 })();

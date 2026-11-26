@@ -1,14 +1,13 @@
-// Recurring Cards come back on their own. When the midnight Auto-submit
+// Recurring Cards come back on their own. What happens to them (the next Due
+// date, To-Do or Backlog, whether one moves on) is the Due date module's, in
+// due-date-rules.js; here, its callers apply it. When the midnight Auto-submit
 // clears Done, a finished Recurring Card is filed in that day's History like
-// any other, then goes back with a fresh Arrival and its next Due date: the
-// first Schedule date after its current Due date, the day it was finished and
-// yesterday, so missed occurrences don't pile up and it's never due on a day
-// already gone. Due today, it goes straight to To-Do; otherwise to Backlog. A
-// Recurring Card waiting in Backlog from before its Due date moves to To-Do by
-// itself once the day comes, at midnight or when the tab next opens. One moved
-// out of Backlog early, or put back there by hand, is left alone. Lists are
-// found by name, any case: "backlog"; "to-do", "todo" or "to do". With no
-// Backlog the Card returns to the first List; with no To-Do it stays put.
+// any other, then goes back with a fresh Arrival and its next Due date, and
+// the rest go. The minute tick moves on a Card whose day has come, at midnight
+// or when the tab next opens; a move by hand is a fresh Arrival, so one put
+// back in Backlog stays. Lists are found by name, any case: "backlog";
+// "to-do", "todo" or "to do". With no Backlog the Card returns to the first
+// List.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wake: wakePage } = require('../lib');
@@ -51,11 +50,11 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
                 r('weekly review', { every: 1,  start: '2028-11-09', unit: 'weeks' },  '2028-11-16'),
             ];
             todo.notes = [];
-            wip.notes  = [r('take bins out', { every: 1, start: '2028-11-02', unit: 'weeks' }, '2028-11-16')]; // moved out of Backlog early
+            wip.notes  = [];
             done.notes = [
-                r('pay rent',         monthly1st, '2028-11-01'), // finished late
-                r('renew insurance',  monthly1st, '2028-12-01'), // finished early
-                r('water plants',     daily,      '2028-11-15'), // on the day
+                r('pay rent',         monthly1st, '2028-11-01'),
+                r('renew insurance',  monthly1st, '2028-12-01'),
+                r('water plants',     daily,      '2028-11-15'),
                 { text: 'ordinary', priority: 'low' },
             ];
             NB.board.day = '2028-11-15';
@@ -63,7 +62,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         }, monthly1st, daily);
         await app.reload();
         await sleep(300);
-        assert.deepStrictEqual(await board(), [['file taxes', 'weekly review'], [], ['take bins out'], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
+        assert.deepStrictEqual(await board(), [['file taxes', 'weekly review'], [], [], ['pay rent', 'renew insurance', 'water plants', 'ordinary']]);
 
         // Midnight with the tab open.
         await setClock('2028-11-16 00:00');
@@ -74,15 +73,10 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         assert.deepStrictEqual(b[3], [], 'Done is cleared');
         assert.strictEqual(b[0][0], 'file taxes', 'returning Cards join the back of the tier');
         assert.deepStrictEqual([...b[0].slice(1)].sort(), ['pay rent', 'renew insurance'], 'waiting Cards return to Backlog');
-        assert.deepStrictEqual([...b[1]].sort(), ['water plants', 'weekly review'], 'Cards due today move on to To-Do');
-        assert.deepStrictEqual(b[2], ['take bins out'], 'one moved out of Backlog early stays put');
+        assert.deepStrictEqual([...b[1]].sort(), ['water plants', 'weekly review'], 'a finished Card due today, and one waiting for today, are in To-Do');
 
-        assert.strictEqual((await saved('pay rent')).due, '2028-12-01', 'a late finish comes back on the next date: Dec 1');
-        assert.match(await slot('pay rent'), /^Next: (Dec 1|1 Dec)$/);
-        assert.strictEqual((await saved('renew insurance')).due, '2029-01-01', 'an early finish skips its current date: Jan 1');
-        assert.match(await slot('renew insurance'), /^Next: .*2029$/);
-        assert.strictEqual((await saved('water plants')).due, '2028-11-16', 'a daily Card is due the next day');
-        assert.strictEqual((await saved('take bins out')).due, '2028-11-16', 'the early Card keeps its Due date');
+        assert.strictEqual((await saved('pay rent')).due, '2028-12-01', 'it comes back with its next Due date');
+        assert.match(await slot('pay rent'), /^Next: (Dec 1|1 Dec)$/, 'and shows it');
         assert.strictEqual(await saved('ordinary'), null, 'an ordinary Card is cleared');
         const midnight = await page.evaluate(() => new Date(2028, 10, 16).getTime());
         for (const t of ['pay rent', 'water plants', 'weekly review'])
@@ -108,7 +102,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         await settle(page);
         b = await board();
 
-        // Closed over the Due date: on opening, it moves. " TODO " is To-Do too.
+        // Closed over its Due date: on opening, it moves on. " TODO " is To-Do too.
         await rename(1, ' TODO ');
         await setClock('2028-12-01 09:00');
         await app.reload();
@@ -116,9 +110,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         await settle(page);
         b = await board();
         assert.ok(b[1].includes('pay rent'), 'due while the tab was closed, it\'s in To-Do on opening: ' + JSON.stringify(b));
-        assert.deepStrictEqual(b[0], ['file taxes', 'renew insurance'], 'the others wait');
 
-        // No Backlog: a finished Card returns to the first List, and moves on to "to do".
+        // No Backlog: a finished Card returns to the first List; "to do" is To-Do.
         await rename(0, 'Ideas');
         await rename(1, 'to do');
         await moveCard(page, 1, (await board())[1].indexOf('water plants'), 2);
@@ -129,43 +122,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock: setPageClock, wak
         await wake();
         b = await board();
         assert.ok(b[0].includes('renew insurance'), 'no Backlog: the first List: ' + JSON.stringify(b));
-        assert.strictEqual((await saved('renew insurance')).due, '2029-02-01', 'finished early again: after its Jan 1');
         assert.ok(b[1].includes('water plants'), '"to do" is To-Do');
-        assert.strictEqual((await saved('water plants')).due, '2028-12-02');
-
-        // No To-Do: it stays in Backlog.
-        await rename(0, 'BACKLOG');
-        await rename(1, 'Later');
-        await moveCard(page, 1, (await board())[1].indexOf('water plants'), 2);
-        await settle(page);
-        await setClock('2028-12-03 00:00');
-        await wake();
-        b = await board();
-        assert.ok(b[0].includes('water plants'), 'no To-Do: it stays in Backlog: ' + JSON.stringify(b));
-        assert.strictEqual((await saved('water plants')).due, '2028-12-03');
-
-        // Finished on Monday Dec 4, the tab reopened on Wednesday Dec 13: the
-        // next Due date is never one already gone by. Weekly on Mondays comes
-        // back due Dec 18, not Dec 11; daily is due today and goes to To-Do.
-        await rename(1, 'To-Do');
-        await page.evaluate(() => {
-            const r = (text, schedule) => ({ text, priority: 'recurring', schedule, due: '2028-12-04', arrival: 1 });
-            NB.board.lists[3].notes = [
-                r('mow lawn',  { every: 1, start: '2028-11-06', unit: 'weeks' }),
-                r('feed fish', { every: 1, start: '2028-11-01', unit: 'days' }),
-            ];
-            NB.board.day = '2028-12-04';
-            NB.storage.saveBoard(NB.board);
-        });
-        await setClock('2028-12-13 09:00');
-        await app.reload();
-        await sleep(300);
-        await settle(page);
-        b = await board();
-        assert.strictEqual((await saved('mow lawn')).due, '2028-12-18', 'weekly: the next Monday from today, not a past one');
-        assert.ok(b[0].includes('mow lawn'), 'it waits in Backlog: ' + JSON.stringify(b));
-        assert.strictEqual((await saved('feed fish')).due, '2028-12-13', 'daily: due today');
-        assert.ok(b[1].includes('feed fish'), 'due today, it goes straight to To-Do: ' + JSON.stringify(b));
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
