@@ -1,11 +1,12 @@
 // A Critical Card may be given a Due date: a day still to come when it starts
 // to matter. The Card editor shows an optional date field while Critical is
-// picked, tomorrow at the earliest. Saved with one, the Card waits in Backlog
-// (from To-Do or WIP; Done stays put) with a red "Next: <date>" and no
-// Critical timer. When its day begins it moves on to To-Do, loses the date,
-// and its Critical timer counts from that midnight. Moving it out of Backlog
-// early by hand, another Priority or clearing the date drops the date. It's
-// one-time and never Late.
+// picked, tomorrow at the earliest. What saving decides (which typed days
+// take, whether it waits in Backlog, when the date goes) is the Due date
+// module's, in due-date-rules.js; here, the Card editor's save applies it:
+// saved with a date, the Card waits in Backlog with a red "Next: <date>" and
+// no Critical timer. When its day begins it moves on to To-Do, loses the
+// date, and its Critical timer counts from that midnight. Moving it out of
+// Backlog early by hand drops the date. It's one-time and never Late.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway: clickAwayOn, pickPriority, editCard } = require('../lib');
@@ -18,7 +19,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
     await sleep(300);
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
-    const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
+    const BACKLOG = 0, TODO = 1, WIP = 2;
     const EDITING = '.wrap .board .card.editing';
     const clickAway = () => clickAwayOn(page);
     const index = (list, text) => page.evaluate((list, text) => $('.wrap .board .list').eq(list).find('.card').toArray()
@@ -73,10 +74,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.strictEqual(await dueMin(), '2028-02-24', 'tomorrow is the earliest pickable day');
         assert.strictEqual(await page.evaluate((s) => $(s).find('.card-due input[type=date]').val(), EDITING), '', 'empty to begin with');
 
-        // Left empty: an ordinary Critical Card, staying put with its timer.
+        // Left empty: an ordinary Critical Card, with its timer.
         await clickAway();
-        assert.strictEqual(await where('renew passport'), TODO, 'no date: it stays in To-Do');
-        assert.ok(!('due' in await saved('renew passport')), 'with no Due date');
         let s = await slot('renew passport');
         assert.ok(s && /^\d+m \d+s$/.test(s.text) && s.red, 'and a red Critical timer: ' + JSON.stringify(s));
 
@@ -93,15 +92,13 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.ok(s && /^Next: (Mar 2|2 Mar)$/.test(s.text), 'it shows "Next: <date>": ' + JSON.stringify(s));
         assert.ok(s.red, 'in red');
 
-        // From WIP, a new Card picked Critical with a date goes there too.
+        // A new Card from WIP, picked Critical with a date tomorrow.
         await addCard(WIP, 'book dentist');
         await pick('Critical');
         await setDue('2028-02-24');
         await clickAway();
-        assert.strictEqual(await where('book dentist'), BACKLOG, 'a new one from WIP goes to Backlog');
-        assert.strictEqual((await saved('book dentist')).due, '2028-02-24');
 
-        // A Card in Done stays there, with its XP.
+        // A Card in Done keeps its XP.
         await addCard(WIP, 'call bank');
         await clickAway();
         await moveCard(page, WIP, await index(WIP, 'call bank'), 1);
@@ -111,7 +108,6 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         await pick('Critical');
         await setDue('2028-02-25');
         await clickAway();
-        assert.strictEqual(await where('call bank'), DONE, 'a Card in Done stays in Done');
         n = await saved('call bank');
         assert.deepStrictEqual([n.priority, n.due, n.xp], ['critical', '2028-02-25', xp], 'with its date and XP');
 
@@ -135,35 +131,24 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.strictEqual(await where('call bank'), -1, 'it never comes back after Done clears');
         assert.strictEqual(await page.evaluate(() => $('.wrap .board .card.late').length), 0, 'no Card is Late');
 
-        // Changing the date: it stays in Backlog, its tag follows. It survives a reload.
+        // Changing the date: its tag follows, and it survives a reload.
         await edit('renew passport');
         assert.strictEqual(await page.evaluate((s) => $(s).find('.wip-timer').is(':visible'), EDITING), false, 'its tag hides in the Card editor');
         assert.strictEqual(await page.evaluate((s) => $(s).find('.card-due input[type=date]').val(), EDITING), '2028-03-02', 'the date field holds its Due date');
-        assert.strictEqual(await dueMin(), '2028-02-26', 'still no earlier than tomorrow');
+        assert.strictEqual(await dueMin(), '2028-02-26', 'tomorrow, as the clock now reads');
         await setDue('2028-03-05');
         await clickAway();
-        assert.strictEqual(await where('renew passport'), BACKLOG, 'a changed date keeps it in Backlog');
-        assert.strictEqual((await saved('renew passport')).due, '2028-03-05');
         await app.reload();
         await sleep(500);
         s = await slot('renew passport');
         assert.ok(s && /^Next: (Mar 5|5 Mar)$/.test(s.text) && s.red, 'after a reload it still shows its red "Next:": ' + JSON.stringify(s));
         assert.strictEqual((await saved('renew passport')).due, '2028-03-05', 'and keeps its Due date');
 
-        // A typed day that isn't still to come (today, Feb 25) doesn't take: the Card keeps its date.
-        await edit('renew passport');
-        await setDue('2028-02-25');
-        await clickAway();
-        assert.strictEqual((await saved('renew passport')).due, '2028-03-05', 'a typed day not still to come keeps the Due date it had');
-        assert.strictEqual(await where('renew passport'), BACKLOG);
-
         // Clearing the date: an ordinary Critical Card, its timer starting.
         await edit('renew passport');
         await setDue('');
         await clickAway();
-        assert.strictEqual(await where('renew passport'), BACKLOG, 'cleared, it stays in Backlog');
-        n = await saved('renew passport');
-        assert.ok(!('due' in n) && n.priority == 'critical', 'an ordinary Critical Card: ' + JSON.stringify(n));
+        assert.ok(!('due' in await saved('renew passport')), 'the Due date is gone');
         s = await slot('renew passport');
         assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'its Critical timer starts: ' + JSON.stringify(s));
 
@@ -183,20 +168,11 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         s = await slot('pick up keys');
         assert.ok(s && /^0m \d+s$/.test(s.text) && s.red, 'and shows: ' + JSON.stringify(s));
 
-        // Another Priority drops the date, leaving the Card where it is.
-        await addCard(TODO, 'cancel gym');
-        await pick('Critical');
-        await setDue('2028-03-10');
-        await clickAway();
-        assert.strictEqual(await where('cancel gym'), BACKLOG);
-        await edit('cancel gym');
+        // Another Priority hides the date field.
+        await edit('pick up keys');
         await pick('Medium');
         assert.strictEqual(await dueShown(), false, 'Medium hides the date field');
         await clickAway();
-        assert.strictEqual(await where('cancel gym'), BACKLOG, 'it stays where it is');
-        n = await saved('cancel gym');
-        assert.ok(n.priority == 'medium' && !('due' in n), 'no Due date left: ' + JSON.stringify(n));
-        assert.strictEqual(await slot('cancel gym'), null, 'and no "Next:"');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

@@ -147,8 +147,10 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         });
         await a.page.evaluate(() => {
             const $c = $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == 'live from A');
+            const d = Due.edited(cardMeta($c), dueWhere($c), dueMoment(),
+                { priority: 'recurring', schedule: Schedule.make(2, 'weeks', Schedule.today()), due: null, isNew: false, on: Schedule.today() });
             setPriority($c, 'recurring');
-            setSchedule($c, Schedule.make(2, 'weeks', Schedule.today()));
+            applyDue($c, d);
             saveBoard();
         });
         const sent = await recurring(a.page);

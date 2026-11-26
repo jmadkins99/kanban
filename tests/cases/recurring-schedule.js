@@ -1,12 +1,11 @@
 // A Recurring Card has a Schedule and a Due date. Picking Recurring in edit
 // mode shows "Every [N] [days / weeks / months] starting [date]"; other
-// Priorities hide it. Saving a Card as Recurring sets its Due date to the
-// first Schedule date on or after today: due today, it stays where it is
-// (Backlog included); due later, it moves to Backlog (found by name, or the
-// first List) and shows "Next: <date>". A Card in Done stays there with its
-// XP until the Auto-submit. Editing the Schedule later only changes the Due date, and
-// another Priority drops both, leaving the Card where it is. Both are stored
-// on the Card, so they survive export/import and History.
+// Priorities hide it. What saving decides (the Due date, whether it waits in
+// Backlog) is the Due date module's, in due-date-rules.js; here, the Card
+// editor's save applies it: due later, a Card moves to Backlog (found by
+// name, or the first List) and shows "Next: <date>"; a Card in Done keeps its
+// XP until the Auto-submit. Both are stored on the Card, so they survive
+// export/import and History.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
 const fs = require('fs');
@@ -22,7 +21,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
     await sleep(300);
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
-    const BACKLOG = 0, TODO = 1, WIP = 2, DONE = 3;
+    const BACKLOG = 0, TODO = 1, WIP = 2;
     const EDITING = '.wrap .board .card.editing';
     const clickAway = () => clickAwayOn(page);
     const lists = () => page.evaluate(() => $('.wrap .board .list').map((_, l) => getText($(l).find('.head .text'))).get());
@@ -94,12 +93,10 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         // Weekly from a Wednesday, which today is: due today, it stays in To-Do.
         await setSchedule(1, 'weeks', '2028-02-02');
         await clickAway();
-        assert.strictEqual(await where('water plants'), TODO, 'due today, it stays where it is');
         let n = await saved('water plants');
         assert.strictEqual(n.priority, 'recurring');
         assert.deepStrictEqual(n.schedule, { every: 1, start: '2028-02-02', unit: 'weeks' }, 'the Schedule is saved');
         assert.deepStrictEqual(Object.keys(n.schedule), ['every', 'start', 'unit'], 'with its keys in order');
-        assert.strictEqual(n.due, '2028-02-23', 'due today');
         assert.strictEqual(await slot('water plants'), null, 'no "Next:" outside Backlog');
 
         // Saved in Backlog as Recurring and due today, it stays in Backlog too.
@@ -120,33 +117,21 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         assert.strictEqual((await saved('pay rent')).due, '2028-03-01');
         assert.match(await slot('pay rent'), NEXT('(Mar 1|1 Mar)'), 'it shows "Next: <date>"');
 
-        // Editing the Schedule only changes the Due date and "Next:".
+        // Editing the Schedule: "Next:" follows it.
         await edit('pay rent');
         assert.strictEqual(await scheduleShown(), true, 'a Recurring Card shows its Schedule line in the Card editor');
         assert.deepStrictEqual(await page.evaluate((s) => [$(s).find('.sched-every').val(), $(s).find('.sched-unit').val(), $(s).find('.sched-start').val()], EDITING),
             ['1', 'months', '2028-03-01'], 'filled with its Schedule');
         await setSchedule(2, 'weeks', '2028-02-27');
         await clickAway();
-        assert.strictEqual(await where('pay rent'), BACKLOG, 'still in Backlog');
-        assert.strictEqual((await saved('pay rent')).due, '2028-02-27');
         assert.match(await slot('pay rent'), NEXT('(Feb 27|27 Feb)'), '"Next:" follows the new Schedule');
 
-        await edit('water plants');
-        await setSchedule(3, 'days', '2028-03-04');
-        await clickAway();
-        assert.strictEqual(await where('water plants'), TODO, 'an edited Schedule due later doesn\'t move the Card');
-        assert.strictEqual((await saved('water plants')).due, '2028-03-04');
-
-        // An existing Card changed to Recurring and due later moves to Backlog.
+        // A saved Low Card in the Card editor has no Schedule line.
         await addCard(TODO, 'review week');
         await clickAway();
         await edit('review week');
         assert.strictEqual(await scheduleShown(), false, 'a Low Card in the Card editor has no Schedule line');
-        await pick('Recurring');
-        await setSchedule(1, 'weeks', '2028-02-25');
         await clickAway();
-        assert.strictEqual(await where('review week'), BACKLOG, 'changed to Recurring and due later, it moves to Backlog');
-        assert.strictEqual((await saved('review week')).due, '2028-02-25');
 
         // History keeps the Schedule and Due date: back-date the board, reload, and it's filed.
         await page.evaluate(() => { NB.board.day = '2028-02-22'; NB.storage.saveBoard(NB.board); });
@@ -159,14 +144,13 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         assert.deepStrictEqual([filed.schedule, filed.due], [{ every: 2, start: '2028-02-27', unit: 'weeks' }, '2028-02-27'], 'History keeps them');
         assert.match(await slot('pay rent'), NEXT('(Feb 27|27 Feb)'), 'and "Next:" is back after a reload');
 
-        // Another Priority drops the Schedule and Due date and leaves the Card where it is.
+        // Another Priority drops the Schedule and Due date.
         const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'board.nbx');
         fs.writeFileSync(file, await page.evaluate(() => decodeURIComponent(exportBoard().blob.replace(/^data:[^,]*,/, ''))));
         await edit('pay rent');
         await pick('Critical');
         assert.strictEqual(await scheduleShown(), false, 'Critical hides the Schedule line');
         await clickAway();
-        assert.strictEqual(await where('pay rent'), BACKLOG, 'it stays where it is');
         n = await saved('pay rent');
         assert.strictEqual(n.priority, 'critical');
         assert.ok(!('schedule' in n) && !('due' in n), 'no Schedule or Due date left: ' + JSON.stringify(n));
@@ -199,8 +183,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         assert.strictEqual(await where('clean gutters'), 0, 'no Backlog: the first List');
         assert.match(await slot('clean gutters'), NEXT('(May 1|1 May)'), 'and it shows "Next:" there');
 
-        // A Card in Done changed to Recurring stays in Done with its XP; it
-        // goes back to wait at the next Auto-submit, like any finished one.
+        // A Card in Done changed to Recurring keeps its XP; it goes back to
+        // wait at the next Auto-submit, like any finished one.
         await addCard(WIP, 'oil hinges');
         await clickAway();
         await moveCard(page, WIP, await index(WIP, 'oil hinges'), 1);
@@ -211,7 +195,6 @@ const { openApp, settle, moveCard, sleep, fakeClock, wake, clickAway: clickAwayO
         await pick('Recurring');
         await setSchedule(1, 'weeks', '2028-03-01');
         await clickAway();
-        assert.strictEqual(await where('oil hinges'), DONE, 'changed to Recurring in Done, it stays in Done');
         n = await saved('oil hinges');
         assert.deepStrictEqual([n.priority, n.due, n.xp], ['recurring', '2028-03-01', xp], 'with its Due date and its XP unchanged');
         assert.strictEqual(await page.evaluate(() => XP.total()), total, 'the XP total is unchanged');
