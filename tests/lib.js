@@ -133,9 +133,9 @@ const fakeClock = (start) => `{
 // Sets the faked clock (see fakeClock) to `at`, local like '2028-11-16 00:00'
 // or in ms, now and after a reload.
 const setClock = (page, at) => page.evaluate((at) => {
-    const t = Array.isArray(at) ? new RealDate(...at).getTime() : at;
+    const t = Array.isArray(at) ? new window.RealDate(...at).getTime() : at;
     localStorage.setItem('test.clock', String(t));
-    window.clockSkew = t - RealDate.now();
+    window.clockSkew = t - window.RealDate.now();
 }, typeof at == 'string' ? localParts(at) : at);
 
 // The tab coming back into view, as after a laptop wakes: the app runs its

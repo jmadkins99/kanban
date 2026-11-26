@@ -28,4 +28,16 @@ module.exports = [{
         globals: { ...globals.browser, ...globals.jquery, ...defined, firebase: 'readonly' },
     },
     rules: { 'no-undef': 'error' },
+}, {
+    // The tests themselves (Node, CommonJS): a name nothing defines, and an
+    // import or helper left unused once its assertions are cut. Callbacks
+    // passed to page.evaluate run in the page, so the app's names too: a test
+    // calling a deleted function there fails here, not in Chrome.
+    files: ['tests/**/*.js'],
+    languageOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'commonjs',
+        globals: { ...globals.node, ...globals.browser, ...globals.jquery, ...defined, firebase: 'readonly' },
+    },
+    rules: { 'no-undef': 'error', 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 }];
