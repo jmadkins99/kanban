@@ -20,3 +20,14 @@ When a rule moves into a module with its own table of rows (for example
   rule still outside the module. Anything else is a rule asserted twice.
 - Every step comment in a case sits over the assertion it describes. When an
   assertion goes, its comment goes or is reworded to the steps that remain.
+
+## Module headers
+
+A `js/*.js` module opens with a header comment that is its contract: the
+next agent reads it in place of the code.
+
+- Every claim in the header matches the code exactly, deliberate exceptions
+  included. "Uses the same rule as X" holds only if no case differs; otherwise
+  the header names the case that does.
+- Wording taken from a ticket is checked against the code before it goes in
+  the header.
