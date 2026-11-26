@@ -105,6 +105,7 @@ Needs Python, Node and Chrome; the sync tests also need Java 21+.
 
 ```bash
 python -m http.server 8003   # then open http://localhost:8003/
+cd tests && bash all.sh      # the whole suite, as CI runs it: lint, run.sh, sync.sh
 cd tests && bash run.sh      # end-to-end tests; installs puppeteer-core
 cd tests && bash sync.sh     # sync tests against the Firebase emulators
 ```

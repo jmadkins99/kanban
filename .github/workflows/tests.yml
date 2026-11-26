@@ -1,4 +1,4 @@
-# CI/CD: the headless end-to-end suite, then a deploy to GitHub Pages on main.
+# CI/CD: the lint and the headless test suites, then a deploy to GitHub Pages on main.
 # GitLab equivalent: a .gitlab-ci.yml with `stages: [test, deploy]` and a
 # `pages` job limited to the default branch.
 name: tests
@@ -28,16 +28,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Run tests
-        working-directory: tests
-        run: bash run.sh
       - uses: actions/setup-java@v4 # the Firestore emulator runs on Java
         with:
           distribution: temurin
           java-version: 21
-      - name: Sync tests (Firebase emulators)
+      - name: Lint, E2E and sync tests (tests/all.sh, the same command as locally)
         working-directory: tests
-        run: bash sync.sh
+        run: bash all.sh
 
   # The site's files, packed as the "github-pages" artifact. A job of its own,
   # GitHub's starter layout: deploy-pages in the same job looked for the

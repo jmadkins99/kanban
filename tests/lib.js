@@ -165,16 +165,26 @@ const clickAway = async (page) => { await page.mouse.click(1270, 990); await sle
 // Picks `priority` ('Critical', any case) in the Card editor, open on the
 // Card at selector `card`: a click on that Priority's button.
 const pickPriority = async (page, card, priority) => {
-    await page.click(`${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`);
+    const button = `${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`;
+    await page.waitForSelector(button, { visible: true, timeout: 3000 });
+    await page.click(button);
     await sleep(50);
 };
 
+// Waits until the Card at selector `card` has class `cls`: what each click
+// in editCard leads to, so a slow machine (a busy CI runner, two suites at
+// once) waits for it instead of clicking on.
+const cardHas = (page, card, cls) =>
+    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: 3000 }, card, cls);
+
 // Opens the Card at selector `card` in the Card editor, the way a person
-// does: a tap on it, then Edit in its menu.
+// does: a tap on it, then Edit in its menu, once the menu has slid in.
 const editCard = async (page, card) => {
     await page.click(card + ' .text');
+    await cardHas(page, card, 'cm-open');
     await sleep(450);
     await page.click(card + ' [data-cm=edit]');
+    await cardHas(page, card, 'editing');
     await sleep(100);
 };
 

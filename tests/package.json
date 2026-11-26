@@ -6,6 +6,9 @@
     "test": "bash run.sh"
   },
   "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-plugin-html": "^8.2.1",
+    "globals": "^15.15.0",
     "puppeteer-core": "^25.17.0"
   }
 }

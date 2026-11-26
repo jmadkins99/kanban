@@ -4230,7 +4230,7 @@
 		{
 			var xmmm = /`(.*?)`/mg;
 			text = text.replace(xmmm, function(full, text){
-				link = 'file:///' + text.replace(/\\/g, '/'); // every backslash, not just the first
+				var link = 'file:///' + text.replace(/\\/g, '/'); // every backslash, not just the first
 				return '`<a href="' + link + '" target=_blank>' + text + '</a>`';
 			});
 		}
