@@ -62,7 +62,7 @@ It's Nullboard with a few changes:
 - **Recurring cards**: picking Recurring shows a Schedule line, "Every N
   days / weeks / months starting <date>" (`js/schedule.js`). It follows the
   calendar: weeks keep the start's weekday, months its day of the month
-  (the 31st falls on the last day of shorter months). Saving sets the card's
+  (the 31st falls on the last day of shorter months). Saving (`js/due.js`) sets the card's
   Due date to the first Schedule date on or after today. Due today, it stays
   put; due later, it moves to Backlog (by name, any case; else the first list)
   and shows "Next: <date>". A card in Done stays there, keeping its XP.

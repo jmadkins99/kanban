@@ -2017,6 +2017,7 @@
 <script src="js/priority.js"></script>
 <script src="js/schedule.js"></script>
 <script src="js/recurring.js"></script>
+<script src="js/due.js"></script>
 
 <script type="text/javascript">
 
@@ -3282,47 +3283,40 @@
 	}
 
 	// Changes a Card's Priority; call before saving. That counts as a new
-	// Arrival, so it joins the back of its new tier.
-	// Only a Recurring Card has a Schedule and Due date; a Critical Card is
-	// given its Due date, if any, after (see setCriticalDue).
+	// Arrival, so it joins the back of its new tier. Its Schedule and Due
+	// date are the Due date module's (see applyDue).
 	function setPriority($card, p)
 	{
 		var m = cardMeta($card);
 		m.priority = Priority.of({ priority: p });
-		if (! Priority.isRecurring(m)) { delete m.schedule; delete m.due; }
 		showPriority($card);
 		cardArrived($card);
 	}
 
-	// Gives a Recurring Card its Schedule (see js/schedule.js), and its Due
-	// date the first Schedule date on or after today. Call before saving.
-	function setSchedule($card, schedule)
+	// What the Due date module (js/due.js) is told about a Card's List: its
+	// one role, done > wip > backlog > todo > other, and whether there's a To-Do.
+	function dueWhere($card)
 	{
-		var m = cardMeta($card);
-		m.schedule = schedule;
-		m.due = Schedule.firstDue(schedule);
+		var $list = $card.closest('.list'), $todo = todoList();
+		var role = $list.hasClass('done-list') ? 'done' : $list.hasClass('wip-list') ? 'wip' :
+			$list[0] == backlogList()[0] ? 'backlog' : $list[0] == $todo[0] ? 'todo' : 'other';
+		return { role: role, hasTodo: !! $todo.length };
 	}
 
-	// Gives a Critical Card the Due date `day` ('YYYY-MM-DD', tomorrow or
-	// later) to wait in Backlog for, or none when `day` is empty, so it's an
-	// ordinary Critical Card. Call before saving.
-	function setCriticalDue($card, day)
+	// The moment the Due date module decides at: today, and now in ms.
+	function dueMoment()
 	{
-		var m = cardMeta($card);
-		if (day) m.due = day;
-		else delete m.due;
+		return { today: Schedule.today(), now: Date.now() };
 	}
 
-	// A Card just saved as Recurring (new, or changed to it), or Critical with
-	// a new Due date, waits in Backlog unless it's due today. One in Done
-	// stays, keeping its XP; a Recurring one goes back to wait at the next
-	// Auto-submit. Call before saving.
-	function sendToBacklogUnlessDue($card)
+	// Applies a Due date module Decision to a Card: its Schedule, Due date and
+	// Critical timer start (null deletes one), and its move, if any, as a
+	// fresh Arrival at the end of that List. Call before saving.
+	function applyDue($card, d)
 	{
-		var $from = $card.closest('.list'), $to = backlogList();
-		if (cardMeta($card).due <= Schedule.today() || $from.hasClass('done-list') || $from[0] == $to[0])
-			return;
-		moveCardTo($card, $to);
+		var m = cardMeta($card);
+		['schedule', 'due', 'criticalSince'].forEach(function(k){ if (d[k] == null) delete m[k]; else m[k] = d[k]; });
+		if (d.to) { (d.to == 'todo' ? todoList() : backlogList()).find('.cards').append($card); cardArrived($card); }
 	}
 
 	// Puts a Card at the end of another List as a fresh Arrival, its Critical
@@ -4408,8 +4402,8 @@
 			$card.children('.edit').focus(); // before hiding it, so the focus isn't lost
 		if (on && ! $card.hasClass('due-on'))
 		{
-			var m = cardMeta($card);
-			$line.find('.due-date').attr('min', Schedule.tomorrow()).val(Priority.isCritical(m) && m.due || '');
+			var line = Due.shows(cardMeta($card), dueWhere($card), dueMoment()).dueLine;
+			$line.find('.due-date').attr('min', line.min).val(line.value);
 		}
 		$card.toggleClass('due-on', on);
 	}
@@ -4448,21 +4442,19 @@
 		$item.removeData('prioEdit');
 		var prio_changed = $item.hasClass('card') && prio_now && prio_now != Priority.of(cardMeta($item));
 
-		// and so does a Recurring Card's Schedule
-		var sched_now = sched_on ? scheduleLine($item) : null;
-		var sched_changed = sched_now && JSON.stringify(sched_now) != JSON.stringify(cardMeta($item).schedule);
-
-		// and a Critical Card's Due date, if any: a day tomorrow or later. A
-		// typed day that isn't still to come keeps the date it had.
-		var due_was = Priority.isCritical(cardMeta($item)) && cardMeta($item).due || '';
-		var due_now = due_on ? $item.find('.due-date').val() : null;
-		if (due_now && ! (/^\d{4}-\d\d-\d\d$/.test(due_now) && due_now >= Schedule.tomorrow()))
-			due_now = due_was;
-		var due_changed = due_on && due_now != due_was;
-
 		//
 		var brand_new = $item.hasClass('brand-new');
 		$item.removeClass('brand-new');
+
+		// and so do a Recurring Card's Schedule and a Critical Card's Due
+		// date, as the Due date module decides (see js/due.js)
+		var due = $item.hasClass('card') && Due.edited(cardMeta($item), dueWhere($item), dueMoment(), {
+			priority: prio_now || Priority.of(cardMeta($item)),
+			schedule: sched_on ? scheduleLine($item) : null,
+			due:      due_on ? $item.find('.due-date').val() : null,
+			isNew:    brand_new,
+			on:       Schedule.today()
+		});
 
 		if (via_xclick && brand_new && !text_now.length)
 		{
@@ -4470,23 +4462,15 @@
 			return;
 		}
 
-		if (text_now != text_was || brand_new || prio_changed || sched_changed || due_changed)
+		if (text_now != text_was || brand_new || prio_changed || due && due.changed)
 		{
 			setText( $text, text_now );
 
 			if (prio_changed)
 				setPriority($item, prio_now);
 
-			if (sched_now && (sched_changed || prio_changed || brand_new))
-				setSchedule($item, sched_now);
-
-			if (due_on)
-				setCriticalDue($item, due_now);
-
-			// saved as Recurring, new or changed to it; an edited Schedule alone doesn't move it.
-			// Saved Critical with a new Due date, it goes to wait for it.
-			if (sched_now && (prio_changed || brand_new) || due_now && due_changed)
-				sendToBacklogUnlessDue($item);
+			if (due)
+				applyDue($item, due);
 
 			if ($item.parent().hasClass('board'))
 				NB.board.title = text_now;
@@ -5474,7 +5458,7 @@
 				var fromDone = $list.hasClass('done-list');
 				moveCardTo($card, $to);
 				if (Priority.isCritical(cardMeta($card)))
-					setCriticalDue($card, ''); // moved by hand, it stops waiting for its day
+					delete cardMeta($card).due; // moved by hand, it stops waiting for its day
 				cardMoved($card, fromDone);
 				saveBoard();
 			},
