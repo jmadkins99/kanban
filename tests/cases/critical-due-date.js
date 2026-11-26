@@ -92,7 +92,7 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
         assert.ok(s && /^Next: (Mar 2|2 Mar)$/.test(s.text), 'it shows "Next: <date>": ' + JSON.stringify(s));
         assert.ok(s.red, 'in red');
 
-        // From WIP, a new Card picked Critical with a date goes there too.
+        // A new Card from WIP, picked Critical with a date tomorrow.
         await addCard(WIP, 'book dentist');
         await pick('Critical');
         await setDue('2028-02-24');

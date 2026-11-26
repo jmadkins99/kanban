@@ -25,7 +25,7 @@
  * change. It's a List-order concept (docs/adr/0002), read here, not written.
  */
 (function () {
-  function need(moment) {
+  function requireMoment(moment) {
     if (! moment || ! moment.today || moment.now == null)
       throw new TypeError('Due: moment needs today and now');
   }
@@ -33,7 +33,7 @@
   function orNull(v) { return v == null ? null : v; }
 
   function edited(card, where, moment, picked) {
-    need(moment);
+    requireMoment(moment);
     var priority = Priority.of(picked), priorityChanged = priority != Priority.of(card);
     var d = { to: null, due: orNull(card.due), schedule: orNull(card.schedule), criticalSince: orNull(card.criticalSince), changed: false };
 
@@ -81,7 +81,7 @@
   }
 
   function shows(card, where, moment) {
-    need(moment);
+    requireMoment(moment);
     return {
       dueLine: { value: Priority.isCritical(card) && card.due || '', min: dayAfter(moment.today) }
     };
