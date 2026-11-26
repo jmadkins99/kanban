@@ -179,17 +179,106 @@ const ROWS = [
     ['a missing moment.now throws',
         'edited', { priority: 'medium' }, todo, { today: TODAY }, picked('medium'), { threw: 'TypeError' }],
 
-    // What the Card editor's Due line starts from: a Critical Card's Due
-    // date, or empty; the earliest day it takes is tomorrow.
-    ["a Critical Card's Due line holds its Due date",
-        'shows', { priority: 'critical', due: '2028-03-05' }, backlog, AT_10, undefined,
-        { dueLine: { value: '2028-03-05', min: '2028-02-24' } }],
-    ["any other Card's Due line starts empty",
+    // Every save: a Critical Card outside WIP and Done is waiting, its
+    // Critical timer counting from criticalSince; it never moves a Card.
+    ['an undated Critical Card waiting gets its Critical timer from now',
+        'settle', { priority: 'critical', arrival: 5 }, todo, AT_10, undefined,
+        { to: null, due: null, schedule: null, criticalSince: at(TODAY, 10) }],
+    ['one already waiting keeps its start',
+        'settle', { priority: 'critical', arrival: 5, criticalSince: 7 }, backlog, AT_10, undefined,
+        { to: null, due: null, schedule: null, criticalSince: 7 }],
+    ['a dated Critical Card whose day has come, still in Backlog, counts from that midnight',
+        'settle', { priority: 'critical', arrival: 5, due: TODAY }, { role: 'backlog', hasTodo: false }, AT_10, undefined,
+        { to: null, due: TODAY, schedule: null, criticalSince: at(TODAY, 0) }],
+    ['one whose day is still to come has no Critical timer',
+        'settle', { priority: 'critical', arrival: 5, due: '2028-03-02', criticalSince: 7 }, backlog, AT_10, undefined,
+        { to: null, due: '2028-03-02', schedule: null, criticalSince: null }],
+    ['a Critical Card in WIP has none',
+        'settle', { priority: 'critical', arrival: 5, criticalSince: 7 }, wip, AT_10, undefined,
+        { to: null, due: null, schedule: null, criticalSince: null }],
+    ['nor one in Done',
+        'settle', { priority: 'critical', arrival: 5, criticalSince: 7, xp: 5000 }, done, AT_10, undefined,
+        { to: null, due: null, schedule: null, criticalSince: null }],
+    ['a Card that is no longer Critical loses it',
+        'settle', { priority: 'medium', arrival: 5, criticalSince: 7 }, todo, AT_10, undefined,
+        { to: null, due: null, schedule: null, criticalSince: null }],
+    ['a Recurring Card is left as it is',
+        'settle', { priority: 'recurring', arrival: 5, schedule: weekly, due: '2028-02-28' }, backlog, AT_10, undefined,
+        { to: null, due: '2028-02-28', schedule: weekly, criticalSince: null }],
+
+    // What a Card shows of its Due date: Late (a Recurring Card past the end
+    // of its Due date, never in Done), the red Critical timer's start (from),
+    // and the day it waits for in Backlog (next; nextCritical: in red).
+    // The Card editor's Due line starts from a Critical Card's Due date, or
+    // empty; the earliest day it takes is tomorrow.
+    ['a Late Card in To-Do counts from the end of its Due date',
+        'shows', { priority: 'recurring', schedule: weekly, due: '2028-02-21' }, todo, AT_10, undefined,
+        { late: true, from: at('2028-02-22', 0), next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['a Late Card in WIP is still Late, with no red timer',
+        'shows', { priority: 'recurring', schedule: weekly, due: '2028-02-21', wip: 9 }, wip, AT_10, undefined,
+        { late: true, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['a Card in Done is never Late',
+        'shows', { priority: 'recurring', schedule: weekly, due: '2028-02-21' }, done, AT_10, undefined,
+        { late: false, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['on its Due date it is not Late yet',
+        'shows', { priority: 'recurring', schedule: wednesdays, due: TODAY }, todo, AT_10, undefined,
+        { late: false, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['a Critical Card is never Late',
+        'shows', { priority: 'critical', due: '2028-02-21', criticalSince: at('2028-02-21', 0) }, { role: 'backlog', hasTodo: false }, AT_10, undefined,
+        { late: false, from: at('2028-02-21', 0), next: null, nextCritical: false, dueLine: { value: '2028-02-21', min: '2028-02-24' } }],
+    ['a Recurring Card waiting in Backlog for a later day: next, in purple',
         'shows', { priority: 'recurring', schedule: weekly, due: '2028-02-28' }, backlog, AT_10, undefined,
-        { dueLine: { value: '', min: '2028-02-24' } }],
+        { late: false, from: null, next: '2028-02-28', nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ["a Critical one: next, in red, and its Due line holds its Due date",
+        'shows', { priority: 'critical', due: '2028-03-05' }, backlog, AT_10, undefined,
+        { late: false, from: null, next: '2028-03-05', nextCritical: true, dueLine: { value: '2028-03-05', min: '2028-02-24' } }],
+    ['a Card moved out of Backlog early shows no next',
+        'shows', { priority: 'recurring', schedule: weekly, due: '2028-02-28' }, todo, AT_10, undefined,
+        { late: false, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['a waiting Critical Card counts from criticalSince',
+        'shows', { priority: 'critical', criticalSince: at(TODAY, 8) }, todo, AT_10, undefined,
+        { late: false, from: at(TODAY, 8), next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
+    ['in WIP it has no red timer',
+        'shows', { priority: 'critical', criticalSince: at(TODAY, 8), wip: 9 }, wip, AT_10, undefined,
+        { late: false, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-02-24' } }],
     ["tomorrow across a month's end",
         'shows', { priority: 'critical' }, todo, { today: '2028-02-29', hour: 23 }, undefined,
-        { dueLine: { value: '', min: '2028-03-01' } }],
+        { late: false, from: null, next: null, nextCritical: false, dueLine: { value: '', min: '2028-03-01' } }],
+
+    // The order of a List (docs/adr/0002): Late first, then Recurring,
+    // Critical, Medium and Low, each first in, first out by Arrival. Done
+    // goes by Arrival alone. Here `card` is the List's Cards and the
+    // expected value their texts in order.
+    ['a List sorts Late first, then by Priority, then by Arrival',
+        'order', [
+            { text: 'low', priority: 'low', arrival: 1 },
+            { text: 'medium 2', priority: 'medium', arrival: 7 },
+            { text: 'critical', priority: 'critical', arrival: 3 },
+            { text: 'recurring', priority: 'recurring', arrival: 4, schedule: weekly, due: '2028-02-28' },
+            { text: 'late', priority: 'recurring', arrival: 9, schedule: weekly, due: '2028-02-21' },
+            { text: 'medium 1', priority: 'medium', arrival: 2 },
+            { text: 'no Priority', arrival: 0 },
+        ], todo, AT_10, undefined,
+        ['late', 'recurring', 'critical', 'medium 1', 'medium 2', 'no Priority', 'low']],
+    ['in WIP a Late Card still sorts first',
+        'order', [
+            { text: 'recurring', priority: 'recurring', arrival: 1, schedule: weekly, due: '2028-02-28' },
+            { text: 'late', priority: 'recurring', arrival: 3, schedule: weekly, due: '2028-02-21' },
+        ], wip, AT_10, undefined,
+        ['late', 'recurring']],
+    ['Done sorts by Arrival alone',
+        'order', [
+            { text: 'low', priority: 'low', arrival: 1 },
+            { text: 'late', priority: 'recurring', arrival: 3, schedule: weekly, due: '2028-02-21' },
+            { text: 'critical', priority: 'critical', arrival: 2 },
+        ], done, AT_10, undefined,
+        ['low', 'critical', 'late']],
+    ['settle needs the moment too',
+        'settle', { priority: 'critical' }, todo, { today: TODAY }, undefined, { threw: 'TypeError' }],
+    ['shows needs the moment too',
+        'shows', { priority: 'critical' }, todo, { hour: 10 }, undefined, { threw: 'TypeError' }],
+    ['order needs the moment too',
+        'order', [], todo, { hour: 10 }, undefined, { threw: 'TypeError' }],
 ];
 
 (async () => {
@@ -202,8 +291,11 @@ const ROWS = [
             const got = await page.evaluate((verb, card, where, moment, last) => {
                 const m = moment && { today: moment.today, now: moment.hour == null ? undefined : new Date(moment.today + 'T00:00').getTime() + moment.hour * 3600000 };
                 let d;
-                try { d = Due[verb](card, where, m, last); } catch (e) { return { threw: e.constructor.name }; }
-                if (d === null) return { d };
+                try {
+                    d = verb == 'order' ? card.slice().sort(Due.order(where.role, m)).map((c) => c.text)
+                        : Due[verb](card, where, m, last);
+                } catch (e) { return { threw: e.constructor.name }; }
+                if (d === null || verb == 'order') return { d };
                 // which of the card's own values came back as the very same value
                 const same = {};
                 for (const k of ['due', 'schedule', 'criticalSince']) same[k] = k in card && d[k] === card[k];
@@ -213,7 +305,7 @@ const ROWS = [
             if (expected === null || expected.threw) { assert.deepStrictEqual(expected === null ? got.d : got, expected, label); continue; }
             assert.ok(got.d, label + ': ' + JSON.stringify(got));
             assert.deepStrictEqual(got.d, expected, label);
-            if (verb != 'shows') for (const k of ['due', 'schedule', 'criticalSince'])
+            if (verb != 'shows' && verb != 'order') for (const k of ['due', 'schedule', 'criticalSince'])
                 if (k in card && JSON.stringify(card[k]) == JSON.stringify(expected[k]))
                     assert.ok(got.same[k], label + ': an unchanged ' + k + ' comes back as the one passed in');
         }

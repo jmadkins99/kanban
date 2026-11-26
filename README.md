@@ -67,7 +67,7 @@ It's Nullboard with a few changes:
   today, it stays put; due later, it moves to Backlog (by name, any case;
   else the first list) and shows "Next: <date>". A card in Done stays there,
   keeping its XP. Editing the Schedule later only changes the Due date, and
-  another Priority drops both. A finished one comes back on its own (`js/recurring.js`):
+  another Priority drops both. A finished one comes back on its own (`js/due.js`):
   Auto-submit files it in History, then sends it back with its next Due
   date, the first Schedule date after its current one, the day it was
   finished and yesterday (due Nov 1 and done Nov 15 comes back Dec 1; due

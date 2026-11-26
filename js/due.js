@@ -16,9 +16,19 @@
  *   moves on to To-Do once its day has come
  * Due.finished(card, where, moment, day)  the midnight Auto-submit, on a Card
  *   in Done finished on `day`; null: it doesn't come back
+ * Due.settle(card, where, moment)  every save: starts or ends a Card's
+ *   Critical timer where it is; never moves it (to null)
  * Due.shows(card, where, moment)  the Due-date part of what a Card shows:
- *   { dueLine: { value, min } }, what the Card editor's Due line starts
- *   from (a Critical Card's Due date, or empty) and the earliest day it takes
+ *   { late, from, next, nextCritical, dueLine: { value, min } }. late: a
+ *   Recurring Card past the end of its Due date, outside Done; it's a state,
+ *   never stored, not a Priority. from: when its red Critical timer started
+ *   (a Late Card's, the end of its Due date), null outside a waiting List.
+ *   next: the day it waits for in Backlog, for "Next: <date>", in red when
+ *   nextCritical. dueLine: what the Card editor's Due line starts from (a
+ *   Critical Card's Due date, or empty) and the earliest day it takes
+ * Due.order(role, moment)  a comparator of saved Cards for a List: Late
+ *   first, then Priority (Priority.LEVELS), then Arrival (docs/adr/0002).
+ *   Done goes by Arrival alone.
  *
  * A Decision is the whole state: every key is present, null deletes the
  * field, and an unchanged value comes back as the very one passed in (so a
@@ -138,14 +148,55 @@
     return { to: null, due: orNull(card.due), schedule: orNull(card.schedule), criticalSince: orNull(card.criticalSince) };
   }
 
+  // Every save: a Critical Card outside WIP and Done is waiting, its
+  // Critical timer counting from when it began, unless its Due date is still
+  // to come. One whose day has come, still in Backlog (no To-Do to move on
+  // to), counts from the start of that day; any other, from now.
+  function settle(card, where, moment) {
+    requireMoment(moment);
+    var d = unchanged(card);
+    if (! waiting(card, where, moment)) d.criticalSince = null;
+    else if (! card.criticalSince) d.criticalSince = card.due ? Schedule.startOf(card.due) : moment.now;
+    return d;
+  }
+
+  function waiting(card, where, moment) {
+    return ! pastWaiting(where.role) && Priority.isCritical(card) && ! waitsForDue(card, moment);
+  }
+
+  // WIP and Done: a Card there no longer waits, so it has no Critical timer.
+  function pastWaiting(role) { return role == 'wip' || role == 'done'; }
+
+  function waitsForDue(card, moment) { return !! card.due && card.due > moment.today; }
+
+  function isLate(card, role, moment) {
+    return role != 'done' && Priority.isRecurring(card) && !! card.due && card.due < moment.today;
+  }
+
   function shows(card, where, moment) {
     requireMoment(moment);
+    var late = isLate(card, where.role, moment);
+    var next = where.role == 'backlog' && waitsForDue(card, moment) ? card.due : null;
+    var from = pastWaiting(where.role) ? null : late ? Schedule.endOf(card.due) :
+      Priority.isCritical(card) && card.criticalSince || null;
     return {
+      late: late,
+      from: from,
+      next: next,
+      nextCritical: !! next && Priority.isCritical(card),
       dueLine: { value: Priority.isCritical(card) && card.due || '', min: dayAfter(moment.today) }
     };
   }
 
   function dayAfter(day) { return Schedule.after({ every: 1, start: day, unit: 'days' }, day); }
 
-  window.Due = { edited: edited, moved: moved, dayBegins: dayBegins, finished: finished, shows: shows };
+  function order(role, moment) {
+    requireMoment(moment);
+    var tier = function (card) { return isLate(card, role, moment) ? -1 : Priority.LEVELS.indexOf(Priority.of(card)); };
+    return function (a, b) {
+      return (role == 'done' ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
+    };
+  }
+
+  window.Due = { edited: edited, moved: moved, dayBegins: dayBegins, finished: finished, settle: settle, shows: shows, order: order };
 })();
