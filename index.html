@@ -3193,7 +3193,8 @@
 	 *	Lists sort themselves (docs/adr/0002): Late Cards first, then by
 	 *	Priority, then first in, first out by Arrival, when the Card entered
 	 *	its List. Done goes by Arrival alone, so it reads as the day in order.
-	 *	Backlog puts dated Cards by Due date instead (docs/adr/0003).
+	 *	Backlog is the exception (docs/adr/0003): after Late, dated Critical
+	 *	Cards, then Recurring, each by Due date, then Priority as above.
 	 *	The order is the Due date module's (Due.order in js/due.js).
 	 */
 

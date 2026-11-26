@@ -328,6 +328,12 @@ const ROWS = [
             { text: 'first', priority: 'critical', arrival: 2, due: '2028-03-01' },
         ], backlog, AT_10, undefined,
         ['first', 'second']],
+    ['in Backlog a Recurring Card without a Due date comes last among Recurring',
+        'order', [
+            { text: 'no date', priority: 'recurring', arrival: 1, schedule: weekly },
+            { text: 'Mar 6', priority: 'recurring', arrival: 2, schedule: weekly, due: '2028-03-06' },
+        ], backlog, AT_10, undefined,
+        ['Mar 6', 'no date']],
     ['outside Backlog the same Cards keep 0002\'s order',
         'order', [
             { text: 'recurring Mar 6', priority: 'recurring', arrival: 4, schedule: weekly, due: '2028-03-06' },
