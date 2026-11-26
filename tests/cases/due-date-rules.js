@@ -89,6 +89,29 @@ const ROWS = [
         'edited', { priority: 'critical', arrival: 5, due: '2028-03-05' }, backlog, AT_10, picked('critical', { due: '2028-02-24', on: '2028-02-24' }),
         { to: null, due: '2028-03-05', schedule: null, criticalSince: null, changed: false }],
 
+    // A date picked yesterday for today, saved today (the Card editor open
+    // across midnight): as if it had been saved yesterday and its day had
+    // begun. It moves on to To-Do without its Due date, its Critical timer
+    // from midnight; with no To-Do it waits in Backlog, keeping it.
+    ['a date picked yesterday for today, from To-Do: stays, its Critical timer from midnight',
+        'edited', { priority: 'medium', arrival: 5 }, todo, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: null, due: null, schedule: null, criticalSince: at(TODAY, 0), changed: true }],
+    ['a date picked yesterday for today, from Backlog: moves on to To-Do',
+        'edited', { priority: 'critical', arrival: 5, criticalSince: 7 }, backlog, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: 'todo', due: null, schedule: null, criticalSince: at(TODAY, 0), changed: true }],
+    ['a date picked yesterday for today, from WIP: moves on to To-Do',
+        'edited', { priority: 'medium', arrival: 5 }, wip, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: 'todo', due: null, schedule: null, criticalSince: at(TODAY, 0), changed: true }],
+    ['a date picked yesterday for today, with no To-Do: waits in Backlog, keeping it',
+        'edited', { priority: 'medium', arrival: 5 }, { role: 'wip', hasTodo: false }, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: 'backlog', due: TODAY, schedule: null, criticalSince: null, changed: true }],
+    ['a date picked yesterday for today, in Backlog with no To-Do: stays, keeping it',
+        'edited', { priority: 'critical', arrival: 5, criticalSince: 7 }, { role: 'backlog', hasTodo: false }, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: null, due: TODAY, schedule: null, criticalSince: null, changed: true }],
+    ['a date picked yesterday for today, in Done: stays',
+        'edited', { priority: 'low', arrival: 5, xp: 1 }, done, AT_10, picked('critical', { due: TODAY, on: '2028-02-22' }),
+        { to: null, due: TODAY, schedule: null, criticalSince: null, changed: true }],
+
     // Critical → another Priority, or the date cleared, drops the Due date.
     ['Critical → Medium drops the Due date, and stays',
         'edited', { priority: 'critical', arrival: 5, due: '2028-03-10' }, backlog, AT_10, picked('medium'),

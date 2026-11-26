@@ -4413,13 +4413,16 @@
 		$item.removeClass('brand-new');
 
 		// and so do a Recurring Card's Schedule and a Critical Card's Due
-		// date, as the Due date module decides (see js/due.js)
+		// date, as the Due date module decides (see js/due.js), checked
+		// against the day the date was picked in this edit, if it was
+		var picked_on = $item.data('duePickedOn');
+		$item.removeData('duePickedOn');
 		var due = $item.hasClass('card') && Due.edited(cardMeta($item), dueWhere($item), dueMoment(), {
 			priority: prio_now || Priority.of(cardMeta($item)),
 			schedule: sched_on ? scheduleLine($item) : null,
 			due:      due_on ? $item.find('.due-date').val() : null,
 			isNew:    brand_new,
-			on:       Schedule.today()
+			on:       picked_on || Schedule.today()
 		});
 
 		if (via_xclick && brand_new && !text_now.length)
@@ -4838,6 +4841,12 @@
 	$('.wrap').on('mousedown', '.board .card-schedule, .board .card-due', function(ev){
 		if (! $(ev.target).is(':input'))
 			ev.preventDefault();
+	});
+
+	// The day a Due date was picked, which the save checks it against
+	// (Due.edited), so the editor left open past midnight doesn't drop it.
+	$('.wrap').on('input change', '.board .card .due-date', function(){
+		$(this).closest('.card').data('duePickedOn', Schedule.today());
 	});
 
 	//

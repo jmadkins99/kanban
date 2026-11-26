@@ -9,6 +9,10 @@
  *
  * Due.edited(card, where, moment, picked)  saved in the Card editor, where
  *   picked = { priority, schedule|null, due|null (as typed), isNew, on }
+ *   on: the day the Due date was picked, today if it wasn't in this edit.
+ *   A date picked before today whose day has come by the save (the editor
+ *   left open past midnight) acts as if saved on `on` and moved on by
+ *   dayBegins: to To-Do (or Backlog with no To-Do; Done stays)
  *   → Decision { to, due, schedule, criticalSince, changed }
  * Due.moved(card, where, moment)  moved by hand (the card menu); `where` is
  *   the List it landed in, and it stays there (to null)
@@ -44,7 +48,8 @@
  * Arrival stays with the callers: they stamp it on every move and Priority
  * change. It's a List-order concept (docs/adr/0002), read here, not written:
  * dayBegins moves on only a Card that arrived before its day began, so one
- * put back by hand, or saved there due today, stays.
+ * put back by hand, or saved there due today, stays (unless its date was
+ * picked before today: edited moves that one on itself).
  */
 (function () {
   function requireMoment(moment) {
@@ -81,10 +86,29 @@
       var typed = typedDue(picked.due, picked.on, was);
       d.due = typed || null;
       d.changed = typed != was;
-      if (typed && d.changed) waitInBacklog(d, where, moment);
+      if (typed && d.changed)
+        (typed <= moment.today ? dayHasCome : waitInBacklog)(d, where, moment);
     }
 
     return d;
+  }
+
+  // A Due date picked before today (the Card editor open across midnight)
+  // whose day has come by the save: the Card acts as one saved that day that
+  // waited in Backlog until its day began (dayBegins). It moves on to To-Do,
+  // losing its Due date, its Critical timer counting from that midnight; with
+  // no To-Do it waits in Backlog, keeping it. One in Done stays. Composed
+  // here, not with dayBegins, since the save's move stamps a new Arrival.
+  function dayHasCome(d, where) {
+    if (where.role == 'done') return;
+    if (where.hasTodo) {
+      d.to = where.role == 'todo' ? null : 'todo';
+      d.criticalSince = Schedule.startOf(d.due);
+      d.due = null;
+    } else {
+      d.to = where.role == 'backlog' ? null : 'backlog';
+      d.criticalSince = null;
+    }
   }
 
   // A Critical Card's Due date as typed in the Card editor: a day after the
