@@ -21,9 +21,11 @@
  * Due.shows(card, where, moment)  the Due-date part of what a Card shows:
  *   { late, from, next, nextCritical, dueLine: { value, min } }. late: a
  *   Recurring Card past the end of its Due date, outside Done; it's a state,
- *   never stored, not a Priority. from: when its red Critical timer started,
- *   by the same rule as settle, so it shows before a save stores it (a Late
- *   Card's, the end of its Due date); null outside a waiting List.
+ *   never stored, not a Priority. from: when its red Critical timer started
+ *   (a Late Card's, the end of its Due date); null for a Card that isn't
+ *   waiting. A dated one whose day has come shows it from that midnight
+ *   before a save stores it, as settle would; an undated one shows none
+ *   until saved.
  *   next: the day it waits for in Backlog, for "Next: <date>", in red when
  *   nextCritical. dueLine: what the Card editor's Due line starts from (a
  *   Critical Card's Due date, or empty) and the earliest day it takes
