@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # The whole suite, as CI runs it: the lint, the E2E cases, then the cloud-sync
-# tests on the Firebase emulators (needs Java 21+). Exits non-zero if any fails.
+# tests on the Firebase emulators (needs Java 21+). The last line is the
+# verdict, `PASS  all` or `FAIL  <suites>`, so `bash all.sh 2>&1 | tail -1`
+# answers in one run. Exits non-zero if any fails.
 set -u
 cd "$(dirname "$0")"
 
-fail=0
-bash lint.sh || fail=1
-bash run.sh  || fail=1
-bash sync.sh || fail=1
-exit $fail
+failed=''
+bash lint.sh || failed="$failed lint"
+bash run.sh  || failed="$failed run"
+bash sync.sh || failed="$failed sync"
+
+if [ -z "$failed" ]; then echo "PASS  all"; else echo "FAIL $failed"; exit 1; fi

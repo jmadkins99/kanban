@@ -34,7 +34,7 @@ const { openApp, settle, sleep, clickAway: clickAwayOn, pickPriority, editCard }
         // The icon sits at the very left of the Card, before its text.
         const box = await page.evaluate(() => {
             const $c = $('.wrap .board .list').eq(0).find('.card').last();
-            const c = $c[0].getBoundingClientRect(), i = $c.find('.card-prio')[0].getBoundingClientRect(), t = $c.find('.text')[0].getBoundingClientRect();
+            const c = $c[0].getBoundingClientRect(), i = $c.find('.card-prio')[0].getBoundingClientRect();
             const range = document.createRange(); range.selectNodeContents($c.find('.text')[0]);
             const words = range.getBoundingClientRect();
             return { left: i.left - c.left, beforeText: i.right <= words.left, inside: i.top >= c.top && i.bottom <= c.bottom };

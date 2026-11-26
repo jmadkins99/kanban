@@ -2,3 +2,6 @@ tests/node_modules/
 
 # Firebase emulator logs
 *-debug.log
+
+# The sync emulators' output (tests/sync.sh)
+tests/sync-emulators.log

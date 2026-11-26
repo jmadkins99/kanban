@@ -25,19 +25,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.evaluate(() => {
             window.played = [];
             const real = LevelUp.play;
-            LevelUp.play = (o) => { played.push({ level: o.level, rankName: o.rankName, svg: /<svg/.test(o.insigniaSvg) }); return real(o); };
+            LevelUp.play = (o) => { window.played.push({ level: o.level, rankName: o.rankName, svg: /<svg/.test(o.insigniaSvg) }); return real(o); };
             setText($('.wrap .board .list').eq(2).find('.head .text'), 'Done');
             saveBoard();
         });
 
         for (let i = 0; i < 4; i++) await toDone(0);
         await sleep(1200);
-        assert.deepStrictEqual(await page.evaluate(() => played), [], 'no level-up before the 5th card');
+        assert.deepStrictEqual(await page.evaluate(() => window.played), [], 'no level-up before the 5th card');
 
         await toDone(0);
         assert.deepStrictEqual(await badge(), { num: 'Lvl 2', rank: 'Private I', svg: 1 }, 'badge shows the new level');
         await sleep(1200);
-        assert.deepStrictEqual(await page.evaluate(() => played), [{ level: 2, rankName: 'Private I', svg: true }], 'level-up plays once');
+        assert.deepStrictEqual(await page.evaluate(() => window.played), [{ level: 2, rankName: 'Private I', svg: true }], 'level-up plays once');
         assert.strictEqual(await page.evaluate(() => $('.lu-ov').length), 1, 'overlay is up');
 
         // It cleans itself up (about 5 s).
@@ -47,7 +47,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await moveCard(page, 2, -1, -1);
         await sleep(1200);
         assert.deepStrictEqual(await badge(), { num: 'Lvl 1', rank: 'Private', svg: 1 });
-        assert.strictEqual(await page.evaluate(() => played.length), 1, 'losing a level is quiet');
+        assert.strictEqual(await page.evaluate(() => window.played.length), 1, 'losing a level is quiet');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
