@@ -10,9 +10,17 @@
  *	- Signed out, nothing changes: the app runs on localStorage alone.
  *	- Signed in, localStorage stays a full mirror, the board is one document
  *	  and each History day is its own document. A change on one device shows
- *	  up live on the others. Two devices editing at once: the last save wins,
- *	  and an incoming board lands as a new revision, so Undo gets back what
- *	  this device had.
+ *	  up live on the others.
+ *	- Each board write carries a new rev, and as its base the rev of the
+ *	  last board this device saw from the cloud or sent itself. The rules
+ *	  refuse it unless that base is the cloud's current rev (a cloud board
+ *	  from before revs takes any write), so a device whose board is behind
+ *	  (a frozen tab, no signal, a write queued offline in an earlier
+ *	  session) can't overwrite a newer one. After a refusal nothing goes
+ *	  up until the cloud's board is on this device, even a save made since.
+ *	- Otherwise two devices editing at once: the last save wins. A board
+ *	  from the cloud lands as a new revision, so Undo gets back what this
+ *	  device had.
  *	- Signing in or out reloads the page, like gym-tracker.
  */
 (function () {
@@ -127,12 +135,17 @@
 		 *	board
 		 */
 		var synced = null;  // canon() of the board as the cloud last had it
+		var base   = null;  // the rev this device's next write carries: the cloud board's it last saw, or its own last write's (see firestore.rules)
+		var seen   = null;  // the rev of the cloud board it last saw
+		var stale  = false; // a write was refused: nothing goes up until the cloud's board is on this device
 		var known  = false; // whether the cloud's board is known yet (never push blind)
 		var timer  = null;
 		var fresh;          // resolves sync.boardFresh: the server's board has been seen
 		sync.boardFresh = new Promise(function (r) { fresh = r; });
 
 		// Firestore hands maps back with sorted keys, so compare a fixed shape.
+		// It leaves out rev and base, so boards compare, and an echo is
+		// spotted, by content alone.
 		// It includes the day the board last changed: without it a board from
 		// another device arrives undated, and Auto-submit (rollDay) skips it,
 		// so Done never clears at midnight.
@@ -158,12 +171,24 @@
 			});
 		}
 
+		// The board as it goes up: a new rev, and the rev it was made from.
+		// The new rev is the base of this device's next write.
+		function nextWrite(c)
+		{
+			var data = JSON.parse(c);
+			data.rev  = boardRef.parent.doc().id; // a random id, no write
+			data.base = base;
+			data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+			base = data.rev;
+			return data;
+		}
+
 		function pushBoard()
 		{
 			clearTimeout(timer);
 			timer = null;
 
-			if (! known || ! NB.board)
+			if (! known || stale || ! NB.board)
 				return;
 
 			var c = canon(NB.board);
@@ -171,24 +196,44 @@
 				return;
 
 			synced = c;
-			var data = JSON.parse(c);
-			data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-			boardRef.set(data).catch(warn('board write'));
+			boardRef.set(nextWrite(c)).catch(function (e) {
+				if (! e || e.code != 'permission-denied')
+					return warn('board write')(e);
+
+				// The server refused it: Firestore rolls back its copy and the
+				// listener brings in the cloud's board, which applyBoard takes.
+				console.warn("[sync] board write refused: this device's board was stale, so it takes the cloud's");
+				stale = true;
+				if (base == seen) // the cloud's board got here before the refusal did
+					applyBoard(synced);
+			});
 		}
 
 		function applyBoard(c)
 		{
-			if (synced != c || ! NB.board || canon(NB.board) == c)
+			if (synced != c || ! NB.board)
 				return;
+
+			if (canon(NB.board) == c) // already on this device
+			{
+				stale = false;
+				return;
+			}
 
 			if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
 				return setTimeout(function () { applyBoard(c); }, 1000);
 
 			// This device has saved since (often the very edit it waited
 			// for), and that save's push is still batched: the later save
-			// wins, so it goes up rather than being overwritten here.
-			if (timer)
+			// wins, so it goes up rather than being overwritten here. Unless
+			// a write was refused: then this device's board is stale, and
+			// that save is overwritten too, kept only in Undo.
+			if (timer && ! stale)
 				return;
+
+			clearTimeout(timer);
+			timer = null;
+			stale = false;
 
 			var b = JSON.parse(c);
 			b.format   = NB.blobVersion;
@@ -224,18 +269,31 @@
 				// arrives through this listener instead of being overwritten.
 				known = true;
 				synced = canon(NB.board);
-				var data = JSON.parse(synced);
-				data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+				var data = nextWrite(synced);
 				db.runTransaction(function (t) {
 					return t.get(boardRef).then(function (d) { if (! d.exists) t.set(boardRef, data); });
 				}).catch(warn('first board upload'));
 				return;
 			}
 
+			if (stale && snap.metadata.fromCache) // the old board a refused write rolls back to: wait for the server's
+				return;
+
 			known = true;
+			base = seen = snap.data().rev || null;
 			var c = canon(snap.data());
 			if (c == synced)
+			{
+				// A refused write that matched the cloud's board anyway: any
+				// save since was made on the cloud's board, so it goes up.
+				if (stale)
+				{
+					stale = false;
+					if (canon(NB.board) != c)
+						sync.boardChanged();
+				}
 				return;
+			}
 			synced = c;
 			applyBoard(c);
 		}, warn('board listener'));

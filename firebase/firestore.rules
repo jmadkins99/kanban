@@ -13,8 +13,19 @@ service cloud.firestore {
           && userId == 'JP323rFescUBlrZfwIls8EOk78o1';
     }
 
-    match /users/{userId}/kanban/{doc} {
-      allow read, write: if isOwner(userId) && doc in ['board', 'xp'];
+    // A board write must carry, as its base, the rev of the board it
+    // replaces, so a device that hasn't seen the cloud's current board can't
+    // overwrite it (see js/sync.js). A board from before revs goes through.
+    match /users/{userId}/kanban/board {
+      allow read, create, delete: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && 'rev' in request.resource.data
+                    && (! ('rev' in resource.data)
+                        || request.resource.data.get('base', null) == resource.data.rev);
+    }
+
+    match /users/{userId}/kanban/xp {
+      allow read, write: if isOwner(userId);
     }
 
     match /users/{userId}/history/{day} {
