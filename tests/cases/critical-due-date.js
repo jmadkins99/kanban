@@ -162,7 +162,8 @@ const { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, 
 
         // A date picked for tomorrow, the Card editor left open past midnight:
         // saved the next morning, the Card acts as if saved the day before and
-        // moved on when its day began, its Critical timer from that midnight.
+        // its day had begun: in To-Do, with no Due date, its Critical timer
+        // from that midnight (not from the save).
         await addCard(TODO, 'feed cat');
         await pick('Medium');
         await clickAway();
