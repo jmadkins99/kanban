@@ -35,7 +35,10 @@
  *   Critical Card's Due date, or empty) and the earliest day it takes
  * Due.order(role, moment)  a comparator of saved Cards for a List: Late
  *   first, then Priority (Priority.LEVELS), then Arrival (docs/adr/0002).
- *   Done goes by Arrival alone.
+ *   Done goes by Arrival alone. Backlog (docs/adr/0003): Late; Critical
+ *   with a Due date, then Recurring, each earliest Due date first (a
+ *   Recurring Card without one last among them); then Critical without
+ *   one, Medium and Low; ties by Arrival.
  *
  * A Decision is the whole state: every key is present, null deletes the
  * field, and an unchanged value comes back as the very one passed in (so a
@@ -224,9 +227,20 @@
 
   function order(role, moment) {
     requireMoment(moment);
-    var tier = function (card) { return isLate(card, role, moment) ? -1 : Priority.LEVELS.indexOf(Priority.of(card)); };
+    var backlog = role == 'backlog';
+    // Where a Card sorts before Arrival: its tier, then (in Backlog's dated
+    // tiers) its Due date, none after any date. See the header.
+    var rank = function (card) {
+      if (isLate(card, role, moment)) return [-3, ''];
+      if (backlog && Priority.isCritical(card) && card.due) return [-2, card.due];
+      if (backlog && Priority.isRecurring(card)) return [-1, card.due || '~'];
+      return [Priority.LEVELS.indexOf(Priority.of(card)), ''];
+    };
     return function (a, b) {
-      return (role == 'done' ? 0 : tier(a) - tier(b)) || (a.arrival || 0) - (b.arrival || 0);
+      var arrival = (a.arrival || 0) - (b.arrival || 0);
+      if (role == 'done') return arrival;
+      var ra = rank(a), rb = rank(b);
+      return ra[0] - rb[0] || (ra[1] < rb[1] ? -1 : ra[1] > rb[1] ? 1 : 0) || arrival;
     };
   }
 
