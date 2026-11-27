@@ -21,6 +21,13 @@ When a rule moves into a module with its own table of rows (for example
 - Every step comment in a case sits over the assertion it describes. When an
   assertion goes, its comment goes or is reworded to the steps that remain.
 
+## Tests: sync fixes
+
+- A sync fix's case in `tests/sync/sync.js` fails on the emulators without
+  the fix. A claim about the order Firestore delivers events in (a write's
+  refusal, a rolled-back snapshot, another device's board) is checked by a
+  run there, not traced against mocked snapshots.
+
 ## Module headers
 
 A `js/*.js` module opens with a header comment that is its contract: the
