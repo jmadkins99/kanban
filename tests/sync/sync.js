@@ -33,6 +33,19 @@ function token(uid) {
 }
 
 const devOptIn = () => localStorage.setItem('nullboard.firebaseDev', 'true');
+const traceOptIn = () => localStorage.setItem('nullboard.syncTrace', 'true');
+
+// Each page's [sync] lines (js/sync.js's trace and warnings) go to stdout,
+// which sync.sh shows when the suite fails, and are kept for the checks below.
+function traced(app, name) {
+    const lines = [];
+    app.page.on('console', (m) => {
+        if (! m.text().startsWith('[sync]')) return;
+        lines.push(m.text());
+        console.log(name + ' ' + m.text());
+    });
+    return lines;
+}
 
 const ready = (page) => page.evaluate(() => cloudSync.ready);
 
@@ -67,12 +80,14 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     })();
 
-    const a = await openApp([fakeClock(), devOptIn]);
-    const b = await openApp([fakeClock(), new Function(`
+    const a = await openApp([fakeClock(), devOptIn, traceOptIn]);
+    const b = await openApp([fakeClock(), traceOptIn, new Function(`
         localStorage.setItem('nullboard.firebaseDev', 'true');
         if (! localStorage.getItem('nullboard.history'))
             localStorage.setItem('nullboard.history', JSON.stringify([{ day: '${oldDay}', title: 'Old', submittedAt: '${oldDay}T12:00:00.000Z',
                 lists: [{ title: 'Done', notes: [{ text: 'from B', raw: false, min: false }] }] }]));`)]);
+    const aTrace = traced(a, 'A');
+    const bTrace = traced(b, 'B');
     const refusals = [];
     b.page.on('console', (m) => { if (m.text().includes('day write refused')) refusals.push(m.text()); });
     const aRefusals = [];
@@ -144,9 +159,17 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
             return NB.storage.loadBoard(NB.board.id, hist[1]).lists[0].notes[1].text;
         }), 'typed on A', "Undo on A gets back A's edit");
 
+        // Both pages trace their board snapshots; a page without the flag doesn't.
+        const snapshots = (lines) => lines.filter((l) => l.startsWith('[sync] trace snapshot')).length;
+        assert.ok(snapshots(aTrace) > 0 && snapshots(bTrace) > 0, 'A and B trace their snapshots');
+        await b.page.evaluate(() => localStorage.removeItem('nullboard.syncTrace'));
+        const bTraced = snapshots(bTrace);
+
         // A Card's Priority goes across too, and B shows its icon.
         await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
         await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
+        assert.strictEqual(snapshots(bTrace), bTraced, 'B, without the flag, traces nothing');
+        await b.page.evaluate(() => localStorage.setItem('nullboard.syncTrace', 'true'));
         assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
         assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
         // So does its Critical timer's start: B counts from the same moment.
@@ -216,6 +239,8 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         const contentOf = (page) => page.evaluate(() => JSON.stringify([NB.board.day, NB.board.lists.map((l) => [l.title, l.notes.map((n) =>
             Object.keys(n).sort().filter((k) => k != 'raw' && k != 'min' && n[k] != null).map((k) => [k, n[k]]))])])); // as sync.js compares boards
         const refusalsBefore = aRefusals.length;
+        const tracedRefusals = () => aTrace.filter((l) => l.startsWith('[sync] trace refused')).length;
+        const tracedBefore = tracedRefusals();
         const revisionBefore = await a.page.evaluate(() => NB.board.revision);
         await a.page.evaluate(() => firebase.firestore().disableNetwork());
         const saveSame = () => { setText($('.wrap .board .list').last().find('.card .text').last(), 'saved on both'); saveBoard(); };
@@ -233,6 +258,7 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'then saved again on A')));
         await new Promise((r) => setTimeout(r, 3000)); // anything else would have landed by now
         assert.strictEqual(aRefusals.length, refusalsBefore + 1, "A's write of the same board was refused: " + JSON.stringify(aRefusals));
+        assert.strictEqual(tracedRefusals(), tracedBefore + 1, 'and A traced the refusal');
         assert.ok(holdsAll((await cloudBoard(a.page)).lists, 'saved on both', 'then saved again on A'), "the cloud has A's later save, B's inside it");
         assert.ok(holdsAll(await boardOf(a.page), 'saved on both', 'then saved again on A'), 'so does A');
         assert.ok(holdsAll(await boardOf(b.page), 'saved on both', 'then saved again on A'), 'and B');
