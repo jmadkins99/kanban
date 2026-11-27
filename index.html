@@ -55,8 +55,8 @@
        each day. Plain script ahead of the styles so the day's accent is set
        before first paint. -->
   <!-- Temporary: the phone-bug debug log (see js/debuglog.js). First, to catch every error. -->
-  <script src="js/debuglog.js?v=9"></script>
-  <script src="js/accentColor.js?v=9"></script>
+  <script src="js/debuglog.js?v=10"></script>
+  <script src="js/accentColor.js?v=10"></script>
   <script>
 	(function () {
 		var icon = document.querySelector("link[rel='icon']");
@@ -65,7 +65,7 @@
 		icon.setAttribute('href', icon.getAttribute('href').replace('%236a5a8a', '%23' + tint.slice(1)));
 	}());
   </script>
-  <link rel="stylesheet" href="css/kanban.css?v=9">
+  <link rel="stylesheet" href="css/kanban.css?v=10">
 
 </head>
 <body>
@@ -237,11 +237,11 @@
 
 </body>
 
-<script src="extras/jquery-3.6.0.min.js?v=9"></script>
+<script src="extras/jquery-3.6.0.min.js?v=10"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
-<script src="js/priority.js?v=9"></script>
-<script src="js/schedule.js?v=9"></script>
-<script src="js/due.js?v=9"></script>
+<script src="js/priority.js?v=10"></script>
+<script src="js/schedule.js?v=10"></script>
+<script src="js/due.js?v=10"></script>
 
 <script type="text/javascript">
 
@@ -1588,9 +1588,9 @@
 
 	// One timer slot per card: the WIP timer in WIP, otherwise the red
 	// Critical timer, or "Next: <date>" in purple or red, as the Due date
-	// module shows it (Due.shows in js/due.js), or none. Recomputed from its
-	// start each tick, so a sleeping laptop is right on waking. A Late
-	// Card has a red icon.
+	// module shows it (Due.shows in js/due.js), filled in as its day nears,
+	// or none. Recomputed from its start each tick, so a sleeping laptop is
+	// right on waking. A Late Card has a red icon.
 	// A Card that has just turned Late moves up its List.
 	var lateUnsorted = false;
 
@@ -1610,7 +1610,8 @@
 				       .toggleClass('next-waiting', !! s.next)
 				       .find('.wip-timer').toggleClass('critical', !! s.from).toggleClass('next', !! s.next)
 				       .toggleClass('next-critical', s.nextCritical)
-				       .text(since ? formatTimer(moment.now - since) : s.next ? 'Next: ' + Schedule.label(s.next) : '');
+				       .text(since ? formatTimer(moment.now - since) : s.next ? 'Next: ' + Schedule.label(s.next) : '')
+				       .each(function(){ this.style.setProperty('--next-fill', s.next ? s.nextFill : ''); });
 			});
 		});
 
@@ -3672,11 +3673,11 @@
 
 </script>
 
-<script src="js/cardmenu.js?v=9"></script>
-<script src="js/celebrate.js?v=9"></script>
-<script src="js/ranks.js?v=9"></script>
-<script src="js/levelup.js?v=9"></script>
-<script src="js/xp.js?v=9"></script>
-<script src="js/sync.js?v=9"></script>
+<script src="js/cardmenu.js?v=10"></script>
+<script src="js/celebrate.js?v=10"></script>
+<script src="js/ranks.js?v=10"></script>
+<script src="js/levelup.js?v=10"></script>
+<script src="js/xp.js?v=10"></script>
+<script src="js/sync.js?v=10"></script>
 
 </html>

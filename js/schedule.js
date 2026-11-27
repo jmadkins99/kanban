@@ -19,6 +19,7 @@
  * Schedule.label(day)        a short date for "Next: <date>", e.g. "Mar 6"
  * Schedule.startOf(day)      the moment `day` starts: local midnight before it, in ms
  * Schedule.endOf(day)        the moment `day` ends: local midnight after it, in ms
+ * Schedule.daysBetween(a, b) whole days from day a to day b
  */
 (function () {
   var UNITS = ['days', 'weeks', 'months'];
@@ -117,5 +118,5 @@
     return new Date(p.y, p.m, p.d + 1).getTime();
   }
 
-  window.Schedule = { onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, tomorrow: tomorrow, make: make, label: label, startOf: startOf, endOf: endOf };
+  window.Schedule = { onOrAfter: onOrAfter, after: after, firstDue: firstDue, today: today, tomorrow: tomorrow, make: make, label: label, startOf: startOf, endOf: endOf, daysBetween: daysBetween };
 })();
