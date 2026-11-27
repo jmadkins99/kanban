@@ -11,6 +11,9 @@
 // - a board save from a device that hasn't seen the cloud's current board
 //   (offline, or queued offline and sent on a later open) is refused, and
 //   that device takes the cloud's board;
+// - a board with this device's content sorted another way (from a tab on
+//   an older version) isn't redrawn or sent back, so the two don't trade
+//   sorts without end;
 // - Auto-submit only creates a History day: a device offline across midnight
 //   doesn't overwrite the day another device filed, and takes the cloud's;
 // - the rules let only the owner in, and only to the documents the app uses.
@@ -323,6 +326,39 @@ scenario('same board saved on both', async () => {
     // The board A last saw, which the refusal rolls A back to, never
     // lands over A's later save: A's board holds just its own two saves.
     assert.strictEqual(await a.page.evaluate(() => NB.board.revision), revisionBefore + 2, "no other board landed on A");
+});
+
+scenario('another sort', async () => {
+    await freshBoard();
+    // A sorts its Lists another way, as a tab still on an older version
+    // does (the Backlog order changed in #88). B moves a Card; A takes
+    // B's board, sorts it its own way and sends it back. That board has
+    // B's content in another order, so B doesn't redraw it (a redraw
+    // throws a phone back to Backlog), nor send its own order back, which
+    // A would sort and send again, without end.
+    await a.page.evaluate(() => {
+        window.realOrder = Due.order;
+        Due.order = (role, moment) => { const f = window.realOrder(role, moment); return (x, y) => f(y, x); };
+    });
+    await b.page.evaluate(() => {
+        window.redraws = 0;
+        window.realShow = window.showBoard;
+        window.showBoard = function () { window.redraws++; return window.realShow.apply(this, arguments); };
+    });
+    try {
+        const moved = await b.page.evaluate(() => NB.board.lists[0].notes[0].text);
+        await moveCard(b.page, 0, 0, 1);
+        await waitFor(a.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), moved);
+        await new Promise((r) => setTimeout(r, 4000)); // A's sorted board reaches B, and anything B sent back would be on A by now
+        const rev = (await cloudBoard(a.page)).rev;
+        await new Promise((r) => setTimeout(r, 3000));
+        assert.strictEqual((await cloudBoard(a.page)).rev, rev, 'the cloud board stops changing');
+        assert.strictEqual(await b.page.evaluate(() => window.redraws), 0, "B doesn't redraw A's sorted board");
+        assert.ok(has(await boardOf(b.page), 1, moved), 'B still has its move');
+    } finally {
+        await a.page.evaluate(() => { Due.order = window.realOrder; });
+        await b.page.evaluate(() => { window.showBoard = window.realShow; });
+    }
 });
 
 scenario('recurring', async () => {
