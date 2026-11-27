@@ -1,3 +1,4 @@
+// @serial: asserts the level-up overlay is still up after 1.2 s and gone within about 5 s, both on the app's real setTimeout and CSS animation
 // Levels and ranks: the badge above the XP bar shows level, rank name and
 // insignia; reaching a new level by moving a card into Done plays the
 // level-up once (with the new level, rank and insignia), and the overlay

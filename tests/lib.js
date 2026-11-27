@@ -140,27 +140,46 @@ const localParts = (at) => {
 
 // A seed for openApp that fakes the page's clock. It reads `start` (local,
 // e.g. '2028-11-15 10:00'; omitted, the real time) when the page loads, or
-// the time setClock last set, which a reload keeps, and runs on from there.
+// the time setClock last set, which a reload keeps, and runs on from there,
+// unless setClock froze it: a frozen clock stands still until the case moves
+// it, so a timer shows exactly what the case set, however slow the machine.
 // The real Date stays reachable as window.RealDate.
 const fakeClock = (start) => `{
     const Real = Date, start = ${JSON.stringify(start ? localParts(start) : null)};
-    let at = null;
-    try { at = +localStorage.getItem('test.clock') || null; } catch (e) {}
+    let at = null, frozen = false;
+    try { at = +localStorage.getItem('test.clock') || null; frozen = localStorage.getItem('test.frozen') == '1'; } catch (e) {}
     window.clockSkew = (at || (start ? new Real(...start).getTime() : Real.now())) - Real.now();
+    window.clockFrozen = frozen && at ? at : null;
+    const now = () => window.clockFrozen != null ? window.clockFrozen : Real.now() + window.clockSkew;
     window.Date = class extends Real {
-        constructor(...a) { super(...(a.length ? a : [Real.now() + window.clockSkew])); }
-        static now() { return Real.now() + window.clockSkew; }
+        constructor(...a) { super(...(a.length ? a : [now()])); }
+        static now() { return now(); }
     };
     window.RealDate = Real;
 }`;
 
 // Sets the faked clock (see fakeClock) to `at`, local like '2028-11-16 00:00'
-// or in ms, now and after a reload.
-const setClock = (page, at) => page.evaluate((at) => {
+// or in ms, now and after a reload. With { freeze: true } it then stands still.
+const setClock = (page, at, { freeze = false } = {}) => page.evaluate((at, freeze) => {
     const t = Array.isArray(at) ? new window.RealDate(...at).getTime() : at;
     localStorage.setItem('test.clock', String(t));
+    if (freeze) localStorage.setItem('test.frozen', '1'); else localStorage.removeItem('test.frozen');
     window.clockSkew = t - window.RealDate.now();
-}, typeof at == 'string' ? localParts(at) : at);
+    window.clockFrozen = freeze ? t : null;
+}, typeof at == 'string' ? localParts(at) : at, freeze);
+
+// Moves the faked clock on by `ms`, keeping it frozen if it was. The app's own
+// 250 ms tick picks it up, so wait for the screen to show the result.
+const advanceClock = async (page, ms) => {
+    const frozen = await page.evaluate(() => window.clockFrozen != null);
+    await setClock(page, (await page.evaluate(() => Date.now())) + ms, { freeze: frozen });
+};
+
+// A case whose result depends on real elapsed time (a CSS animation's length,
+// say) can't use the fake clock and must not run in parallel with others, where
+// load would skew it. It says so on a line near the top, with the reason:
+//     // @serial: <reason>
+// The runner runs such cases alone, after the parallel batch.
 
 // The tab coming back into view, as after a laptop wakes: the app runs its
 // minute's tick (Auto-submit, Recurring Cards moving to To-Do) at once.
@@ -260,4 +279,4 @@ const iosTapper = async (page) => {
     };
 };
 
-module.exports = { openApp, token, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
+module.exports = { openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };

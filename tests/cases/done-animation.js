@@ -1,3 +1,4 @@
+// @serial: asserts the celebration is gone after about 2 s of real CSS animation time
 // Moving a Card into a Done list with the right arrow plays the celebration: the Card's
 // gold aura, a "+2500 XP" badge and a full-screen flash, gone after ~2 s.
 // Passing through another List on the way, or moving out of Done, doesn't.
