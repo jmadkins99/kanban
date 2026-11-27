@@ -4,8 +4,9 @@
  *	Remove this file, its <script> tag and the debug rule in
  *	firebase/firestore.rules once that bug is fixed.
  *
- *	- Off unless turned on: open the page with ?debug to turn it on for this
- *	  device (it stays on across reloads), ?debug=off to turn it off.
+ *	- On by default, since a Home Screen icon has no address bar to add a
+ *	  flag to: open the page with ?debug=off to turn it off for this device
+ *	  (it stays off across reloads), ?debug to turn it back on.
  *	- On, it records page errors, failed script loads, console warnings and
  *	  errors, the [sync] trace (it turns that on too), every board redraw
  *	  with its caller, changes in how many tags show, jumps of the List
@@ -23,9 +24,9 @@
 
 	try
 	{
-		if (flag === 'off') localStorage.removeItem(KEY);
-		else if (flag !== null) localStorage.setItem(KEY, 'true');
-		if (localStorage.getItem(KEY) != 'true') return;
+		if (flag === 'off') localStorage.setItem(KEY, 'off');
+		else if (flag !== null) localStorage.removeItem(KEY);
+		if (localStorage.getItem(KEY) == 'off') return;
 		localStorage.setItem('nullboard.syncTrace', 'true');
 	}
 	catch (e) { return; }
