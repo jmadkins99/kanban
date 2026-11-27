@@ -18,6 +18,11 @@
  *	  (a frozen tab, no signal, a write queued offline in an earlier
  *	  session) can't overwrite a newer one. After a refusal nothing goes
  *	  up until the cloud's board is on this device, even a save made since.
+ *	- A History day is only created, never replaced: the rules refuse a
+ *	  write to a day the cloud already has, so a device that filed a day
+ *	  offline (asleep across midnight, say) can't overwrite the one another
+ *	  device filed. After a refusal this device takes the cloud's History
+ *	  from the server, never the stale copy in its cache.
  *	- Otherwise two devices editing at once: the last save wins. A board
  *	  from the cloud lands as a new revision, so Undo gets back what this
  *	  device had.
@@ -316,8 +321,36 @@
 		/*
 		 *	History
 		 */
-		sync.dayChanged = function (entry) { daysCol.doc(entry.day).set(plain(entry)).catch(warn('day write')); };
-		sync.dayDeleted = function (day)   { daysCol.doc(day).delete().catch(warn('day delete')); };
+		var daysStale = false; // a day write was refused: the cache's History is stale until the server's arrives
+
+		function mirrorHistory(snap)
+		{
+			if (snap.metadata.fromCache && (snap.empty || daysStale)) // a cold cache, not an empty History; or the old one a refused write rolls back to
+				return;
+
+			daysStale = false;
+			var days = [];
+			snap.forEach(function (d) { days.push(d.data()); });
+			NB.storage.setJson('history', days);
+
+			if ($('body').hasClass('view-history'))
+				renderHistory();
+		}
+
+		sync.dayChanged = function (entry) {
+			daysCol.doc(entry.day).set(plain(entry)).catch(function (e) {
+				if (! e || e.code != 'permission-denied')
+					return warn('day write')(e);
+
+				// Until the server's History is here, this device keeps the day
+				// it filed, so Auto-submit doesn't take the day as unfiled and
+				// send it again.
+				console.warn('[sync] day write refused: ' + entry.day + " was already filed, so this device takes the cloud's");
+				daysStale = true;
+				daysCol.get({ source: 'server' }).then(mirrorHistory, warn('History reload'));
+			});
+		};
+		sync.dayDeleted = function (day) { daysCol.doc(day).delete().catch(warn('day delete')); };
 
 		// Each device's first sign-in imports its History: days the cloud
 		// already has win, this device's other days go up. After that the
@@ -349,17 +382,9 @@
 				});
 			})
 			.then(function () {
-				daysCol.onSnapshot(function (snap) {
-					if (snap.metadata.fromCache && snap.empty) // a cold cache, not an empty History
-						return;
-
-					var days = [];
-					snap.forEach(function (d) { days.push(d.data()); });
-					NB.storage.setJson('history', days);
-
-					if ($('body').hasClass('view-history'))
-						renderHistory();
-				}, warn('History listener'));
+				// With metadata changes, so the server's History is noticed even
+				// when it matches the cache, and a refusal's wait ends.
+				daysCol.onSnapshot({ includeMetadataChanges: true }, mirrorHistory, warn('History listener'));
 			})
 			.catch(function (e) { console.warn('[sync] History import postponed to the next load:', e && (e.code || e.message)); });
 	}
