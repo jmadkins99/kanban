@@ -34,5 +34,11 @@ service cloud.firestore {
     match /users/{userId}/history/{day} {
       allow read, create, delete: if isOwner(userId);
     }
+
+    // Temporary: the phone-bug debug log, one document per page load (see
+    // js/debuglog.js). Remove with that file once the bug is fixed.
+    match /users/{userId}/debug/{load} {
+      allow read, write: if isOwner(userId);
+    }
   }
 }

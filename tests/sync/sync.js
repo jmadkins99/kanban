@@ -442,6 +442,9 @@ scenario('rules', async () => {
     assert.strictEqual(await deniedWrite(a.page, 'users/someone-else/kanban/board'), 'permission-denied', "can't write someone else's data");
     assert.strictEqual(await deniedWrite(a.page, 'users/' + OWNER + '/junk/x'), 'permission-denied', 'only the documents the app uses');
     assert.strictEqual(await deniedWrite(a.page, 'users/' + OWNER + '/kanban/other'), 'permission-denied');
+    // Temporary: the phone-bug debug log (js/debuglog.js), the owner's only.
+    assert.strictEqual(await deniedWrite(a.page, 'users/' + OWNER + '/debug/x'), 'allowed', 'the owner can write a debug log');
+    assert.strictEqual(await deniedWrite(a.page, 'users/someone-else/debug/x'), 'permission-denied');
     await Promise.all([
         b.page.waitForNavigation({ waitUntil: 'load' }),
         b.page.evaluate(() => { $('.config .sync-out').click(); }),
