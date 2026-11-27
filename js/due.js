@@ -38,7 +38,7 @@
  *   Done goes by Arrival alone. Backlog (docs/adr/0003): Late; dated
  *   Critical and Recurring together, earliest Due date first, Critical
  *   above Recurring on the same day (a Recurring Card without one after
- *   every dated Card); then Critical without one, Medium and Low; ties by
+ *   all of them); then Critical without one, Medium and Low; ties by
  *   Arrival.
  *
  * A Decision is the whole state: every key is present, null deletes the
