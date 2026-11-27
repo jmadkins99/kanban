@@ -13,7 +13,8 @@
 //   that device takes the cloud's board;
 // - a board with this device's content sorted another way (from a tab on
 //   an older version) isn't redrawn or sent back, so the two don't trade
-//   sorts without end;
+//   sorts without end, and after every scenario the cloud board stops
+//   changing;
 // - Auto-submit only creates a History day: a device offline across midnight
 //   doesn't overwrite the day another device filed, and takes the cloud's;
 // - the rules let only the owner in, and only to the documents the app uses.
@@ -26,21 +27,10 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { openApp, moveCard, editCard, clickAway, fakeClock, setClock, wake } = require('../lib');
+const { openApp, token, moveCard, editCard, clickAway, fakeClock, setClock, wake } = require('../lib');
 
 const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 const DEMO = require('../fixtures/demo-board.json');
-
-// The auth emulator takes unsigned custom tokens, so a test can be any uid.
-function token(uid) {
-    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-    const now = Math.floor(Date.now() / 1000);
-    return b64({ alg: 'none', typ: 'JWT' }) + '.' + b64({
-        iss: 'firebase-auth-emulator@example.com', sub: 'firebase-auth-emulator@example.com',
-        aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
-        iat: now, exp: now + 3600, uid,
-    }) + '.';
-}
 
 const devOptIn = () => localStorage.setItem('nullboard.firebaseDev', 'true');
 const traceOptIn = () => localStorage.setItem('nullboard.syncTrace', 'true');
@@ -165,6 +155,18 @@ async function freshBoard(first) {
         await new Promise((r) => setTimeout(r, 200));
     }
     await new Promise((r) => setTimeout(r, 500)); // A's own write comes back to A
+}
+
+// Checked after every scenario: the cloud board stops changing. Two devices
+// that each redo the other's board (a sort, a default filled in) trade it
+// without end (#90). One write still landing as the scenario ends is fine.
+async function settled() {
+    for (let i = 0; ; i++) {
+        const rev = ((await cloudBoard(a.page)) || {}).rev;
+        await new Promise((r) => setTimeout(r, 3000));
+        if (((await cloudBoard(a.page)) || {}).rev === rev) return;
+        if (i == 1) throw new Error('the cloud board keeps changing');
+    }
 }
 
 // Run in this order, each from its own freshBoard; `rules` signs B out, so
@@ -505,6 +507,7 @@ scenario('rules', async () => {
         for (const s of picked) {
             console.log('scenario: ' + s.name);
             await s.fn();
+            await settled();
         }
         assert.deepStrictEqual([...a.errors, ...b.errors], [], 'no page errors');
     } finally {

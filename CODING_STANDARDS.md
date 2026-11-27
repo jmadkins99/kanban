@@ -27,6 +27,12 @@ When a rule moves into a module with its own table of rows (for example
   the fix. A claim about the order Firestore delivers events in (a write's
   refusal, a rolled-back snapshot, another device's board) is checked by a
   run there, not traced against mocked snapshots.
+- A device compares a board it takes from the cloud with its own only after
+  doing to it what it does to every board it opens (sorting, filling in
+  defaults). A board that differs only in that work is not news: the device
+  neither redraws it nor sends it back, since an older version open
+  elsewhere would rework it and send it again, without end (#90).
+  `bash sync/skew.sh <commit>` runs a change against an older commit.
 
 ## Module headers
 
