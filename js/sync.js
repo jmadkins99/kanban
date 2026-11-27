@@ -237,7 +237,16 @@
 			if (synced != c || ! NB.board)
 				return;
 
-			if (canon(NB.board) != c)
+			// Compared as this device sorts it: a board from a device that
+			// sorts another way (a tab still on an older version) can hold
+			// this one's content in another order. That isn't news, so it's
+			// not redrawn (a redraw throws a phone back to Backlog), nor its
+			// order sent back, which that device would sort and send again,
+			// without end.
+			var sorted = JSON.parse(c);
+			orderBoard(sorted);
+
+			if (canon(NB.board) != canon(sorted))
 			{
 				if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
 					return setTimeout(function () { applyBoard(c); }, 1000);
