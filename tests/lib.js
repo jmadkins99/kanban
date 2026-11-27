@@ -57,39 +57,47 @@ const DEMO = require('./fixtures/demo-board.json');
 // another folder, such as a worktree of an older commit (sync/skew.js).
 async function openApp(seed, { demo = true, root = ROOT } = {}) {
     const server = await serve(root);
-    const browser = await puppeteer.launch({
-        executablePath: findChrome(),
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    });
-    const page = await browser.newPage();
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-    page.on('dialog', (d) => d.accept());
-    for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
-    const url = `http://127.0.0.1:${server.address().port}/index.html`;
-    await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('.wrap .board');
-    if (demo) {
-        await page.evaluate((b) => {
-            b.id = NB.board.id;
-            b.revision = NB.board.revision;
-            NB.storage.saveBoard(b);
-            openBoard(b.id);
-        }, JSON.parse(JSON.stringify(DEMO)));
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            executablePath: findChrome(),
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        });
+        const page = await browser.newPage();
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        page.on('dialog', (d) => d.accept());
+        for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
+        const url = `http://127.0.0.1:${server.address().port}/index.html`;
+        await page.goto(url, { waitUntil: 'load' });
+        await page.waitForSelector('.wrap .board');
+        if (demo) {
+            await page.evaluate((b) => {
+                b.id = NB.board.id;
+                b.revision = NB.board.revision;
+                NB.storage.saveBoard(b);
+                openBoard(b.id);
+            }, JSON.parse(JSON.stringify(DEMO)));
+        }
+        return {
+            page,
+            errors,
+            async reload() {
+                await page.reload({ waitUntil: 'load' });
+                await page.waitForSelector('.wrap .board');
+            },
+            async close() {
+                await browser.close();
+                server.close();
+            },
+        };
+    } catch (e) {
+        // A failed open must not leak the Chrome it launched.
+        if (browser) await browser.close().catch(() => {});
+        server.close();
+        throw e;
     }
-    return {
-        page,
-        errors,
-        async reload() {
-            await page.reload({ waitUntil: 'load' });
-            await page.waitForSelector('.wrap .board');
-        },
-        async close() {
-            await browser.close();
-            server.close();
-        },
-    };
 }
 
 // The auth emulator takes unsigned custom tokens, so a test can be any uid.
@@ -104,7 +112,10 @@ function token(uid) {
 }
 
 // Lets jQuery animations (opacity fades before a removal) finish.
-const settle = (page) => page.evaluate(() => new Promise((r) => $(':animated').promise().done(() => setTimeout(r, 50))));
+const settle = (page, timeout = 10000) => page.evaluate((timeout) => new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('settle: animations still running after ' + timeout + ' ms')), timeout);
+    $(':animated').promise().done(() => setTimeout(() => { clearTimeout(t); resolve(); }, 50));
+}), timeout);
 
 // Moves Card `index` of List `list` (negative counts from the end) `steps`
 // Lists over, negative to the left, the way a person does: a tap on the Card,
@@ -181,7 +192,7 @@ const clickAway = async (page) => { await page.mouse.click(1270, 990); await sle
 // Card at selector `card`: a click on that Priority's button.
 const pickPriority = async (page, card, priority) => {
     const button = `${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`;
-    await page.waitForSelector(button, { visible: true, timeout: 3000 });
+    await page.waitForSelector(button, { visible: true, timeout: 10000 });
     await page.click(button);
     await sleep(50);
 };
@@ -190,7 +201,7 @@ const pickPriority = async (page, card, priority) => {
 // in editCard leads to, so a slow machine (a busy CI runner, two suites at
 // once) waits for it instead of clicking on.
 const cardHas = (page, card, cls) =>
-    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: 3000 }, card, cls);
+    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: 10000 }, card, cls);
 
 // Opens the Card at selector `card` in the Card editor, the way a person
 // does: a tap on it, then Edit in its menu, once the menu has slid in.

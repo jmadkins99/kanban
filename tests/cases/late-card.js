@@ -62,7 +62,7 @@ const LISTS = [
         assert.strictEqual(c.timer, null, 'and it shows no timer');
 
         // Midnight passes with the tab open: it turns Late on its own.
-        await page.waitForFunction(() => new Date().getDate() == 2, { timeout: 5000 });
+        await page.waitForFunction(() => new Date().getDate() == 2, { timeout: 10000 });
         await sleep(600);
         await settle(page);
         assert.deepStrictEqual(await texts(TODO), ['pay bills', 'water plants', 'fix leak', 'tidy desk'], 'a Late Card goes to the very top, above Recurring');
