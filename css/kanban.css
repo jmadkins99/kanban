@@ -991,6 +991,13 @@ body:not(.card-editor-open) .board .head .menu:hover .teaser {
 		text-shadow: none !important;
 		outline: 1px solid #888;
 	}
+	/* On paper a Card shows its whole Name, not two lines of it. */
+	.board .card:not(.in-editor) {
+		height: auto;
+	}
+	.board .card .text {
+		display: block;
+	}
 	.list {
 		outline: 1px solid #555;
 

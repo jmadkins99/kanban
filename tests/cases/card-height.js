@@ -49,15 +49,17 @@ const LISTS = [
                 mid: mid(box),
                 lines: tops.length,
                 cut: text.scrollHeight > text.clientHeight + 1,
+                nameHeight: text.clientHeight,
                 textMid: (Math.min(...shown.map((r) => r.top)) + Math.max(...shown.map((r) => r.bottom))) / 2,
                 left: Math.min(...shown.map((r) => r.left)) - tr.left - parseFloat(getComputedStyle(text).paddingLeft),
                 iconMid: mid(c.querySelector('.card-prio').getBoundingClientRect()),
                 pillMid: $(pill).is(':visible') ? mid(pill.getBoundingClientRect()) : null,
+                pillGap: $(pill).is(':visible') ? box.right - pill.getBoundingClientRect().right : null,
             };
         }) };
     });
 
-    const check = async (where) => {
+    const check = async (where, { short = true } = {}) => {
         const { lh, cards } = await measure();
         const near = (a, b, what) => assert.ok(Math.abs(a - b) <= 1, `${where}: ${what} (${a} vs ${b})`);
         const h = cards[0].height;
@@ -68,22 +70,25 @@ const LISTS = [
             near(c.textMid, c.mid, `${n}'s Name is centred top to bottom`);
             near(c.iconMid, c.mid, `${n}'s Priority icon is centred top to bottom`);
             if (c.pillMid !== null) near(c.pillMid, c.mid, `${n}'s pill is centred top to bottom`);
+            if (c.pillGap !== null) assert.ok(c.pillGap >= 0 && c.pillGap <= 10, `${where}: ${n}'s pill sits at the Card's right (${c.pillGap}px in)`);
             near(c.left, 0, `${n}'s Name is left-aligned`);
         }
-        assert.ok(h >= 2 * lh && h <= 2 * lh + 16, `${where}: a Card is two lines tall (${h}, line ${lh})`);
-        const by = (name) => cards.find((c) => c.name == name);
-        assert.strictEqual(by('buy milk').lines, 1, `${where}: "buy milk" is one line`);
-        assert.strictEqual(by(LONG).lines, 2, `${where}: the long Name shows two lines`);
-        assert.strictEqual(by(LONG).cut, true, `${where}: the long Name is cut off`);
-        assert.strictEqual(by(BREAKS).lines, 2, `${where}: the Name with line breaks shows two lines`);
-        assert.strictEqual(by(BREAKS).cut, true, `${where}: the Name with line breaks is cut off`);
+        const cardNamed = (name) => cards.find((c) => c.name == name);
+        near(cardNamed(LONG).nameHeight, 2 * lh, 'a cut-off Name is two lines tall');
+        assert.ok(h > 2 * lh && h <= 2 * lh + 16, `${where}: a Card is two lines tall plus padding (${h}, line ${lh})`);
+        assert.strictEqual(cardNamed(LONG).lines, 2, `${where}: the long Name shows two lines`);
+        assert.strictEqual(cardNamed(LONG).cut, true, `${where}: the long Name is cut off`);
+        assert.strictEqual(cardNamed(BREAKS).lines, 2, `${where}: the Name with line breaks shows two lines`);
+        assert.strictEqual(cardNamed(BREAKS).cut, true, `${where}: the Name with line breaks is cut off`);
         for (const n of ['call bank', 'water plants', 'write report'])
-            assert.notStrictEqual(by(n).pillMid, null, `${where}: "${n}" shows its pill`);
+            assert.notStrictEqual(cardNamed(n).pillMid, null, `${where}: "${n}" shows its pill`);
+        // A short Name is one line, unless the List is too narrow for it.
+        if (short) assert.strictEqual(cardNamed('buy milk').lines, 1, `${where}: "buy milk" is one line`);
     };
 
-    // The Card editor shows the long Name whole, and no pill.
+    // The Card editor shows a long Name whole, and no pill.
     const editorShowsWhole = async (where) => {
-        for (const text of [LONG, BREAKS]) {
+        for (const text of [LONG, BREAKS, 'call bank']) {
             await page.evaluate((text) => $('.wrap .board .card').filter((_, c) => getText($(c).find('.text')) == text).attr('data-t', 'x'), text);
             const sel = '.wrap .board .card[data-t="x"]';
             await editCard(page, sel);
@@ -102,30 +107,31 @@ const LISTS = [
     };
 
     try {
-        await page.setViewport({ width: 1280, height: 800 });
-        await sleep(300);
-        await check('desktop');
-        await editorShowsWhole('desktop');
-
-        // Settings: the narrowest and widest Lists, the biggest and smallest
-        // fonts, the tallest line height.
-        for (const [what, set] of [
-            ['narrow Lists', () => setListWidth(200)],
-            ['wide Lists', () => setListWidth(400)],
-            ['big font', () => setFontSize(24)],
-            ['tall lines', () => setLineHeight(60)],
-            ['small font', () => { resetLineHeight(); setFontSize(9); }],
+        for (const [size, viewport] of [
+            ['desktop', { width: 1280, height: 800 }],
+            ['phone', { width: 390, height: 844, isMobile: true, hasTouch: true }],
         ]) {
-            await page.evaluate(set);
-            await sleep(100);
-            await check(`desktop, ${what}`);
-        }
-        await page.evaluate(() => { resetFontSize(); resetLineHeight(); resetListWidth(); });
+            await page.setViewport(viewport);
+            await sleep(300);
+            await check(size);
+            await editorShowsWhole(size);
 
-        await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
-        await sleep(300);
-        await check('phone');
-        await editorShowsWhole('phone');
+            // Settings: the narrowest and widest Lists, the biggest and
+            // smallest fonts, the tallest line height, and all at once.
+            for (const [what, set, opts] of [
+                ['narrow Lists', () => setListWidth(200)],
+                ['wide Lists', () => setListWidth(400)],
+                ['big font', () => setFontSize(24)],
+                ['tall lines', () => setLineHeight(72)],
+                ['narrow Lists, big font, tall lines', () => setListWidth(200), { short: false }],
+                ['small font', () => { resetLineHeight(); setFontSize(9); }],
+            ]) {
+                await page.evaluate(set);
+                await sleep(100);
+                await check(`${size}, ${what}`, opts);
+            }
+            await page.evaluate(() => { resetFontSize(); resetLineHeight(); resetListWidth(); });
+        }
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {
