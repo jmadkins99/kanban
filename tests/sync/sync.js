@@ -5,6 +5,8 @@
 //   and its local History days get imported;
 // - board and History changes then show up live on the other browser, the
 //   board with the day it last changed, which Auto-submit files it under;
+// - a save made on an older board than the cloud's loses, even when it's the
+//   later one (a Card edit in progress, a push still batched);
 // - a board save from a device that hasn't seen the cloud's current board
 //   (offline, or queued offline and sent on a later open) is refused, and
 //   that device takes the cloud's board;
@@ -113,10 +115,10 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         // it and clears Done even if A is closed by then.
         assert.strictEqual(await b.page.evaluate(() => NB.board.day), await a.page.evaluate(() => NB.board.day), 'B has the day A stamped the board with');
 
-        // B's board landing while A edits a Card waits for the edit; then A's
-        // save is the later one, so it wins on A, in the cloud and on B. It
-        // used to be applied the moment A clicked away, before A's batched
-        // push, and the Card snapped back (or a new one vanished).
+        // B's board landing while A edits a Card waits for the edit, so the
+        // Card isn't yanked from under the cursor. Then A's save, made on the
+        // older board, loses even though it's the later one: B's board wins
+        // on A, in the cloud and on B, and Undo on A gets back A's edit.
         await a.page.setViewport({ width: 1280, height: 1000 });
         const second = '.wrap .board .list:nth-child(1) .card:nth-child(2)';
         await editCard(a.page, second);
@@ -126,9 +128,18 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await new Promise((r) => setTimeout(r, 2500)); // B's board reaches A mid-edit
         assert.strictEqual(await a.page.evaluate(() => $('.wrap .board .card.editing').length), 1, 'A is still editing');
         await clickAway(a.page);
-        await waitFor(b.page, () => NB.board.lists[0].notes.some((n) => n.text == 'typed on A'));
-        assert.ok(await a.page.evaluate(() => NB.board.lists[0].notes.some((n) => n.text == 'typed on A')), "A keeps its edit");
-        assert.ok((await cloudBoard(a.page)).lists[0].notes.some((n) => n.text == 'typed on A'), 'and so does the cloud');
+        const holdsText = (lists, t) => lists.some((l) => l.notes.some((n) => n.text == t));
+        await waitFor(a.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'saved on B meanwhile')));
+        await new Promise((r) => setTimeout(r, 3000)); // A's push would have landed by now
+        assert.ok(! holdsText(await a.page.evaluate(() => NB.board.lists), 'typed on A'), "B's board wins on A");
+        assert.ok(holdsText((await cloudBoard(a.page)).lists, 'saved on B meanwhile'), 'in the cloud');
+        assert.ok(! holdsText((await cloudBoard(a.page)).lists, 'typed on A'), "without A's edit");
+        assert.ok(holdsText(await b.page.evaluate(() => NB.board.lists), 'saved on B meanwhile'), 'and on B');
+        assert.ok(! holdsText(await b.page.evaluate(() => NB.board.lists), 'typed on A'), "without A's edit");
+        assert.strictEqual(await a.page.evaluate(() => {
+            const hist = NB.storage.getBoardIndex().get(NB.board.id).history; // newest first
+            return NB.storage.loadBoard(NB.board.id, hist[1]).lists[0].notes[1].text;
+        }), 'typed on A', "Undo on A gets back A's edit");
 
         // A Card's Priority goes across too, and B shows its icon.
         await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
@@ -153,14 +164,15 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         // queued offline.
         const has = (lists, i, t) => lists[i].notes.some((n) => n.text == t);
         const boardOf = (page) => page.evaluate(() => NB.board.lists);
-        async function staleSaveRefused(edit, resume) {
+        async function staleSaveRefused(edit, resume, batched) {
             await b.page.evaluate(() => firebase.firestore().disableNetwork());
             const t = await a.page.evaluate(() => NB.board.lists[0].notes[NB.board.lists[0].notes.length - 1].text);
             await moveCard(a.page, 0, -1, 1);
             await waitFor(a.page, (t) => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board')
                 .get({ source: 'server' }).then((s) => s.data().lists[1].notes.some((n) => n.text == t)), t);
             await b.page.evaluate((edit) => { setText($('.wrap .board .list').last().find('.card .text').last(), edit); saveBoard(); }, edit);
-            await new Promise((r) => setTimeout(r, 1500)); // B's batched push is sent, queued while offline
+            if (! batched)
+                await new Promise((r) => setTimeout(r, 1500)); // B's batched push is sent, queued while offline
             await resume();
             await waitFor(b.page, (t) => NB.board.lists[1].notes.some((n) => n.text == t), t);
             await new Promise((r) => setTimeout(r, 4000)); // B's stale write would have landed by now
@@ -177,6 +189,10 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
             assert.strictEqual(undoTo, edit, "Undo has B's own");
         }
         await staleSaveRefused('saved on B offline', () => b.page.evaluate(() => firebase.firestore().enableNetwork()));
+        // B back within a second of its save: the cloud's board lands while
+        // that save's push is still batched, and the save, made on B's older
+        // board, doesn't go up.
+        await staleSaveRefused('saved on B, back at once', () => b.page.evaluate(() => firebase.firestore().enableNetwork()), true);
         // B saving again just before it's back doesn't let its stale board
         // win: that save's push is still batched when the refusal lands.
         await staleSaveRefused('saved on B, then saved again', () => b.page.evaluate(() => {

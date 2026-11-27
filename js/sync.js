@@ -12,20 +12,23 @@
  *	  and each History day is its own document. A change on one device shows
  *	  up live on the others.
  *	- Each board write carries a new rev, and as its base the rev of the
- *	  last board this device saw from the cloud or sent itself. The rules
- *	  refuse it unless that base is the cloud's current rev (a cloud board
- *	  from before revs takes any write), so a device whose board is behind
- *	  (a frozen tab, no signal, a write queued offline in an earlier
- *	  session) can't overwrite a newer one. After a refusal nothing goes
- *	  up until the cloud's board is on this device, even a save made since.
+ *	  board this device's board was made from: the cloud's, once it's on
+ *	  this device, or this device's own last write. The rules refuse it
+ *	  unless that base is the cloud's current rev (a cloud board from
+ *	  before revs takes any write), so a device whose board is behind (a
+ *	  frozen tab, no signal, a write queued offline in an earlier session)
+ *	  can't overwrite a newer one. After a refusal nothing goes up until
+ *	  the cloud's board is on this device, even a save made since.
+ *	- So when two devices edit at once, a save made on an older board than
+ *	  the cloud's loses, even when it's the later save: the cloud's board
+ *	  lands over it once any Card edit ends, and its push, if still
+ *	  batched, never goes up. The cloud's board lands as a new revision,
+ *	  so Undo gets back what this device had.
  *	- A History day is only created, never replaced: the rules refuse a
  *	  write to a day the cloud already has, so a device that filed a day
  *	  offline (asleep across midnight, say) can't overwrite the one another
  *	  device filed. After a refusal this device takes the cloud's History
  *	  from the server, never the stale copy in its cache.
- *	- Otherwise two devices editing at once: the last save wins. A board
- *	  from the cloud lands as a new revision, so Undo gets back what this
- *	  device had.
  *	- Signing in or out reloads the page, like gym-tracker.
  */
 (function () {
@@ -140,7 +143,8 @@
 		 *	board
 		 */
 		var synced = null;  // canon() of the board as the cloud last had it
-		var base   = null;  // the rev this device's next write carries: the cloud board's it last saw, or its own last write's (see firestore.rules)
+		var made   = null;  // the rev this device's board was made from, its next write's base (see firestore.rules): the cloud board's once on this device, or its own last write's
+		var origin = null;  // canon() of that board: a cloud board with the same content is one this device's board was made from too
 		var seen   = null;  // the rev of the cloud board it last saw
 		var stale  = false; // a write was refused: nothing goes up until the cloud's board is on this device
 		var known  = false; // whether the cloud's board is known yet (never push blind)
@@ -182,9 +186,10 @@
 		{
 			var data = JSON.parse(c);
 			data.rev  = boardRef.parent.doc().id; // a random id, no write
-			data.base = base;
+			data.base = made;
 			data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-			base = data.rev;
+			made   = data.rev;
+			origin = c;
 			return data;
 		}
 
@@ -207,10 +212,10 @@
 
 				// The server refused it: Firestore rolls back its copy and the
 				// listener brings in the cloud's board, which applyBoard takes.
+				// Unless the cloud's board got here before the refusal did, and
+				// is already on this device.
 				console.warn("[sync] board write refused: this device's board was stale, so it takes the cloud's");
-				stale = true;
-				if (base == seen) // the cloud's board got here before the refusal did
-					applyBoard(synced);
+				stale = made != seen;
 			});
 		}
 
@@ -219,33 +224,29 @@
 			if (synced != c || ! NB.board)
 				return;
 
-			if (canon(NB.board) == c) // already on this device
+			if (canon(NB.board) != c)
 			{
-				stale = false;
-				return;
+				if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
+					return setTimeout(function () { applyBoard(c); }, 1000);
+
+				// A save since (often the very edit it waited for) whose push
+				// is still batched was made on an older board than the
+				// cloud's, so the rules would refuse it: it's overwritten
+				// here, kept only in Undo.
+				clearTimeout(timer);
+				timer = null;
+
+				var b = JSON.parse(c);
+				b.format   = NB.blobVersion;
+				b.id       = NB.board.id;
+				b.revision = NB.board.revision; // saved as the next revision, so Undo steps back
+				NB.storage.saveBoard(b);
+				openBoard(b.id);
 			}
 
-			if ($('.wrap .board .editing').length) // don't yank a card out from under the cursor
-				return setTimeout(function () { applyBoard(c); }, 1000);
-
-			// This device has saved since (often the very edit it waited
-			// for), and that save's push is still batched: the later save
-			// wins, so it goes up rather than being overwritten here. Unless
-			// a write was refused: then this device's board is stale, and
-			// that save is overwritten too, kept only in Undo.
-			if (timer && ! stale)
-				return;
-
-			clearTimeout(timer);
-			timer = null;
-			stale = false;
-
-			var b = JSON.parse(c);
-			b.format   = NB.blobVersion;
-			b.id       = NB.board.id;
-			b.revision = NB.board.revision; // saved as the next revision, so Undo steps back
-			NB.storage.saveBoard(b);
-			openBoard(b.id);
+			made   = seen;
+			origin = c;
+			stale  = false;
 		}
 
 		// Batched a little: the board saves after every edit.
@@ -285,13 +286,15 @@
 				return;
 
 			known = true;
-			base = seen = snap.data().rev || null;
+			seen = snap.data().rev || null;
 			var c = canon(snap.data());
+			if (c == origin) // our own write's echo, or the same board under another rev
+				made = seen;
 			if (c == synced)
 			{
 				// A refused write that matched the cloud's board anyway: any
 				// save since was made on the cloud's board, so it goes up.
-				if (stale)
+				if (stale && made == seen)
 				{
 					stale = false;
 					if (canon(NB.board) != c)
