@@ -23,7 +23,7 @@
  * Due.settle(card, where, moment)  every save: starts or ends a Card's
  *   Critical timer where it is; never moves it (to null)
  * Due.shows(card, where, moment)  the Due-date part of what a Card shows:
- *   { late, from, next, nextCritical, dueLine: { value, min } }. late: a
+ *   { late, from, next, nextCritical, nextFill, dueLine: { value, min } }. late: a
  *   Recurring Card past the end of its Due date, outside Done; it's a state,
  *   never stored, not a Priority. from: when its red Critical timer started
  *   (a Late Card's, the end of its Due date); null for a Card that isn't
@@ -31,7 +31,9 @@
  *   before a save stores it, as settle would; an undated one shows none
  *   until saved.
  *   next: the day it waits for in Backlog, for "Next: <date>", in red when
- *   nextCritical. dueLine: what the Card editor's Due line starts from (a
+ *   nextCritical. nextFill: how much of its full fill it shows, from 0 (only
+ *   a faint outline, 28 days or more out) to 1 (3 days or fewer); null with
+ *   no next. dueLine: what the Card editor's Due line starts from (a
  *   Critical Card's Due date, or empty) and the earliest day it takes
  * Due.order(role, moment)  a comparator of saved Cards for a List: Late
  *   first, then Priority (Priority.LEVELS), then Arrival (docs/adr/0002).
@@ -220,8 +222,16 @@
       from: from,
       next: next,
       nextCritical: !! next && Priority.isCritical(card),
+      nextFill: next ? nextFill(Schedule.daysBetween(moment.today, next)) : null,
       dueLine: { value: Priority.isCritical(card) && card.due || '', min: dayAfter(moment.today) }
     };
+  }
+
+  // "Next: <date>" is only a faint outline OUTLINE_DAYS or more out, and full
+  // FULL_DAYS or fewer out, filling in by equal daily steps between.
+  var OUTLINE_DAYS = 28, FULL_DAYS = 3;
+  function nextFill(daysLeft) {
+    return Math.min(1, Math.max(0, (OUTLINE_DAYS - daysLeft) / (OUTLINE_DAYS - FULL_DAYS)));
   }
 
   function dayAfter(day) { return Schedule.after({ every: 1, start: day, unit: 'days' }, day); }
