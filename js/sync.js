@@ -27,8 +27,10 @@
  *	- "Made on" goes by content, not by rev: a cloud board whose content
  *	  matches the board this device's board was made from counts as its
  *	  base, whichever device wrote it. So when two devices save the same
- *	  board and one's write is refused, a save it made since goes up:
- *	  the other device's save is already inside it.
+ *	  board and one's write is refused, a save it made since goes up if
+ *	  its push is still batched: the other device's save is already
+ *	  inside it. One whose push already went carries the refused write's
+ *	  rev as its base, so it's refused too and kept only in Undo.
  *	- A History day is only created, never replaced: the rules refuse a
  *	  write to a day the cloud already has, so a device that filed a day
  *	  offline (asleep across midnight, say) can't overwrite the one another
@@ -293,11 +295,12 @@
 			// cloud's newer board is still on its way, from the server.
 			// The refusal's handler runs first: Firestore settles the write
 			// before it delivers the rolled-back board.
-			if (stale && (snap.metadata.fromCache || (snap.data().rev || null) == seen))
+			var rev = snap.data().rev || null;
+			if (stale && (snap.metadata.fromCache || rev == seen))
 				return;
 
 			known = true;
-			seen = snap.data().rev || null;
+			seen = rev;
 			var c = canon(snap.data());
 			if (c == origin) // our own write's echo, or the same board under another rev
 				made = seen;
