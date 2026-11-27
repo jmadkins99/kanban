@@ -383,6 +383,7 @@ scenario('live history', async () => {
 });
 
 scenario('xp', async () => {
+    await freshBoard();
     // XP banked on one device reaches the other (the bank merges, never overwrites).
     await a.page.evaluate(() => XP.bankCards([{ xp: 2500, xpId: 'from-a' }]));
     await b.page.evaluate(() => XP.bankCards([{ xp: 2500, xpId: 'from-b' }]));
