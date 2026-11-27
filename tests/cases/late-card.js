@@ -7,7 +7,7 @@
 // Priority: the Card stays Recurring.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, sleep, fakeClock, setClock, advanceClock, seedBoard } = require('../lib');
+const { WAIT_MS, openApp, settle, sleep, fakeClock, advanceClock, seedBoard } = require('../lib');
 
 // "pay bills" is due Dec 1, so it turns Late at 00:00 Dec 2.
 const LISTS = [
@@ -25,13 +25,12 @@ const LISTS = [
 (async () => {
     // The first load sees the end of Dec 1, 2028, with the clock standing still.
     const app = await openApp([
-        fakeClock('2028-12-01 23:59:58'),
+        fakeClock('2028-12-01 23:59:58', { freeze: true }),
         seedBoard({ id: 39, title: 'Chores', day: '2028-12-01', lists: LISTS }),
     ], { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await page.waitForFunction(() => window.NB && NB.board && NB.board.title == 'Chores' && new Date().getFullYear() == 2028);
-    await setClock(page, '2028-12-01 23:59:58', { freeze: true });
     await sleep(300);
 
     const TODO = 1;
@@ -63,7 +62,7 @@ const LISTS = [
 
         // Midnight passes with the tab open: it turns Late on its own.
         await advanceClock(page, 3000); // 00:00:01 on Dec 2
-        await page.waitForFunction(() => $('.wrap .board .list').eq(1).find('.card').first().find('.text').text().includes('pay bills'), { timeout: 10000 });
+        await page.waitForFunction(() => $('.wrap .board .list').eq(1).find('.card').first().find('.text').text().includes('pay bills'), { timeout: WAIT_MS });
         await settle(page);
         assert.deepStrictEqual(await texts(TODO), ['pay bills', 'water plants', 'fix leak', 'tidy desk'], 'a Late Card goes to the very top, above Recurring');
         c = await card(TODO, 'pay bills');

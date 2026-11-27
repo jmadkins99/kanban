@@ -111,11 +111,14 @@ function token(uid) {
     }) + '.';
 }
 
+// How long a case waits for the page to show something, in ms.
+const WAIT_MS = 10000;
+
 // Lets jQuery animations (opacity fades before a removal) finish.
-const settle = (page, timeout = 10000) => page.evaluate((timeout) => new Promise((resolve, reject) => {
+const settle = (page) => page.evaluate((timeout) => new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('settle: animations still running after ' + timeout + ' ms')), timeout);
     $(':animated').promise().done(() => setTimeout(() => { clearTimeout(t); resolve(); }, 50));
-}), timeout);
+}), WAIT_MS);
 
 // Moves Card `index` of List `list` (negative counts from the end) `steps`
 // Lists over, negative to the left, the way a person does: a tap on the Card,
@@ -143,13 +146,16 @@ const localParts = (at) => {
 // the time setClock last set, which a reload keeps, and runs on from there,
 // unless setClock froze it: a frozen clock stands still until the case moves
 // it, so a timer shows exactly what the case set, however slow the machine.
+// With { freeze: true } the first load starts frozen at `start`. A reload
+// before any setClock starts over at `start`.
 // The real Date stays reachable as window.RealDate.
-const fakeClock = (start) => `{
+const fakeClock = (start, { freeze = false } = {}) => `{
     const Real = Date, start = ${JSON.stringify(start ? localParts(start) : null)};
     let at = null, frozen = false;
     try { at = +localStorage.getItem('test.clock') || null; frozen = localStorage.getItem('test.frozen') == '1'; } catch (e) {}
-    window.clockSkew = (at || (start ? new Real(...start).getTime() : Real.now())) - Real.now();
-    window.clockFrozen = frozen && at ? at : null;
+    const first = at || (start ? new Real(...start).getTime() : Real.now());
+    window.clockSkew = first - Real.now();
+    window.clockFrozen = (at ? frozen : ${JSON.stringify(freeze)}) ? first : null;
     const now = () => window.clockFrozen != null ? window.clockFrozen : Real.now() + window.clockSkew;
     window.Date = class extends Real {
         constructor(...a) { super(...(a.length ? a : [now()])); }
@@ -211,7 +217,7 @@ const clickAway = async (page) => { await page.mouse.click(1270, 990); await sle
 // Card at selector `card`: a click on that Priority's button.
 const pickPriority = async (page, card, priority) => {
     const button = `${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`;
-    await page.waitForSelector(button, { visible: true, timeout: 10000 });
+    await page.waitForSelector(button, { visible: true, timeout: WAIT_MS });
     await page.click(button);
     await sleep(50);
 };
@@ -220,7 +226,7 @@ const pickPriority = async (page, card, priority) => {
 // in editCard leads to, so a slow machine (a busy CI runner, two suites at
 // once) waits for it instead of clicking on.
 const cardHas = (page, card, cls) =>
-    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: 10000 }, card, cls);
+    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: WAIT_MS }, card, cls);
 
 // Opens the Card at selector `card` in the Card editor, the way a person
 // does: a tap on it, then Edit in its menu, once the menu has slid in.
@@ -279,4 +285,4 @@ const iosTapper = async (page) => {
     };
 };
 
-module.exports = { openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
+module.exports = { WAIT_MS, openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };

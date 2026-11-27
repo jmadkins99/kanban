@@ -4,10 +4,10 @@
 // length), and starts over from 0 if the card comes back.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, moveCard, fakeClock, setClock, advanceClock } = require('../lib');
+const { openApp, moveCard, fakeClock, advanceClock } = require('../lib');
 
 (async () => {
-    const app = await openApp(fakeClock('2028-11-15 10:00'));
+    const app = await openApp(fakeClock('2028-11-15 10:00', { freeze: true }));
     const { page } = app;
 
     const move = (from, to) => moveCard(page, from, 0, to - from);
@@ -15,19 +15,21 @@ const { openApp, moveCard, fakeClock, setClock, advanceClock } = require('../lib
         const t = $(n).find('.wip-timer');
         return t.is(':visible') ? t.text() : null;
     }), i);
-    // Waits for the 250 ms tick to show `want` on every timer of List 2 from `from` on.
-    const shows = (from, want) => page.waitForFunction((from, want) => $('.wrap .board .list').eq(2).find('.card').toArray().slice(from)
-        .every((n, i) => $(n).find('.wip-timer').text() == want[i]) && $('.wrap .board .list').eq(2).find('.card').length == from + want.length, {}, from, want);
+    // Waits for the 250 ms tick to show `want` on every visible timer of List 2 from `from` on.
+    const shows = (from, want) => page.waitForFunction((from, want) => {
+        const cards = $('.wrap .board .list').eq(2).find('.card').toArray();
+        return cards.length == from + want.length && cards.slice(from)
+            .every((n, i) => $(n).find('.wip-timer:visible').text() == want[i]);
+    }, {}, from, want);
 
     try {
-        await setClock(page, '2028-11-15 10:00', { freeze: true }); // stands still until the case moves it
         await page.evaluate(() => { setText($('.wrap .board .list').eq(2).find('.head .text'), 'WiP'); saveBoard(); });
         const before = (await timers(2)).length;
         assert.ok((await timers(0)).every((t) => t === null), 'no timers outside WIP');
 
         await move(0, 2);
-        await shows(before, ['0m 0s']); // a card entering WIP starts at 0
-        assert.strictEqual((await timers(2)).length, before + 1);
+        // A card entering WIP starts at 0.
+        await shows(before, ['0m 0s']);
 
         // Right side of the card, inside it.
         const box = await page.evaluate(() => {
@@ -54,7 +56,8 @@ const { openApp, moveCard, fakeClock, setClock, advanceClock } = require('../lib
         assert.ok(!('wip' in left) && left.wipMs == 3000, 'leaving keeps the visit length: ' + JSON.stringify(left));
         assert.ok((await timers(0)).every((x) => x === null), 'no timer after leaving');
         await moveCard(page, 0, -1, 2);
-        await shows(before, ['0m 1s', '0m 0s']); // the one that stayed, then the one back, starting over
+        // The one that stayed, then the one back, starting over.
+        await shows(before, ['0m 1s', '0m 0s']);
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

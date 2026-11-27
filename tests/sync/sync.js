@@ -247,7 +247,7 @@ scenario('arrival', async () => {
 // refused: here B was offline while A moved a Card. `resume` brings B
 // back: its network again, or a later open that sends the write
 // queued offline.
-async function staleSaveRefused(edit, resume, batched) {
+async function staleSaveRefused(edit, resume, batched, reloads) {
     await freshBoard();
     await b.page.evaluate(() => firebase.firestore().disableNetwork());
     const t = await a.page.evaluate(() => NB.board.lists[0].notes[NB.board.lists[0].notes.length - 1].text);
@@ -265,19 +265,22 @@ async function staleSaveRefused(edit, resume, batched) {
     assert.ok(has(await boardOf(a.page), 1, t), 'so does A');
     assert.ok(has(await boardOf(b.page), 1, t), 'and B takes it');
     // B took the cloud's board as a new revision, so Undo on B still gets back what B had.
-    // When B's queued write is refused after a reload, B may first see the
-    // board that write rolled back to (A's older one, from its cache) and
-    // save it as a revision too, before the cloud's current board lands. So
-    // B's own is the first revision back that isn't the cloud's: every
-    // revision newer than it holds A's move.
+    // Newest first, B's history is [the cloud's board, B's own, ...]. When B's
+    // queued write is refused after a reload, B first sees the board that
+    // write rolled back to (A's older one, from its cache, without A's move
+    // or B's edit) and saves it as a revision too, before the cloud's
+    // board lands: [the cloud's board, the rolled-back one, B's own, ...].
     const revs = await b.page.evaluate(() => {
         const last = (l) => { const c = l[l.length - 1].notes; return c.length ? c[c.length - 1].text : null; };
         return NB.storage.getBoardIndex().get(NB.board.id).history // newest first
-            .map((r) => { const l = NB.storage.loadBoard(NB.board.id, r).lists; return { last: last(l), moved: l[1].notes.map((n) => n.text) }; });
+            .map((r) => { const l = NB.storage.loadBoard(NB.board.id, r).lists; return { last: last(l), todo: l[1].notes.map((n) => n.text) }; });
     });
-    const own = revs.findIndex((r) => r.last == edit);
-    assert.ok(own >= 1, "Undo has B's own: " + JSON.stringify(revs.map((r) => r.last)));
-    assert.ok(revs.slice(0, own).every((r) => r.moved.includes(t)), "the revisions after B's own hold A's move");
+    const lasts = JSON.stringify(revs.map((r) => r.last));
+    const rolledBack = reloads && revs[1] && revs[1].last != edit && ! revs[1].todo.includes(t);
+    const ownAt = rolledBack ? 2 : 1;
+    assert.strictEqual(revs[ownAt] && revs[ownAt].last, edit, "Undo has B's own: " + lasts);
+    if (rolledBack)
+        assert.ok(revs[0].todo.includes(t), "the rolled-back board is followed by the cloud's: " + lasts);
 }
 
 scenario('stale save offline', () =>
@@ -299,7 +302,7 @@ scenario('stale save sent next open', () =>
     staleSaveRefused('saved on B, sent next open', async () => {
         await b.reload();
         assert.strictEqual(await ready(b.page), 'signed-in');
-    }));
+    }, false, true));
 
 scenario('same board saved on both', async () => {
     await freshBoard();
