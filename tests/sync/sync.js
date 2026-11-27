@@ -37,7 +37,7 @@ const traceOptIn = () => localStorage.setItem('nullboard.syncTrace', 'true');
 
 // Each page's [sync] lines (js/sync.js's trace and warnings) go to stdout,
 // which sync.sh shows when the suite fails, and are kept for the checks below.
-function traced(app, name) {
+function syncLines(app, name) {
     const lines = [];
     app.page.on('console', (m) => {
         if (! m.text().startsWith('[sync]')) return;
@@ -86,8 +86,8 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         if (! localStorage.getItem('nullboard.history'))
             localStorage.setItem('nullboard.history', JSON.stringify([{ day: '${oldDay}', title: 'Old', submittedAt: '${oldDay}T12:00:00.000Z',
                 lists: [{ title: 'Done', notes: [{ text: 'from B', raw: false, min: false }] }] }]));`)]);
-    const aTrace = traced(a, 'A');
-    const bTrace = traced(b, 'B');
+    const aTrace = syncLines(a, 'A');
+    const bTrace = syncLines(b, 'B');
     const refusals = [];
     b.page.on('console', (m) => { if (m.text().includes('day write refused')) refusals.push(m.text()); });
     const aRefusals = [];
@@ -163,13 +163,13 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         const snapshots = (lines) => lines.filter((l) => l.startsWith('[sync] trace snapshot')).length;
         assert.ok(snapshots(aTrace) > 0 && snapshots(bTrace) > 0, 'A and B trace their snapshots');
         await b.page.evaluate(() => localStorage.removeItem('nullboard.syncTrace'));
-        const bTraced = snapshots(bTrace);
+        const bSnapshotsBefore = snapshots(bTrace);
 
         // A Card's Priority goes across too, and B shows its icon.
         await a.page.evaluate(() => { setPriority($('.wrap .board .card').first(), 'critical'); saveBoard(); });
         await waitFor(b.page, () => NB.board.lists[0].notes[0].priority == 'critical');
-        assert.strictEqual(snapshots(bTrace), bTraced, 'B, without the flag, traces nothing');
-        await b.page.evaluate(() => localStorage.setItem('nullboard.syncTrace', 'true'));
+        assert.strictEqual(snapshots(bTrace), bSnapshotsBefore, 'B, without the flag, traces nothing');
+        await b.page.evaluate(traceOptIn);
         assert.strictEqual(await b.page.evaluate(() => $('.wrap .board .card-prio').first().attr('aria-label')), 'Priority: Critical', 'B shows the Critical icon');
         assert.strictEqual(await b.page.evaluate(() => NB.board.lists[0].notes[0].text), 'live from A', 'the text is untouched');
         // So does its Critical timer's start: B counts from the same moment.

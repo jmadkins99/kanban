@@ -9,7 +9,7 @@
  *	    localStorage.setItem('nullboard.firebaseDev', 'true')  (then reload)
  *	  To see the board listener's order of events, turn on its trace (the
  *	  sync tests do): a `[sync] trace` line in the console per board
- *	  snapshot and per refused board write.
+ *	  snapshot and per refusal of a board save this page sent.
  *	    localStorage.setItem('nullboard.syncTrace', 'true')    (no reload)
  *	- Signed out, nothing changes: the app runs on localStorage alone.
  *	- Signed in, localStorage stays a full mirror, the board is one document
@@ -60,7 +60,7 @@
 	var IMPORTED = 'nullboard.historyImportedFor'; // uid whose cloud History this device mirrors
 
 	function noop() {}
-	function trace(line) { if (localStorage.getItem('nullboard.syncTrace') == 'true') console.log('[sync] trace ' + line); }
+	function trace(line) { if (localStorage.getItem('nullboard.syncTrace') == 'true') console.log('[sync] trace ' + line()); } // line: built only when tracing
 	function warn(what) { return function (e) { console.warn('[sync] ' + what + ' failed:', e && (e.code || e.message)); }; }
 	function plain(x) { return JSON.parse(JSON.stringify(x)); } // Firestore takes plain objects only
 
@@ -228,7 +228,7 @@
 				// is already on this device.
 				console.warn("[sync] board write refused: this device's board was stale, so it takes the cloud's");
 				stale = made != seen;
-				trace('refused: made=' + made + ' seen=' + seen + ' stale=' + stale);
+				trace(function () { return 'refused: made=' + made + ' seen=' + seen + ' stale=' + stale; });
 			});
 		}
 
@@ -271,8 +271,10 @@
 		document.addEventListener('visibilitychange', function () { if (document.hidden && timer) pushBoard(); });
 
 		boardRef.onSnapshot({ includeMetadataChanges: true }, function (snap) {
-			trace('snapshot: hasPendingWrites=' + snap.metadata.hasPendingWrites + ' fromCache=' + snap.metadata.fromCache +
-				' rev=' + (snap.exists ? snap.data().rev || null : 'none') + ' stale=' + stale + ' batched=' + (timer != null));
+			trace(function () {
+				return 'snapshot: hasPendingWrites=' + snap.metadata.hasPendingWrites + ' fromCache=' + snap.metadata.fromCache +
+					' rev=' + (snap.exists ? snap.data().rev || null : 'none') + ' stale=' + stale + ' batched=' + (timer != null);
+			});
 
 			if (! snap.metadata.fromCache) // its callbacks run after this one, once the board is applied
 				fresh();
