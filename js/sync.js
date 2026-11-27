@@ -24,6 +24,13 @@
  *	  lands over it once any Card edit ends, and its push, if still
  *	  batched, never goes up. The cloud's board lands as a new revision,
  *	  so Undo gets back what this device had.
+ *	- "Made on" goes by content, not by rev: a cloud board whose content
+ *	  matches the board this device's board was made from counts as its
+ *	  base, whichever device wrote it. So when two devices save the same
+ *	  board and one's write is refused, a save it made since goes up if
+ *	  its push is still batched: the other device's save is already
+ *	  inside it. One whose push already went carries the refused write's
+ *	  rev as its base, so it's refused too and kept only in Undo.
  *	- A History day is only created, never replaced: the rules refuse a
  *	  write to a day the cloud already has, so a device that filed a day
  *	  offline (asleep across midnight, say) can't overwrite the one another
@@ -144,7 +151,7 @@
 		 */
 		var synced = null;  // canon() of the board as the cloud last had it
 		var made   = null;  // the rev this device's board was made from, its next write's base (see firestore.rules): the cloud board's once on this device, or its own last write's
-		var origin = null;  // canon() of that board: a cloud board with the same content is one this device's board was made from too
+		var origin = null;  // canon() of that board: a cloud board with the same content, under any rev, is one this device's board was made from too
 		var seen   = null;  // the rev of the cloud board it last saw
 		var stale  = false; // a write was refused: nothing goes up until the cloud's board is on this device
 		var known  = false; // whether the cloud's board is known yet (never push blind)
@@ -282,11 +289,18 @@
 				return;
 			}
 
-			if (stale && snap.metadata.fromCache) // the old board a refused write rolls back to: wait for the server's
+			// The board a refused write rolls back to is the one this device
+			// last saw, which the refusal proves the cloud has moved on from:
+			// wait for the server's. It can come from the cache or, while the
+			// cloud's newer board is still on its way, from the server.
+			// The refusal's handler runs first: Firestore settles the write
+			// before it delivers the rolled-back board.
+			var rev = snap.data().rev || null;
+			if (stale && (snap.metadata.fromCache || rev == seen))
 				return;
 
 			known = true;
-			seen = snap.data().rev || null;
+			seen = rev;
 			var c = canon(snap.data());
 			if (c == origin) // our own write's echo, or the same board under another rev
 				made = seen;

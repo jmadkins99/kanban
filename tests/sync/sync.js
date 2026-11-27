@@ -6,7 +6,8 @@
 // - board and History changes then show up live on the other browser, the
 //   board with the day it last changed, which Auto-submit files it under;
 // - a save made on an older board than the cloud's loses, even when it's the
-//   later one (a Card edit in progress, a push still batched);
+//   later one (a Card edit in progress, a push still batched), but one made
+//   on a board with the cloud's content goes up, even after a refusal;
 // - a board save from a device that hasn't seen the cloud's current board
 //   (offline, or queued offline and sent on a later open) is refused, and
 //   that device takes the cloud's board;
@@ -74,6 +75,8 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
                 lists: [{ title: 'Done', notes: [{ text: 'from B', raw: false, min: false }] }] }]));`)]);
     const refusals = [];
     b.page.on('console', (m) => { if (m.text().includes('day write refused')) refusals.push(m.text()); });
+    const aRefusals = [];
+    a.page.on('console', (m) => { if (m.text().includes('board write refused')) aRefusals.push(m.text()); });
     try {
         // Signed out: the app stays local and offers sign-in.
         assert.strictEqual(await ready(a.page), 'signed-out');
@@ -204,6 +207,39 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
             await b.reload();
             assert.strictEqual(await ready(b.page), 'signed-in');
         });
+
+        // A and B save the same board, B's write lands first, and A saves
+        // again before its own write of that board is refused. A's later save
+        // was made on a board with the cloud's content, so it goes up, and
+        // nothing is lost: B's save is inside it (#81).
+        const holdsAll = (lists, ...ts) => ts.every((t) => holdsText(lists, t));
+        const contentOf = (page) => page.evaluate(() => JSON.stringify([NB.board.day, NB.board.lists.map((l) => [l.title, l.notes.map((n) =>
+            Object.keys(n).sort().filter((k) => k != 'raw' && k != 'min' && n[k] != null).map((k) => [k, n[k]]))])])); // as sync.js compares boards
+        const refusalsBefore = aRefusals.length;
+        const revisionBefore = await a.page.evaluate(() => NB.board.revision);
+        await a.page.evaluate(() => firebase.firestore().disableNetwork());
+        const saveSame = () => { setText($('.wrap .board .list').last().find('.card .text').last(), 'saved on both'); saveBoard(); };
+        await a.page.evaluate(saveSame);
+        await new Promise((r) => setTimeout(r, 1500)); // A's batched push is sent, queued while offline
+        await b.page.evaluate(saveSame);
+        await waitFor(b.page, () => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board')
+            .get({ source: 'server' }).then((s) => s.data().lists.some((l) => l.notes.some((n) => n.text == 'saved on both'))));
+        assert.strictEqual(await contentOf(a.page), await contentOf(b.page), 'A and B saved the same board');
+        await a.page.evaluate(() => {
+            setText($('.wrap .board .list').eq(2).find('.card .text').first(), 'then saved again on A');
+            saveBoard();
+            return firebase.firestore().enableNetwork(); // within the second, so that save's push is still batched
+        });
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'then saved again on A')));
+        await new Promise((r) => setTimeout(r, 3000)); // anything else would have landed by now
+        assert.strictEqual(aRefusals.length, refusalsBefore + 1, "A's write of the same board was refused: " + JSON.stringify(aRefusals));
+        assert.ok(holdsAll((await cloudBoard(a.page)).lists, 'saved on both', 'then saved again on A'), "the cloud has A's later save, B's inside it");
+        assert.ok(holdsAll(await boardOf(a.page), 'saved on both', 'then saved again on A'), 'so does A');
+        assert.ok(holdsAll(await boardOf(b.page), 'saved on both', 'then saved again on A'), 'and B');
+        assert.strictEqual(await contentOf(b.page), await contentOf(a.page), 'A and B end up with the same board');
+        // The board A last saw, which the refusal rolls A back to, never
+        // lands over A's later save: A's board holds just its own two saves.
+        assert.strictEqual(await a.page.evaluate(() => NB.board.revision), revisionBefore + 2, "no other board landed on A");
 
         // So do a Recurring Card's Schedule and Due date, and A's own copy
         // coming back from the cloud isn't taken for a change.
