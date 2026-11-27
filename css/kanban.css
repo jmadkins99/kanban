@@ -329,6 +329,30 @@ body:not(.card-editor-open) .board .head .menu:hover .teaser {
 	min-height: calc( var(--lh) * 1px );
 }
 
+/* Every Card on the board is two lines of its Name tall, on every screen
+   and at every font size and List width (#96): .text's vertical padding
+   moves to the Card, split evenly, so the Name and the icon and pills at
+   50% share one middle. A one-line Name sits centred top to bottom; a
+   longer one, line breaks and all, is cut off after two lines with "…".
+   The Card editor (.in-editor) keeps its own layout and shows it whole. */
+.board .card:not(.in-editor) {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	box-sizing: border-box;
+	height: calc( var(--lh) * 2px + 11px );
+	padding: 5.5px 0;
+}
+
+.board .card .text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	padding-top: 0;
+}
+
 /***/
 .board .head .text a,
 .board .card .text a {
@@ -1481,7 +1505,8 @@ button {
 .board .card .card-prio {
 	position: absolute;
 	left: 4px;
-	top: 3px;
+	top: 50%;
+	transform: translateY(-50%);
 	width: calc( var(--lh) * 1px + 4px );
 	height: calc( var(--lh) * 1px + 4px );
 	padding: 2px;
