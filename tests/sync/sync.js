@@ -133,9 +133,9 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await new Promise((r) => setTimeout(r, 3000)); // A's push would have landed by now
         assert.ok(! holdsText(await a.page.evaluate(() => NB.board.lists), 'typed on A'), "B's board wins on A");
         assert.ok(holdsText((await cloudBoard(a.page)).lists, 'saved on B meanwhile'), 'in the cloud');
-        assert.ok(! holdsText((await cloudBoard(a.page)).lists, 'typed on A'));
+        assert.ok(! holdsText((await cloudBoard(a.page)).lists, 'typed on A'), "without A's edit");
         assert.ok(holdsText(await b.page.evaluate(() => NB.board.lists), 'saved on B meanwhile'), 'and on B');
-        assert.ok(! holdsText(await b.page.evaluate(() => NB.board.lists), 'typed on A'));
+        assert.ok(! holdsText(await b.page.evaluate(() => NB.board.lists), 'typed on A'), "without A's edit");
         assert.strictEqual(await a.page.evaluate(() => {
             const hist = NB.storage.getBoardIndex().get(NB.board.id).history; // newest first
             return NB.storage.loadBoard(NB.board.id, hist[1]).lists[0].notes[1].text;
