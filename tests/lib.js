@@ -30,11 +30,12 @@ function findChrome() {
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.css': 'text/css' };
 
-function serve() {
+function serve(root) {
+    root = path.resolve(root);
     const server = http.createServer((req, res) => {
         const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-        const file = path.join(ROOT, rel === '/' ? 'index.html' : rel);
-        if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
+        const file = path.join(root, rel === '/' ? 'index.html' : rel);
+        if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
         fs.readFile(file, (err, data) => {
             if (err) { res.writeHead(404); return res.end(); }
             res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
@@ -52,9 +53,10 @@ const DEMO = require('./fixtures/demo-board.json');
 // run in order) runs before the app's own scripts on every load, e.g. to put
 // History entries into localStorage (see fakeClock, seedBoard). confirm() dialogs are
 // accepted, as a user clicking OK would. Then the demo board replaces the
-// first-visit board, unless `demo: false`.
-async function openApp(seed, { demo = true } = {}) {
-    const server = await serve();
+// first-visit board, unless `demo: false`. `root` serves the app from
+// another folder, such as a worktree of an older commit (sync/skew.js).
+async function openApp(seed, { demo = true, root = ROOT } = {}) {
+    const server = await serve(root);
     const browser = await puppeteer.launch({
         executablePath: findChrome(),
         headless: 'new',
@@ -88,6 +90,17 @@ async function openApp(seed, { demo = true } = {}) {
             server.close();
         },
     };
+}
+
+// The auth emulator takes unsigned custom tokens, so a test can be any uid.
+function token(uid) {
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const now = Math.floor(Date.now() / 1000);
+    return b64({ alg: 'none', typ: 'JWT' }) + '.' + b64({
+        iss: 'firebase-auth-emulator@example.com', sub: 'firebase-auth-emulator@example.com',
+        aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+        iat: now, exp: now + 3600, uid,
+    }) + '.';
 }
 
 // Lets jQuery animations (opacity fades before a removal) finish.
@@ -236,4 +249,4 @@ const iosTapper = async (page) => {
     };
 };
 
-module.exports = { openApp, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
+module.exports = { openApp, token, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };

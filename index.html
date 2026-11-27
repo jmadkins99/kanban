@@ -1875,7 +1875,7 @@
 		tickTimers();
 		if (window.XP) XP.render();
 
-		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo and imports land here
+		if (window.cloudSync) cloudSync.boardChanged(); // undo, redo, imports and cloud boards land here; see applyBoard in js/sync.js
 	}
 
 	// @section First-visit board
