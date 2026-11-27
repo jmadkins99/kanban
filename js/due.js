@@ -35,10 +35,11 @@
  *   Critical Card's Due date, or empty) and the earliest day it takes
  * Due.order(role, moment)  a comparator of saved Cards for a List: Late
  *   first, then Priority (Priority.LEVELS), then Arrival (docs/adr/0002).
- *   Done goes by Arrival alone. Backlog (docs/adr/0003): Late; Critical
- *   with a Due date, then Recurring, each earliest Due date first (a
- *   Recurring Card without one last among them); then Critical without
- *   one, Medium and Low; ties by Arrival.
+ *   Done goes by Arrival alone. Backlog (docs/adr/0003): Late; dated
+ *   Critical and Recurring together, earliest Due date first, Critical
+ *   above Recurring on the same day (a Recurring Card without one after
+ *   every dated Card); then Critical without one, Medium and Low; ties by
+ *   Arrival.
  *
  * A Decision is the whole state: every key is present, null deletes the
  * field, and an unchanged value comes back as the very one passed in (so a
@@ -229,18 +230,19 @@
     requireMoment(moment);
     var backlog = role == 'backlog';
     // Where a Card sorts before Arrival: its tier, then (in Backlog's dated
-    // tiers) its Due date, none after any date. See the header.
+    // tier) its Due date, none after any date, and Critical before Recurring
+    // on one day. See the header.
     var rank = function (card) {
-      if (isLate(card, role, moment)) return [-3, ''];
-      if (backlog && Priority.isCritical(card) && card.due) return [-2, card.due];
-      if (backlog && Priority.isRecurring(card)) return [-1, card.due || '~'];
-      return [Priority.LEVELS.indexOf(Priority.of(card)), ''];
+      if (isLate(card, role, moment)) return [-2, '', 0];
+      if (backlog && Priority.isCritical(card) && card.due) return [-1, card.due, 0];
+      if (backlog && Priority.isRecurring(card)) return [-1, card.due || '~', 1];
+      return [Priority.LEVELS.indexOf(Priority.of(card)), '', 0];
     };
     return function (a, b) {
       var arrival = (a.arrival || 0) - (b.arrival || 0);
       if (role == 'done') return arrival;
       var ra = rank(a), rb = rank(b);
-      return ra[0] - rb[0] || (ra[1] < rb[1] ? -1 : ra[1] > rb[1] ? 1 : 0) || arrival;
+      return ra[0] - rb[0] || (ra[1] < rb[1] ? -1 : ra[1] > rb[1] ? 1 : 0) || ra[2] - rb[2] || arrival;
     };
   }
 
