@@ -265,12 +265,19 @@ async function staleSaveRefused(edit, resume, batched) {
     assert.ok(has(await boardOf(a.page), 1, t), 'so does A');
     assert.ok(has(await boardOf(b.page), 1, t), 'and B takes it');
     // B took the cloud's board as a new revision, so Undo on B still gets back what B had.
-    const undoTo = await b.page.evaluate(() => {
-        const hist = NB.storage.getBoardIndex().get(NB.board.id).history; // newest first
-        const l = NB.storage.loadBoard(NB.board.id, hist[1]).lists;
-        return l[l.length - 1].notes[l[l.length - 1].notes.length - 1].text;
+    // When B's queued write is refused after a reload, B may first see the
+    // board that write rolled back to (A's older one, from its cache) and
+    // save it as a revision too, before the cloud's current board lands. So
+    // B's own is the first revision back that isn't the cloud's: every
+    // revision newer than it holds A's move.
+    const revs = await b.page.evaluate(() => {
+        const last = (l) => { const c = l[l.length - 1].notes; return c.length ? c[c.length - 1].text : null; };
+        return NB.storage.getBoardIndex().get(NB.board.id).history // newest first
+            .map((r) => { const l = NB.storage.loadBoard(NB.board.id, r).lists; return { last: last(l), moved: l[1].notes.map((n) => n.text) }; });
     });
-    assert.strictEqual(undoTo, edit, "Undo has B's own");
+    const own = revs.findIndex((r) => r.last == edit);
+    assert.ok(own >= 1, "Undo has B's own: " + JSON.stringify(revs.map((r) => r.last)));
+    assert.ok(revs.slice(0, own).every((r) => r.moved.includes(t)), "the revisions after B's own hold A's move");
 }
 
 scenario('stale save offline', () =>
