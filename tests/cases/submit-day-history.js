@@ -90,13 +90,11 @@ const DAY = 86400000;
         assert.deepStrictEqual((await shown()).map((i) => i.board), ['Old board']);
         await page.click('.week-next');
 
-        // A day submitted by hand during that day (before auto-submit) gets replaced once it's over.
+        // A day submitted by hand during that day (before auto-submit) is kept too.
         const oldDay = hist.find((e) => e.title == 'Old board').day;
         await page.evaluate((day) => { NB.board.day = day; NB.storage.saveBoard(NB.board); }, oldDay);
         await app.reload();
-        hist = await stored();
-        assert.strictEqual(hist.length, 2, 'replaced, not added');
-        assert.deepStrictEqual(hist.find((e) => e.day == oldDay).lists, board.lists, 'the old day now holds the board');
+        assert.deepStrictEqual(await stored(), hist, 'kept, not replaced');
 
         // Delete today's entry.
         await page.evaluate(() => $('.config .view-history').click());

@@ -8,11 +8,13 @@
 // - a board save from a device that hasn't seen the cloud's current board
 //   (offline, or queued offline and sent on a later open) is refused, and
 //   that device takes the cloud's board;
+// - Auto-submit only creates a History day: a device offline across midnight
+//   doesn't overwrite the day another device filed, and takes the cloud's;
 // - the rules let only the owner in, and only to the documents the app uses.
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { openApp, moveCard, editCard, clickAway } = require('../lib');
+const { openApp, moveCard, editCard, clickAway, fakeClock, setClock, wake } = require('../lib');
 
 const OWNER = /userId == '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, '../../firebase/firestore.rules'), 'utf8'))[1];
 
@@ -62,12 +64,14 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     })();
 
-    const a = await openApp(devOptIn);
-    const b = await openApp(new Function(`
+    const a = await openApp([fakeClock(), devOptIn]);
+    const b = await openApp([fakeClock(), new Function(`
         localStorage.setItem('nullboard.firebaseDev', 'true');
         if (! localStorage.getItem('nullboard.history'))
             localStorage.setItem('nullboard.history', JSON.stringify([{ day: '${oldDay}', title: 'Old', submittedAt: '${oldDay}T12:00:00.000Z',
-                lists: [{ title: 'Done', notes: [{ text: 'from B', raw: false, min: false }] }] }]));`));
+                lists: [{ title: 'Done', notes: [{ text: 'from B', raw: false, min: false }] }] }]));`)]);
+    const refusals = [];
+    b.page.on('console', (m) => { if (m.text().includes('day write refused')) refusals.push(m.text()); });
     try {
         // Signed out: the app stays local and offers sign-in.
         assert.strictEqual(await ready(a.page), 'signed-out');
@@ -237,6 +241,44 @@ const deniedWrite = (page, path) => page.evaluate((path) => firebase.firestore()
         await b.page.evaluate(() => XP.bankCards([{ xp: 2500, xpId: 'from-b' }]));
         await waitFor(a.page, () => 'from-b' in XP.bank() && 'from-a' in XP.bank());
         await waitFor(b.page, () => 'from-a' in XP.bank() && 'from-b' in XP.bank());
+
+        // Auto-submit only creates a History day. B sits offline across
+        // midnight with yesterday's board while A files the day; when B is
+        // back, the day is still A's, in the cloud and on B, and B's stale
+        // board save is refused too, so B takes the cloud's board.
+        const day = await a.page.evaluate(() => dayKey(new Date()));
+        const midnight = await a.page.evaluate(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 30).getTime(); });
+        const setLastCard = (text) => { setText($('.wrap .board .list').last().find('.card .text').last(), text); saveBoard(); };
+        const cloudDay = (page, day) => page.evaluate((day) => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/history/' + day)
+            .get({ source: 'server' }).then((s) => (s.exists ? s.data() : null)), day);
+        const mirrorDay = (page, day) => page.evaluate((day) => loadHistory().find((e) => e.day == day) || null, day);
+        const holds = (entry, t) => !! entry && entry.lists.some((l) => l.notes.some((n) => n.text == t));
+        await b.page.evaluate(() => firebase.firestore().disableNetwork());
+        await a.page.evaluate(setLastCard, 'filed by A');
+        await waitFor(a.page, () => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/kanban/board')
+            .get({ source: 'server' }).then((s) => s.data().lists.some((l) => l.notes.some((n) => n.text == 'filed by A'))));
+        await b.page.evaluate(setLastCard, 'stale on B');
+        await new Promise((r) => setTimeout(r, 1500)); // B's batched push is sent, queued while offline
+        await setClock(a.page, midnight);
+        await wake(a.page);
+        await waitFor(a.page, (day) => firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/history/' + day)
+            .get({ source: 'server' }).then((s) => s.exists), day);
+        const filedByA = await cloudDay(a.page, day);
+        assert.ok(holds(filedByA, 'filed by A'), 'A filed the day at midnight');
+        await setClock(b.page, midnight);
+        await wake(b.page);
+        assert.ok(holds(await mirrorDay(b.page, day), 'stale on B'), 'B, offline, filed its stale board');
+        await b.page.evaluate(() => firebase.firestore().enableNetwork());
+        await waitFor(b.page, (day) => (loadHistory().find((e) => e.day == day) || { lists: [] }).lists
+            .some((l) => l.notes.some((n) => n.text == 'filed by A')), day);
+        await waitFor(b.page, () => NB.board.lists.some((l) => l.notes.some((n) => n.text == 'filed by A'))); // and the cloud's board
+        await new Promise((r) => setTimeout(r, 4000)); // B's stale write would have landed by now
+        await wake(b.page); // another tick doesn't file the day again
+        await new Promise((r) => setTimeout(r, 2000));
+        assert.deepStrictEqual(await cloudDay(a.page, day), filedByA, "the cloud keeps A's day");
+        assert.deepStrictEqual(await mirrorDay(b.page, day), filedByA, 'and B takes it');
+        assert.deepStrictEqual(await mirrorDay(a.page, day), filedByA, 'so does A');
+        assert.strictEqual(refusals.length, 1, 'B tried once, not in a loop: ' + JSON.stringify(refusals));
 
         // Rules: only the owner, only the app's documents; signed out sees nothing.
         const uid = await a.page.evaluate(() => firebase.auth().currentUser.uid);

@@ -28,8 +28,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // A History day is only ever created, never replaced: a device that
+    // hasn't seen the day another device filed can't overwrite it (see
+    // js/sync.js). To file it again, delete it first.
     match /users/{userId}/history/{day} {
-      allow read, write: if isOwner(userId);
+      allow read, create, delete: if isOwner(userId);
     }
   }
 }
