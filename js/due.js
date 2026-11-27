@@ -23,7 +23,7 @@
  * Due.settle(card, where, moment)  every save: starts or ends a Card's
  *   Critical timer where it is; never moves it (to null)
  * Due.shows(card, where, moment)  the Due-date part of what a Card shows:
- *   { late, from, next, nextCritical, dueLine: { value, min } }. late: a
+ *   { late, from, next, nextCritical, nextFill, dueLine: { value, min } }. late: a
  *   Recurring Card past the end of its Due date, outside Done; it's a state,
  *   never stored, not a Priority. from: when its red Critical timer started
  *   (a Late Card's, the end of its Due date); null for a Card that isn't
