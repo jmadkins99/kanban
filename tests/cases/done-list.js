@@ -3,10 +3,10 @@
 // with the Done cards in it, then clears the Done list, without asking.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, moveCard } = require('../lib');
+const { openApp, settle, moveCard, fakeClock } = require('../lib');
 
 (async () => {
-    const app = await openApp(() => {});
+    const app = await openApp(fakeClock('2028-11-15 12:00'));
     const { page } = app;
     const dialogs = [];
     page.on('dialog', (d) => dialogs.push(d.message()));

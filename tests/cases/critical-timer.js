@@ -10,16 +10,15 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, moveCard, settle, sleep, fakeClock, setClock, clickAway: clickAwayOn, pickPriority, setPriority: setPriorityOn } = require('../lib');
+const { openApp, moveCard, settle, sleep, fakeClock, setClock, advanceClock, clickAway: clickAwayOn, pickPriority, setPriority: setPriorityOn } = require('../lib');
 
 const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
 
 (async () => {
-    // The real time, until the test moves the clock on.
-    const app = await openApp(fakeClock(), { demo: false });
+    const app = await openApp(fakeClock('2028-11-15 10:00'), { demo: false });
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
-    await sleep(300);
+    await setClock(page, '2028-11-15 10:00', { freeze: true }); // stands still until the case moves it
 
     // The first visit's Lists: Backlog, To-Do, WIP, Done.
     const BACKLOG = 0, TODO = 1, WIP = 2;
@@ -48,7 +47,11 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         return (await timers(list))[i];
     };
     const move = async (list, text, steps) => { await moveCard(page, list, await index(list, text), steps); await settle(page); };
-    const secs = (t) => { const m = /^(?:(\d+)h )?(\d+)m (\d+)s$/.exec(t); assert.ok(m, 'timer format: ' + t); return (+m[1] || 0) * 3600 + +m[2] * 60 + +m[3]; };
+    // Waits for the 250 ms tick to show `want` on that Card's timer.
+    const timerIs = (list, text, want) => page.waitForFunction((list, text, want) => {
+        const c = $('.wrap .board .list').eq(list).find('.card').toArray().find((c) => getText($(c).find('.text')) == text);
+        return c && $(c).find('.wip-timer:visible').text() == want;
+    }, {}, list, text, want);
     const rgb = (c) => c.match(/\d+/g).slice(0, 3).map(Number);
     const isRed = (t) => { const [r, g, b] = rgb(t.bg); return r > 150 && g < 100 && b < 100; };
     const accentHi = () => page.evaluate(() => {
@@ -61,14 +64,13 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         await addCard(BACKLOG, 'calm', null);
         await addCard(BACKLOG, 'fix the gate', 'Critical');
         assert.strictEqual(await timerOf(BACKLOG, 'calm'), null, 'a Low Card has no timer');
+        await timerIs(BACKLOG, 'fix the gate', '0m 0s'); // counting from 0
         let t = await timerOf(BACKLOG, 'fix the gate');
-        assert.ok(t, 'a Card created as Critical shows a timer');
-        assert.match(t.text, /^0m [0-2]s$/, 'counting from 0: ' + t.text);
         assert.ok(isRed(t), 'in red: ' + t.bg);
 
         // It counts up, and it sits inside the Card on its right.
-        await sleep(3100);
-        assert.ok(secs((await timerOf(BACKLOG, 'fix the gate')).text) >= 3, 'it counts up');
+        await advanceClock(page, 3000);
+        await timerIs(BACKLOG, 'fix the gate', '0m 3s');
         const box = await page.evaluate((s) => {
             const a = $(s)[0].getBoundingClientRect(), b = $(s).find('.wip-timer')[0].getBoundingClientRect();
             return { right: a.right - b.right, mid: b.left - (a.left + a.width / 2), top: b.top - a.top, bottom: a.bottom - b.bottom };
@@ -77,15 +79,15 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
 
         // Backlog to To-Do starts it over.
         await move(BACKLOG, 'fix the gate', 1);
-        t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^0m [0-2]s$/, 'entering To-Do starts over: ' + t.text);
-        assert.ok(isRed(t), 'still red');
+        await timerIs(TODO, 'fix the gate', '0m 0s'); // entering To-Do starts over
+        assert.ok(isRed(await timerOf(TODO, 'fix the gate')), 'still red');
 
         // In WIP it's the WIP timer from 0, in the accent; back in To-Do, red from 0.
-        await sleep(1100);
+        await advanceClock(page, 1000);
+        await timerIs(TODO, 'fix the gate', '0m 1s');
         await move(TODO, 'fix the gate', 1);
+        await timerIs(WIP, 'fix the gate', '0m 0s'); // the WIP timer starts at 0
         t = await timerOf(WIP, 'fix the gate');
-        assert.match(t.text, /^0m [0-1]s$/, 'the WIP timer starts at 0: ' + t.text);
         assert.ok(!isRed(t), 'not red in WIP: ' + t.bg);
         assert.strictEqual(t.border, await accentHi(), 'in the accent');
         await move(WIP, 'fix the gate', -1);
@@ -94,12 +96,10 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         // Its start is stored on the Card; reload with the clock 3h 25m on.
         const saved = await page.evaluate(() => NB.board.lists[1].notes.find((n) => n.text == 'fix the gate'));
         assert.ok(typeof saved.criticalSince == 'number', 'the start is saved: ' + JSON.stringify(saved));
-        await setClock(page, await page.evaluate(() => Date.now()) + SKEW);
+        await advanceClock(page, SKEW);
         await app.reload();
-        await sleep(300);
-        t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^3h 25m [0-3]s$/, 'right after a reload with the clock moved on: ' + t.text);
-        assert.ok(isRed(t), 'red after the reload');
+        await timerIs(TODO, 'fix the gate', '3h 25m 0s'); // right after a reload with the clock moved on
+        assert.ok(isRed(await timerOf(TODO, 'fix the gate')), 'red after the reload');
 
         // Export, take it off Critical, import the file: the timer comes back where it was.
         const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'board.nbx');
@@ -108,8 +108,7 @@ const SKEW = (3 * 3600 + 25 * 60) * 1000; // 3h 25m
         assert.strictEqual(await timerOf(TODO, 'fix the gate'), null, 'Low: no timer');
         await (await page.$('.config .imp-board-select')).uploadFile(file);
         await page.waitForFunction(() => $('.wrap .board .wip-timer.critical:visible').length == 1);
-        t = await timerOf(TODO, 'fix the gate');
-        assert.match(t.text, /^3h 25m [0-5]s$/, 'kept through export and import: ' + t.text);
+        await timerIs(TODO, 'fix the gate', '3h 25m 0s'); // kept through export and import
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

@@ -7,7 +7,7 @@
 // Priority: the Card stays Recurring.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, settle, sleep, fakeClock, seedBoard } = require('../lib');
+const { openApp, settle, sleep, fakeClock, setClock, advanceClock, seedBoard } = require('../lib');
 
 // "pay bills" is due Dec 1, so it turns Late at 00:00 Dec 2.
 const LISTS = [
@@ -23,7 +23,7 @@ const LISTS = [
 ];
 
 (async () => {
-    // The first load sees 2s before midnight at the end of Dec 1, 2028.
+    // The first load sees the end of Dec 1, 2028, with the clock standing still.
     const app = await openApp([
         fakeClock('2028-12-01 23:59:58'),
         seedBoard({ id: 39, title: 'Chores', day: '2028-12-01', lists: LISTS }),
@@ -31,6 +31,7 @@ const LISTS = [
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await page.waitForFunction(() => window.NB && NB.board && NB.board.title == 'Chores' && new Date().getFullYear() == 2028);
+    await setClock(page, '2028-12-01 23:59:58', { freeze: true });
     await sleep(300);
 
     const TODO = 1;
@@ -52,7 +53,6 @@ const LISTS = [
     }, text);
     const rgb = (c) => c.match(/\d+/g).slice(0, 3).map(Number);
     const red = (c) => { const [r, g, b] = rgb(c); return r > 150 && g < 100 && b < 100; };
-    const secs = (t) => { const m = /^(?:(\d+)h )?(\d+)m (\d+)s$/.exec(t); assert.ok(m, 'timer format: ' + t); return (+m[1] || 0) * 3600 + +m[2] * 60 + +m[3]; };
 
     try {
         // Dec 1, 23:59:58: still due today, so not Late yet.
@@ -62,8 +62,8 @@ const LISTS = [
         assert.strictEqual(c.timer, null, 'and it shows no timer');
 
         // Midnight passes with the tab open: it turns Late on its own.
-        await page.waitForFunction(() => new Date().getDate() == 2, { timeout: 5000 });
-        await sleep(600);
+        await advanceClock(page, 3000); // 00:00:01 on Dec 2
+        await page.waitForFunction(() => $('.wrap .board .list').eq(1).find('.card').first().find('.text').text().includes('pay bills'), { timeout: 10000 });
         await settle(page);
         assert.deepStrictEqual(await texts(TODO), ['pay bills', 'water plants', 'fix leak', 'tidy desk'], 'a Late Card goes to the very top, above Recurring');
         c = await card(TODO, 'pay bills');
@@ -71,7 +71,7 @@ const LISTS = [
         assert.ok(red(c.iconColor), 'the circular arrow turns red: ' + c.iconColor);
         assert.ok(c.timer, 'it shows a timer');
         assert.ok(red(c.timer.bg), 'a red Critical timer: ' + c.timer.bg);
-        assert.ok(secs(c.timer.text) <= 2, 'counting from midnight: ' + c.timer.text);
+        assert.strictEqual(c.timer.text, '0m 1s', 'counting from midnight');
         assert.strictEqual((await saved('pay bills')).priority, 'recurring', 'the saved Card is still Recurring');
         assert.ok(!('late' in await saved('pay bills')), 'Late is not stored');
         assert.deepStrictEqual(app.errors, []);

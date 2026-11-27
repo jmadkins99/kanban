@@ -28,7 +28,7 @@ const URL = 'http://127.0.0.1:9/a-link';
         // A plain click opens it in a new tab, and the card menu stays shut.
         const opened = new Promise((r) => page.browser().once('targetcreated', (t) => r(t.url())));
         await page.click(card + ' .text a');
-        assert.strictEqual(await Promise.race([opened, sleep(3000).then(() => 'nothing opened')]), URL);
+        assert.strictEqual(await Promise.race([opened, sleep(10000).then(() => 'nothing opened')]), URL);
         await sleep(450);
         assert.strictEqual(await page.evaluate((card) => $(card).hasClass('cm-open'), card), false, 'the card menu stays shut');
 

@@ -5,10 +5,10 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle, sleep, setPriority: setPriorityOn } = require('../lib');
+const { openApp, settle, sleep, fakeClock, setPriority: setPriorityOn } = require('../lib');
 
 (async () => {
-    const app = await openApp(() => {});
+    const app = await openApp(fakeClock('2028-11-15 12:00'));
     const { page } = app;
     await page.setViewport({ width: 1280, height: 1000 });
     await sleep(300);
