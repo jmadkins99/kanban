@@ -34,11 +34,11 @@ const LISTS = [
     const texts = (list) => page.evaluate((list) => $('.wrap .board .list').eq(list).find('.card').toArray().map((c) => getText($(c).find('.text'))), list);
 
     try {
-        assert.deepStrictEqual(await texts(0), ['critical Dec 20', 'recurring Dec 3', 'critical'], 'Backlog shows in its order');
+        assert.deepStrictEqual(await texts(0), ['recurring Dec 3', 'critical Dec 20', 'critical'], 'Backlog shows in its order');
 
         // Moved by hand into To-Do, "recurring Dec 3" goes above the Critical
         // Card there, as Recurring does in 0002's order.
-        await moveCard(page, 0, 1, 1);
+        await moveCard(page, 0, 0, 1);
         await settle(page);
         assert.deepStrictEqual(await texts(1), ['recurring Dec 3', 'todo critical'], 'in To-Do it takes 0002\'s order');
 

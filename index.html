@@ -54,7 +54,7 @@
   <!-- Copied unchanged from gym-tracker, so both apps land on the same color
        each day. Plain script ahead of the styles so the day's accent is set
        before first paint. -->
-  <script src="js/accentColor.js?v=6"></script>
+  <script src="js/accentColor.js?v=7"></script>
   <script>
 	(function () {
 		var icon = document.querySelector("link[rel='icon']");
@@ -63,7 +63,7 @@
 		icon.setAttribute('href', icon.getAttribute('href').replace('%236a5a8a', '%23' + tint.slice(1)));
 	}());
   </script>
-  <link rel="stylesheet" href="css/kanban.css?v=6">
+  <link rel="stylesheet" href="css/kanban.css?v=7">
 
 </head>
 <body>
@@ -235,11 +235,11 @@
 
 </body>
 
-<script src="extras/jquery-3.6.0.min.js?v=6"></script>
+<script src="extras/jquery-3.6.0.min.js?v=7"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
-<script src="js/priority.js?v=6"></script>
-<script src="js/schedule.js?v=6"></script>
-<script src="js/due.js?v=6"></script>
+<script src="js/priority.js?v=7"></script>
+<script src="js/schedule.js?v=7"></script>
+<script src="js/due.js?v=7"></script>
 
 <script type="text/javascript">
 
@@ -1417,7 +1417,8 @@
 	 *	Priority, then first in, first out by Arrival, when the Card entered
 	 *	its List. Done goes by Arrival alone, so it reads as the day in order.
 	 *	Backlog is the exception (docs/adr/0003): after Late, dated Critical
-	 *	Cards, then Recurring, each by Due date, then Priority as above.
+	 *	and Recurring Cards together by Due date (Critical first on one day),
+	 *	then Priority as above.
 	 *	The order is the Due date module's (Due.order in js/due.js).
 	 */
 
@@ -3669,11 +3670,11 @@
 
 </script>
 
-<script src="js/cardmenu.js?v=6"></script>
-<script src="js/celebrate.js?v=6"></script>
-<script src="js/ranks.js?v=6"></script>
-<script src="js/levelup.js?v=6"></script>
-<script src="js/xp.js?v=6"></script>
-<script src="js/sync.js?v=6"></script>
+<script src="js/cardmenu.js?v=7"></script>
+<script src="js/celebrate.js?v=7"></script>
+<script src="js/ranks.js?v=7"></script>
+<script src="js/levelup.js?v=7"></script>
+<script src="js/xp.js?v=7"></script>
+<script src="js/sync.js?v=7"></script>
 
 </html>

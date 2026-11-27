@@ -303,11 +303,11 @@ const ROWS = [
         ], done, AT_10, undefined,
         ['low', 'critical', 'late']],
 
-    // Backlog reads as what's coming next (docs/adr/0003): Late; then
-    // Critical Cards with a Due date, earliest first; then Recurring, earliest
-    // Due date first; then Critical without one, Medium and Low by Arrival.
-    // Cards due the same day go by Arrival.
-    ['Backlog sorts Late, dated Critical, Recurring by Due date, then by Priority',
+    // Backlog reads as what's coming next (docs/adr/0003): Late; then dated
+    // Critical and Recurring Cards together, earliest Due date first, Critical
+    // above Recurring on the same day; then Critical without one, Medium and
+    // Low by Arrival. Cards of one Priority due the same day go by Arrival.
+    ['Backlog sorts Late, then dated Critical and Recurring by Due date, then by Priority',
         'order', [
             { text: 'low', priority: 'low', arrival: 1 },
             { text: 'medium', priority: 'medium', arrival: 2 },
@@ -320,20 +320,27 @@ const ROWS = [
             { text: 'late', priority: 'recurring', arrival: 12, schedule: weekly, due: '2028-02-21' },
             { text: 'recurring Feb 28 a', priority: 'recurring', arrival: 6, schedule: weekly, due: '2028-02-28' },
         ], backlog, AT_10, undefined,
-        ['late', 'critical Mar 1', 'critical Mar 9', 'recurring today', 'recurring Feb 28 a', 'recurring Feb 28 b',
-            'recurring Mar 6', 'critical', 'medium', 'low']],
+        ['late', 'recurring today', 'recurring Feb 28 a', 'recurring Feb 28 b', 'critical Mar 1',
+            'recurring Mar 6', 'critical Mar 9', 'critical', 'medium', 'low']],
+    ['in Backlog a dated Critical Card goes above a Recurring Card due the same day',
+        'order', [
+            { text: 'recurring', priority: 'recurring', arrival: 2, schedule: weekly, due: '2028-03-06' },
+            { text: 'critical', priority: 'critical', arrival: 8, due: '2028-03-06' },
+        ], backlog, AT_10, undefined,
+        ['critical', 'recurring']],
     ['in Backlog dated Critical Cards due the same day go by Arrival',
         'order', [
             { text: 'second', priority: 'critical', arrival: 8, due: '2028-03-01' },
             { text: 'first', priority: 'critical', arrival: 2, due: '2028-03-01' },
         ], backlog, AT_10, undefined,
         ['first', 'second']],
-    ['in Backlog a Recurring Card without a Due date comes last among Recurring',
+    ['in Backlog a Recurring Card without a Due date comes after every dated Card',
         'order', [
             { text: 'no date', priority: 'recurring', arrival: 1, schedule: weekly },
+            { text: 'critical Mar 9', priority: 'critical', arrival: 3, due: '2028-03-09' },
             { text: 'Mar 6', priority: 'recurring', arrival: 2, schedule: weekly, due: '2028-03-06' },
         ], backlog, AT_10, undefined,
-        ['Mar 6', 'no date']],
+        ['Mar 6', 'critical Mar 9', 'no date']],
     ['outside Backlog the same Cards keep 0002\'s order',
         'order', [
             { text: 'recurring Mar 6', priority: 'recurring', arrival: 4, schedule: weekly, due: '2028-03-06' },
