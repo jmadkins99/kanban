@@ -1429,14 +1429,15 @@ button {
 .board .card .wip-timer.next.next-critical:not(:empty) {
 	display: block;
 	background: rgba(222, 53, 11, calc(0.55 * var(--next-fill, 1)));
-	border-color: #ff5630;
+	border-color: rgba(255, 86, 48, calc(0.3 + 0.7 * var(--next-fill, 1)));
 	color: #ffd5cc;
 }
 
 /* A Recurring card waiting in Backlog shows "Next: <date>" there, in the
    Recurring icon's purple; a Critical one with a Due date, in red. Its fill
-   is --next-fill of the full one (Due.shows' nextFill): only an outline far
-   out, filling in as its day nears. */
+   is --next-fill of the full one (Due.shows' nextFill), and its outline
+   goes from 30% to full with it: only a faint outline far out, filling in
+   as its day nears. */
 .board .card.next-waiting .text {
 	padding-right: calc(92px * var(--ui));
 }
@@ -1444,7 +1445,7 @@ button {
 .board .card .wip-timer.next:not(:empty) {
 	display: block;
 	background: rgba(135, 119, 217, calc(0.35 * var(--next-fill, 1)));
-	border-color: #8777d9;
+	border-color: rgba(135, 119, 217, calc(0.3 + 0.7 * var(--next-fill, 1)));
 	color: #e4e0ff;
 }
 

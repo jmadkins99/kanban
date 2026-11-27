@@ -1,8 +1,9 @@
-// "Next: <date>" fills in as its day nears: only an outline 28 days or more
-// out, full 3 days or fewer out (how much, by day, is the Due date module's,
-// in due-date-rules.js). Here, the page draws that fill on a purple and a
-// red tag and redraws it as the days pass, with no save; the WIP timer and
-// the Critical timer stay fully filled, also on a Card whose tag was part
+// "Next: <date>" fills in as its day nears: only a faint outline (30%) 28
+// days or more out, full 3 days or fewer out, its outline growing with its
+// fill (how much, by day, is the Due date module's, in due-date-rules.js).
+// Here, the page draws that fill and outline on a purple and a red tag and
+// redraws them as the days pass, with no save; the WIP timer and the
+// Critical timer stay fully filled, also on a Card whose tag was part
 // filled before its day came.
 const assert = require('assert');
 const { openApp, sleep, fakeClock, setClock, wake, seedBoard } = require('../lib');
@@ -41,27 +42,38 @@ const LISTS = [
     try {
         let t = await tag('clean gutters');
         assertAlphaNear(t.fill, 0, 'a Recurring Card 36 days out is only an outline');
-        assertAlphaNear(t.border, 1, 'its border as strong as ever');
+        assertAlphaNear(t.border, 0.3, 'its outline at 30%');
 
-        // 15 days out: 52% of the purple's full 0.35; 27 days out: 4% of the red's 0.55.
-        assertAlphaNear((await tag('water plants')).fill, 0.35 * 0.52, 'a Recurring Card 15 days out is half filled in');
-        assertAlphaNear((await tag('renew passport')).fill, 0.55 * 0.04, 'a Critical Card 27 days out has a faint red fill');
+        // 15 days out: 52% of the purple's full 0.35, its outline 30% + 70% of 52%;
+        // 27 days out: 4% of the red's 0.55, its outline 30% + 70% of 4%.
+        t = await tag('water plants');
+        assertAlphaNear(t.fill, 0.35 * 0.52, 'a Recurring Card 15 days out is half filled in');
+        assertAlphaNear(t.border, 0.3 + 0.7 * 0.52, 'its outline as far on');
+        t = await tag('renew passport');
+        assertAlphaNear(t.fill, 0.55 * 0.04, 'a Critical Card 27 days out has a faint red fill');
+        assertAlphaNear(t.border, 0.3 + 0.7 * 0.04, 'and a faint red outline');
 
-        assertAlphaNear((await tag('call bank')).fill, 0.55, 'a Critical timer stays fully filled');
+        t = await tag('call bank');
+        assertAlphaNear(t.fill, 0.55, 'a Critical timer stays fully filled');
+        assertAlphaNear(t.border, 1, 'its outline full');
         assertAlphaNear((await tag('write report')).fill, 0.45, 'and a WIP timer');
 
         // Days pass with the tab open, nothing saved: on Mar 6, 3 days before
         // its day, it's fully filled in.
         await setClock(page, '2028-03-06 09:00');
         await sleep(500);
-        assertAlphaNear((await tag('water plants')).fill, 0.35, '3 days out it is fully filled in');
+        t = await tag('water plants');
+        assertAlphaNear(t.fill, 0.35, '3 days out it is fully filled in');
+        assertAlphaNear(t.border, 1, 'its outline full');
         assertAlphaNear((await tag('renew passport')).fill, 0.55 * 0.52, 'the Critical Card, 15 days out, half');
 
         // Its day comes: the Critical Card's tag, half filled when last seen,
         // becomes its Critical timer, fully filled.
         await setClock(page, '2028-03-21 09:00');
         await wake(page);
-        assertAlphaNear((await tag('renew passport')).fill, 0.55, 'its Critical timer is fully filled');
+        t = await tag('renew passport');
+        assertAlphaNear(t.fill, 0.55, 'its Critical timer is fully filled');
+        assertAlphaNear(t.border, 1, 'its outline full');
 
         assert.deepStrictEqual(app.errors, [], 'no page errors');
     } finally {

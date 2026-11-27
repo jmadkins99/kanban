@@ -32,8 +32,8 @@
  *   until saved.
  *   next: the day it waits for in Backlog, for "Next: <date>", in red when
  *   nextCritical. nextFill: how much of its full fill it shows, from 0 (only
- *   an outline, 28 days or more out) to 1 (3 days or fewer); null with no
- *   next. dueLine: what the Card editor's Due line starts from (a
+ *   a faint outline, 28 days or more out) to 1 (3 days or fewer); null with
+ *   no next. dueLine: what the Card editor's Due line starts from (a
  *   Critical Card's Due date, or empty) and the earliest day it takes
  * Due.order(role, moment)  a comparator of saved Cards for a List: Late
  *   first, then Priority (Priority.LEVELS), then Arrival (docs/adr/0002).
@@ -227,7 +227,7 @@
     };
   }
 
-  // "Next: <date>" is only an outline OUTLINE_DAYS or more out, and full
+  // "Next: <date>" is only a faint outline OUTLINE_DAYS or more out, and full
   // FULL_DAYS or fewer out, filling in by equal daily steps between.
   var OUTLINE_DAYS = 28, FULL_DAYS = 3;
   function nextFill(daysLeft) {
