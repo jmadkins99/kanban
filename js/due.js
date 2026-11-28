@@ -41,7 +41,9 @@
  *   Critical and Recurring together, earliest Due date first, Critical
  *   above Recurring on the same day (a Recurring Card without one after
  *   all of them); then Critical without one, Medium and Low; ties by
- *   Arrival.
+ *   Arrival. Outside Done, Cards that share a Group name are then pulled
+ *   together by the Group module (Group.arrange in js/group.js,
+ *   docs/adr/0004), which callers use rather than this alone.
  *
  * A Decision is the whole state: every key is present, null deletes the
  * field, and an unchanged value comes back as the very one passed in (so a

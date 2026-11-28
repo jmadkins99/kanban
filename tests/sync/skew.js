@@ -4,6 +4,8 @@
 // holds a dated Critical Card and an earlier Recurring one, which the two
 // sides of #88 sort in opposite orders, so a version that sends back its own
 // sort of the other's board makes the two trade it without end (#90).
+// To-Do and WIP hold Cards that share a Group name between ones that don't,
+// which a version from before Groups (#97) sorts in another order.
 //
 // Prints GREEN, or RED with what went wrong: B redrew the board (on a phone
 // that throws it back to Backlog), B's lists scrolled back to Backlog, B's
@@ -22,7 +24,7 @@ const LISTS = [
         { text: 'critical Dec 20', priority: 'critical', arrival: 1, due: '2028-12-20' },
         { text: 'recurring Dec 3', priority: 'recurring', arrival: 2, schedule: weekly, due: '2028-12-03' },
     ] },
-    { title: 'To-Do', notes: [1, 2, 3, 4].map((i) => ({ text: 'to do ' + i, priority: 'medium', arrival: 2 + i })) },
+    { title: 'To-Do', notes: [1, 2, 3, 4, 5, 6].map((i) => ({ text: (i % 2 ? 'g: ' : 'to do ') + i, priority: 'medium', arrival: 2 + i })) },
     { title: 'WIP', notes: [] },
     { title: 'Done', notes: [] },
 ];
@@ -63,7 +65,7 @@ const state = (page) => page.evaluate(() => ({
         await a.page.waitForFunction(() => firebase.auth().currentUser, { timeout: 20000 });
         for (let i = 0; i < 100 && ! (await cloudRev(a.page)); i++) await sleep(200);
         await signIn(b);
-        await b.page.waitForFunction(() => NB.board.lists[1].notes.some((n) => n.text == 'to do 1'), { timeout: 20000 });
+        await b.page.waitForFunction(() => NB.board.lists[1].notes.some((n) => n.text == 'g: 1'), { timeout: 20000 });
         await sleep(4000);
 
         for (let i = 0; i < MOVES; i++) {
