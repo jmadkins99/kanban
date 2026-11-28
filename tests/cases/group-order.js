@@ -44,7 +44,8 @@ const LISTS = [
         await clickAway(page);
         assert.deepStrictEqual(await todo(), ['k: a', 'K: x', 'k: b', 'j: c', 'y'], 'x joins the k Group in its Arrival place');
 
-        // A Card moved with the card menu's arrows leaves one Group and joins another.
+        // A Card moved with the card menu's arrows joins a Group in its new
+        // List, and leaves the one in its old List.
         await moveCard(page, 2, 0, -1); // J: d from WIP into To-Do
         await settle(page);
         assert.deepStrictEqual(await todo(), ['k: a', 'K: x', 'k: b', 'j: c', 'J: d', 'y'], 'J: d joins j: c');
@@ -55,7 +56,14 @@ const LISTS = [
         assert.deepStrictEqual(moved[1], ['K: x', 'k: b', 'j: c', 'J: d', 'y'], "k: a leaves To-Do's k Group");
         assert.deepStrictEqual(moved[2], ['k: w', 'k: a', 'z'], 'and joins k: w in WIP, ahead of z, which arrived before it');
 
+        // A Card left alone when its only partner moves away goes back to ordinary order.
+        await moveCard(page, 2, 0, 1); // k: w into Done
+        await settle(page);
+        assert.deepStrictEqual((await shown())[2], ['z', 'k: a'], 'k: a is back below z, by Arrival');
+
         // Undo restores each old grouping in turn.
+        await undo();
+        assert.deepStrictEqual((await shown())[2], ['k: w', 'k: a', 'z'], 'undo brings k: w back to k: a');
         await undo();
         assert.deepStrictEqual(await todo(), ['k: a', 'K: x', 'k: b', 'j: c', 'J: d', 'y'], 'undo puts k: a back in its Group');
         await undo();

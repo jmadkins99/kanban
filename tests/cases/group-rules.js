@@ -43,9 +43,13 @@ const ROWS = [
         ['medium', '-'], ['low', '-'],
     ]],
     ['a Late Card pulls its Group to the top', 'arrange', [
-        card('critical', 'critical', 1), card('k: low', 'low', 2),
+        card('recurring', 'recurring', 1, { schedule: weekly, due: TODAY }), card('k: low', 'low', 2),
         card('k: late', 'recurring', 3, { schedule: weekly, due: '2028-02-21' }),
-    ], 'todo', AT_10, [['k: late', 'first'], ['k: low', 'last'], ['critical', '-']]],
+    ], 'todo', AT_10, [['k: late', 'first'], ['k: low', 'last'], ['recurring', '-']]],
+    ["a Group name that's also a built-in key works like any other", 'arrange', [
+        card('constructor: a', 'medium', 1), card('__proto__: b', 'medium', 2), card('x', 'medium', 3),
+        card('Constructor: c', 'medium', 4), card('toString: d', 'medium', 5),
+    ], 'todo', AT_10, [['constructor: a', 'first'], ['Constructor: c', 'last'], ['__proto__: b', '-'], ['x', '-'], ['toString: d', '-']]],
     ['Groups follow Backlog\'s Due-date order', 'arrange', [
         card('k: Mar 9', 'recurring', 1, { schedule: weekly, due: '2028-03-09' }),
         card('Mar 1', 'critical', 2, { due: '2028-03-01' }),

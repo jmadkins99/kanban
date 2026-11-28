@@ -29,16 +29,17 @@
   function arrange(cards, role, moment) {
     var sorted = cards.slice().sort(Due.order(role, moment));
     var names = sorted.map(function (c) { return role == 'done' ? null : nameOf(c.text); });
-    var count = {};
-    names.forEach(function (g) { if (g != null) count[g] = (count[g] || 0) + 1; });
+    // Keyed by Group name, so no inherited key ("constructor") can match one.
+    var count = Object.create(null), placed = Object.create(null);
+    names.forEach(function (name) { if (name != null) count[name] = (count[name] || 0) + 1; });
 
-    var out = [], placed = {};
+    var out = [];
     sorted.forEach(function (c, i) {
-      var g = names[i];
-      if (g == null || count[g] < 2) return out.push({ card: c, place: null });
-      if (placed[g]) return;
-      placed[g] = true;
-      var members = sorted.filter(function (_, j) { return names[j] == g; });
+      var name = names[i];
+      if (name == null || count[name] < 2) return out.push({ card: c, place: null });
+      if (placed[name]) return;
+      placed[name] = true;
+      var members = sorted.filter(function (_, j) { return names[j] == name; });
       members.forEach(function (m, k) {
         out.push({ card: m, place: k == 0 ? 'first' : k == members.length - 1 ? 'last' : 'middle' });
       });
