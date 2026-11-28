@@ -55,8 +55,8 @@
        each day. Plain script ahead of the styles so the day's accent is set
        before first paint. -->
   <!-- Temporary: the phone-bug debug log (see js/debuglog.js). First, to catch every error. -->
-  <script src="js/debuglog.js?v=11"></script>
-  <script src="js/accentColor.js?v=11"></script>
+  <script src="js/debuglog.js?v=12"></script>
+  <script src="js/accentColor.js?v=12"></script>
   <script>
 	(function () {
 		var icon = document.querySelector("link[rel='icon']");
@@ -65,7 +65,7 @@
 		icon.setAttribute('href', icon.getAttribute('href').replace('%236a5a8a', '%23' + tint.slice(1)));
 	}());
   </script>
-  <link rel="stylesheet" href="css/kanban.css?v=11">
+  <link rel="stylesheet" href="css/kanban.css?v=12">
 
 </head>
 <body>
@@ -237,11 +237,12 @@
 
 </body>
 
-<script src="extras/jquery-3.6.0.min.js?v=11"></script>
+<script src="extras/jquery-3.6.0.min.js?v=12"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
-<script src="js/priority.js?v=11"></script>
-<script src="js/schedule.js?v=11"></script>
-<script src="js/due.js?v=11"></script>
+<script src="js/priority.js?v=12"></script>
+<script src="js/schedule.js?v=12"></script>
+<script src="js/due.js?v=12"></script>
+<script src="js/group.js?v=12"></script>
 
 <script type="text/javascript">
 
@@ -1421,10 +1422,13 @@
 	 *	Backlog is the exception (docs/adr/0003): after Late, dated Critical
 	 *	and Recurring Cards together by Due date (Critical first on one day),
 	 *	then Priority as above.
-	 *	The order is the Due date module's (Due.order in js/due.js).
+	 *	Outside Done, Cards that share a Group name sit together, where the
+	 *	highest-ranked of them would sit (docs/adr/0004).
+	 *	The order is the Group module's (Group.arrange in js/group.js), built
+	 *	on the Due date module's (Due.order in js/due.js).
 	 */
 
-	// Sorts a saved board's Lists in place, each List's role found from the
+	// Puts a saved board's Lists in order in place, each List's role found from the
 	// titles as listWhere finds it on screen. Cards saved before Arrivals get
 	// them in increasing order down their List, so its order is kept.
 	function orderBoard(board)
@@ -1445,7 +1449,7 @@
 				if (typeof n.arrival != 'number') n.arrival = last + 1;
 				last = n.arrival;
 			});
-			list.notes.sort( Due.order(role, moment) );
+			list.notes = Group.arrange(list.notes, role, moment).map(function(a){ return a.card; });
 		});
 	}
 
@@ -1455,9 +1459,9 @@
 		var moment = dueMoment();
 		$('.wrap .board .list').each(function(){
 			var $cards = $(this).find('.cards');
-			var order = Due.order(listWhere($(this)).role, moment);
 			var cards = $cards.children('.card').get();
-			var want = cards.slice().sort(function(a, b){ return order(cardMeta($(a)), cardMeta($(b))); });
+			var saved = cards.map(function(c){ return Object.assign({}, cardMeta($(c)), { text: getText($(c).find('.text')) }); });
+			var want = Group.arrange(saved, listWhere($(this)).role, moment).map(function(a){ return cards[saved.indexOf(a.card)]; });
 			want.forEach(function(card, i){
 				var at = $cards.children('.card')[i];
 				if (at !== card) $cards[0].insertBefore(card, at);
@@ -3673,11 +3677,11 @@
 
 </script>
 
-<script src="js/cardmenu.js?v=11"></script>
-<script src="js/celebrate.js?v=11"></script>
-<script src="js/ranks.js?v=11"></script>
-<script src="js/levelup.js?v=11"></script>
-<script src="js/xp.js?v=11"></script>
-<script src="js/sync.js?v=11"></script>
+<script src="js/cardmenu.js?v=12"></script>
+<script src="js/celebrate.js?v=12"></script>
+<script src="js/ranks.js?v=12"></script>
+<script src="js/levelup.js?v=12"></script>
+<script src="js/xp.js?v=12"></script>
+<script src="js/sync.js?v=12"></script>
 
 </html>
