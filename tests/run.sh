@@ -40,7 +40,9 @@ CASES_DIR="${TEST_CASES_DIR:-cases}"
 OUT_DIR="${TEST_OUT_DIR:-.last-run}"
 OUT_MARKER=.runner-last-run
 
-# Optional filter: `bash run.sh clear` runs every case with "clear" in its name. Matched as a substring of the case name.
+# Optional filter: `bash run.sh clear` runs every case with "clear" in its path
+# (cases/<name>.js), so `done-animation.js` and `cases/done-animation` work
+# too. A filter that matches nothing is an error.
 #
 # TEST_CASES, if set, is an exact list of case names (whitespace-separated)
 # and replaces the filter. Plain `bash run.sh` is the full suite.
@@ -51,7 +53,16 @@ ONLY="${TEST_CASES:-}"
 # pipeline that produced nothing) must never quietly become a full run.
 ONLY_SET="${TEST_CASES+x}"
 JOBS="${TEST_JOBS:-4}"   # also the number of slot Chromes
+if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "TEST_JOBS must be a whole number of 1 or more, got: $JOBS"
+    exit 1
+fi
 CASE_TIMEOUT="${TEST_CASE_TIMEOUT:-120}"
+
+# TEST_SERIAL_GATE=<file> (all.sh only): the serial cases, and the retries after
+# them, wait until that file exists, so they run once the caller's other work
+# (sync) is over. Gives up if the parent process is gone.
+SERIAL_GATE="${TEST_SERIAL_GATE:-}"
 
 # TEST_SHARD=i/n runs every n-th case starting at the i-th (1-based), so n
 # machines can split the suite between them. Taken round-robin rather than in
@@ -59,8 +70,9 @@ CASE_TIMEOUT="${TEST_CASE_TIMEOUT:-120}"
 SHARD="${TEST_SHARD:-}"
 if [ -n "$SHARD" ]; then
     SHARD_I="${SHARD%/*}"; SHARD_N="${SHARD#*/}"
-    if ! [[ "$SHARD_I" =~ ^[0-9]+$ && "$SHARD_N" =~ ^[0-9]+$ ]] ||
-       [ "$SHARD_I" -lt 1 ] || [ "$SHARD_I" -gt "$SHARD_N" ]; then
+    # Whole decimal numbers without leading zeros: bash arithmetic reads 08 as
+    # a bad octal number. Also rejects a bare `1`, `0/4` and `5/4`.
+    if ! [[ "$SHARD" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]] || [ "$SHARD_I" -gt "$SHARD_N" ]; then
         echo "TEST_SHARD must look like 2/4 (shard 2 of 4), got: $SHARD"
         exit 1
     fi
@@ -105,7 +117,7 @@ if [ -n "${TEST_CASES_DIR:-}" ] && [ "${TEST_SLOT_CHROME:-}" != 1 ]; then SLOT_C
 # cases, which are plain node scripts unless they use Chrome.
 if [ ! -d node_modules ] && [ "$SLOT_CHROME" = 1 ] && [ -z "${TEST_CASES_DIR:-}" ]; then
     echo "Installing test dependencies..."
-    npm ci --silent --no-audit --no-fund
+    npm ci --silent --no-audit --no-fund || { echo "npm ci failed. Nothing was run."; exit 1; }
 fi
 
 # Collect the cases to run, in filename order. SERIAL[i] is 1 for a case that
@@ -120,7 +132,7 @@ for test in "$CASES_DIR"/*.js; do
             *" $name "*) NAMES+=("$name"); FILES+=("$test") ;;
         esac
     else
-        case "$name" in
+        case "$test" in
             *"$PATTERN"*) NAMES+=("$name"); FILES+=("$test") ;;
         esac
     fi
@@ -232,7 +244,7 @@ claim_dir() { mkdir "$1" 2>/dev/null && ( set -C; : > "$1/.made" ) 2>/dev/null; 
 if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
     LOCK_TMP="$(cygpath -u "$LOCALAPPDATA")/Temp"
 else
-    LOCK_TMP=/tmp
+    LOCK_TMP="${TEST_LOCK_TMP:-/tmp}"     # TEST_LOCK_TMP: check-runner.sh only
 fi
 LOCK_DIR="${TEST_LOCK_FILE:-$LOCK_TMP/machine-test-run.lock}"
 LOCK_INFO="$LOCK_DIR/info"
@@ -502,6 +514,14 @@ for ((w = 1; w <= JOBS; w++)); do
     worker "$w" &
 done
 wait
+
+# TEST_SERIAL_GATE: wait for the caller's other work to finish first.
+if [ -n "$SERIAL_GATE" ]; then
+    while [ ! -e "$SERIAL_GATE" ]; do
+        kill -0 "$PPID" 2>/dev/null || { echo "The parent run is gone; stopping."; exit 1; }
+        sleep 0.3
+    done
+fi
 
 # Serial cases: alone, one at a time, on a Chrome of their own, once nothing
 # else is running, so load cannot skew a real-time wait.

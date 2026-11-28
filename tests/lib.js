@@ -90,6 +90,22 @@ async function launch() {
     return context;
 }
 
+// Waits for the board after a page load. Under heavy load (sync's emulators
+// and three case Chromes at once) a load was seen to finish without the board
+// ever showing, so a sync setup step died after Puppeteer's 30 s default. The
+// cause was not found (the app's scripts are local; a dropped request is the
+// likeliest), and waiting longer cannot help a script that never arrived, so:
+// wait 15 s, then reload once and give the board 30 s more.
+async function boardShown(page) {
+    try {
+        await page.waitForSelector('.wrap .board', { timeout: 15000 });
+    } catch (e) {
+        if (e.name !== 'TimeoutError') throw e;
+        await page.reload({ waitUntil: 'load' });
+        await page.waitForSelector('.wrap .board', { timeout: 30000 });
+    }
+}
+
 // Opens the app. `seed` (optional; a function, script text, or a list of them
 // run in order) runs before the app's own scripts on every load, e.g. to put
 // History entries into localStorage (see fakeClock, seedBoard). confirm() dialogs are
@@ -108,7 +124,7 @@ async function openApp(seed, { demo = true, root = ROOT } = {}) {
         for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
         const url = `http://127.0.0.1:${server.address().port}/index.html`;
         await page.goto(url, { waitUntil: 'load' });
-        await page.waitForSelector('.wrap .board');
+        await boardShown(page);
         if (demo) {
             await page.evaluate((b) => {
                 b.id = NB.board.id;
@@ -122,7 +138,7 @@ async function openApp(seed, { demo = true, root = ROOT } = {}) {
             errors,
             async reload() {
                 await page.reload({ waitUntil: 'load' });
-                await page.waitForSelector('.wrap .board');
+                await boardShown(page);
             },
             async close() {
                 await browser.close();

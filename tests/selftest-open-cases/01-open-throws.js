@@ -59,6 +59,10 @@ async function fails() {
     delete process.env.TEST_CHROME_WS;
     await fails();
     if (launched.length !== 1) throw new Error('expected one launched Chrome, saw ' + launched.length);
-    await until('the Chrome openApp launched is still running', () => !launched[0].connected);
+    // The browser being disconnected is not enough (disconnect() leaves the
+    // Chrome running): its process must be gone.
+    const pid = launched[0].process().pid;
+    const alive = () => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+    await until('the Chrome openApp launched is still running (pid ' + pid + ')', () => !alive());
     console.log('own Chrome: exited');
 })().catch((e) => { console.error(e); process.exit(1); });

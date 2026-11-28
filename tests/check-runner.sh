@@ -62,22 +62,22 @@ write_lock() { mkdir -p "$LOCK"; printf 'repo=%s\npid=%s\nstarted=%s\n' "$1" "$2
 echo "mixed run: pass, fail and a flaky case"
 runner mixed bash run.sh
 [ "$CODE" = 1 ] && ok "exit 1 because 02-fail fails" || fail "expected exit 1, got $CODE"
-O="$WORK/out-mixed"
-grep -q "^FAILED" "$O/summary.txt" && grep -q "02-fail" "$O/summary.txt" && ok "summary lists the failed case" || fail "summary misses the failed case"
-grep -q "^FLAKY" "$O/summary.txt" && grep -q "03-flaky" "$O/summary.txt" && ok "summary lists the flaky case as FLAKY" || fail "summary misses FLAKY 03-flaky"
+OUT_MIXED="$WORK/out-mixed"
+grep -q "^FAILED" "$OUT_MIXED/summary.txt" && grep -q "02-fail" "$OUT_MIXED/summary.txt" && ok "summary lists the failed case" || fail "summary misses the failed case"
+grep -q "^FLAKY" "$OUT_MIXED/summary.txt" && grep -q "03-flaky" "$OUT_MIXED/summary.txt" && ok "summary lists the flaky case as FLAKY" || fail "summary misses FLAKY 03-flaky"
 has mixed "FLAKY" && ok "FLAKY is in the printed output too" || fail "FLAKY not printed"
-[ -f "$O/01-pass.log" ] && [ -f "$O/02-fail.log" ] && [ -f "$O/03-flaky.log" ] && ok "one output file per case" || fail "missing per-case files in last-run folder"
-[ "$(ls "$O" | grep -c '\.log$')" = 3 ] && ok "no extra per-case files" || fail "unexpected number of .log files"
-grep -q "SELFTEST-FAIL-MARKER" "$O/02-fail.log" && ok "failed case's output is in its file" || fail "02-fail.log lacks the case's output"
-grep -q "SELFTEST-FLAKY-MARKER" "$O/03-flaky.log" && ok "flaky case's first attempt is in its file" || fail "03-flaky.log lacks the first attempt"
-grep -q "^PASSED" "$O/summary.txt" && grep -q "01-pass" "$O/summary.txt" && ok "summary lists the passed case" || fail "summary misses 01-pass"
-grep -Eq "[0-9]+\.[0-9]s" "$O/summary.txt" && ok "summary has timings" || fail "summary has no timings"
+[ -f "$OUT_MIXED/01-pass.log" ] && [ -f "$OUT_MIXED/02-fail.log" ] && [ -f "$OUT_MIXED/03-flaky.log" ] && ok "one output file per case" || fail "missing per-case files in last-run folder"
+[ "$(ls "$OUT_MIXED" | grep -c '\.log$')" = 3 ] && ok "no extra per-case files" || fail "unexpected number of .log files"
+grep -q "SELFTEST-FAIL-MARKER" "$OUT_MIXED/02-fail.log" && ok "failed case's output is in its file" || fail "02-fail.log lacks the case's output"
+grep -q "SELFTEST-FLAKY-MARKER" "$OUT_MIXED/03-flaky.log" && ok "flaky case's first attempt is in its file" || fail "03-flaky.log lacks the first attempt"
+grep -q "^PASSED" "$OUT_MIXED/summary.txt" && grep -q "01-pass" "$OUT_MIXED/summary.txt" && ok "summary lists the passed case" || fail "summary misses 01-pass"
+grep -Eq "[0-9]+\.[0-9]s" "$OUT_MIXED/summary.txt" && ok "summary has timings" || fail "summary has no timings"
 
 echo "a second run replaces the last-run folder"
-echo stale > "$O/stale-file"
+echo stale > "$OUT_MIXED/stale-file"
 runner mixed bash run.sh 01
 [ "$CODE" = 0 ] && ok "pattern run of the passing case exits 0" || fail "expected exit 0, got $CODE"
-[ ! -e "$O/stale-file" ] && [ ! -e "$O/02-fail.log" ] && [ -f "$O/01-pass.log" ] && ok "old files gone, new file present" || fail "last-run folder was not replaced"
+[ ! -e "$OUT_MIXED/stale-file" ] && [ ! -e "$OUT_MIXED/02-fail.log" ] && [ -f "$OUT_MIXED/01-pass.log" ] && ok "old files gone, new file present" || fail "last-run folder was not replaced"
 
 echo "TEST_OUT_DIR is only deleted if it looks like a last-run folder"
 PREC="$WORK/precious"; mkdir -p "$PREC"; echo keep > "$PREC/important.txt"
@@ -113,6 +113,61 @@ runner shard TEST_SHARD=1/2 bash run.sh
 [ "$CODE" = 0 ] && ok "shard 1/2 runs 01 and 03 and exits 0" || fail "shard 1/2 exit $CODE"
 runner badshard TEST_SHARD=3/2 bash run.sh
 [ "$CODE" != 0 ] && ok "bad TEST_SHARD rejected" || fail "bad TEST_SHARD accepted"
+for bad in 1 0/4 5/4 1/08 01/2 a/b 1/2/3 -1/2 1/0; do
+    runner badshard2 TEST_SHARD="$bad" bash run.sh
+    { [ "$CODE" != 0 ] && has badshard2 "TEST_SHARD must look like" && ! has badshard2 "Running"; } && ok "TEST_SHARD=$bad rejected before anything ran" || fail "TEST_SHARD=$bad accepted or ran (exit $CODE)"
+done
+runner shard2 TEST_SHARD=2/3 bash run.sh
+{ [ "$CODE" = 1 ] && has shard2 "02-fail"; } && ok "shard 2/3 is 02-fail alone" || fail "shard 2/3 wrong (exit $CODE)"
+
+echo "TEST_JOBS"
+for bad in 0 -1 abc 1.5 08x; do
+    runner badjobs TEST_JOBS="$bad" bash run.sh 01
+    { [ "$CODE" != 0 ] && has badjobs "TEST_JOBS must be" && ! has badjobs "Running"; } && ok "TEST_JOBS='$bad' rejected" || fail "TEST_JOBS='$bad' accepted or ran (exit $CODE)"
+done
+
+echo "the filter matches a file name with .js or a cases/ prefix, and no match is an error"
+runner patjs bash run.sh 01-pass.js
+{ [ "$CODE" = 0 ] && has patjs "Running 1 case" && has patjs "01-pass"; } && ok "01-pass.js matches 01-pass" || fail "pattern with .js did not match (exit $CODE)"
+runner patdir bash run.sh selftest-cases/01-pass
+{ [ "$CODE" = 0 ] && has patdir "Running 1 case"; } && ok "a folder-prefixed pattern matches" || fail "pattern with folder prefix did not match (exit $CODE)"
+runner patnone bash run.sh no-such-case
+{ [ "$CODE" != 0 ] && has patnone "No cases matched"; } && ok "a pattern that matches nothing is an error" || fail "zero matches exited $CODE"
+
+echo "a failed npm ci stops run.sh and all.sh before anything runs"
+# A bare copy of the scripts with no node_modules and an npm that fails.
+T="$WORK/npmfail"; mkdir -p "$T/tests/cases" "$T/bin"
+cp run.sh all.sh lint.sh sync.sh proc.sh package.json "$T/tests/"
+echo "console.log('RAN');" > "$T/tests/cases/01-x.js"
+printf '#!/usr/bin/env bash\necho "npm $*" >> "%s/npm.calls"\nexit 1\n' "$T" > "$T/bin/npm"; chmod +x "$T/bin/npm"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" TEST_OUT_DIR="$T/out" bash run.sh > "$WORK/npm-run.out" 2>&1 ); CODE=$?
+{ [ "$CODE" != 0 ] && ! grep -q "Running" "$WORK/npm-run.out" && ! grep -q RAN "$WORK/npm-run.out"; } && ok "run.sh stops when npm ci fails" || fail "run.sh went on after npm ci failed (exit $CODE)"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" TEST_OUT_DIR="$T/out" bash all.sh > "$WORK/npm-all.out" 2>&1 ); CODE=$?
+{ [ "$CODE" != 0 ] && ! grep -q "Running" "$WORK/npm-all.out" && [ "$(tail -n 1 "$WORK/npm-all.out")" = "FAIL  npm ci" ]; } && ok "all.sh stops when npm ci fails" || fail "all.sh went on after npm ci failed (exit $CODE): $(cat "$WORK/npm-all.out")"
+
+echo "sync.sh takes the machine-wide lock unless all.sh holds it"
+mkdir -p "$T/firebase"
+printf '#!/usr/bin/env bash\nmkdir -p node_modules\nexit 0\n' > "$T/bin/npm"
+# The stand-in npx (what runs the emulators) records what the lock looked like.
+printf '#!/usr/bin/env bash\ncat "%s/info" > "%s/lock-seen" 2>/dev/null || echo none > "%s/lock-seen"\nexit 0\n' "$LOCK" "$T" "$T" > "$T/bin/npx"; chmod +x "$T/bin/npx"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" bash sync.sh > "$WORK/sync-alone.out" 2>&1 ); CODE=$?
+{ [ "$CODE" = 0 ] && grep -q "^repo=" "$T/lock-seen" && grep -q "^pid=[0-9]" "$T/lock-seen"; } && ok "standalone sync.sh held the lock while the emulators ran" || fail "standalone sync.sh ran without the lock (exit $CODE): $(cat "$T/lock-seen" 2>/dev/null)"
+[ ! -e "$LOCK" ] && ok "and released it" || fail "sync.sh left the lock"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" SYNC_ONLY=x bash sync.sh > "$WORK/sync-only.out" 2>&1 ); CODE=$?
+{ [ "$CODE" = 0 ] && grep -q "^repo=" "$T/lock-seen"; } && ok "SYNC_ONLY runs take the lock too" || fail "SYNC_ONLY run ran without the lock"
+sleep 60 & HOLDER=$!
+write_lock kanban "$HOLDER" "$(date +%s)"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" TEST_LOCK_POLL=0.2 bash sync.sh > "$WORK/sync-wait.out" 2>&1 ) &
+SW_PID=$!
+sleep 2
+{ ! grep -q PASS "$WORK/sync-wait.out" && grep -q "Waiting for it to finish" "$WORK/sync-wait.out"; } && ok "sync.sh waits while another run holds the lock" || fail "sync.sh did not wait for the held lock"
+rm -rf "$LOCK"; kill "$HOLDER" 2>/dev/null
+wait "$SW_PID"; grep -q "PASS  sync" "$WORK/sync-wait.out" && ok "and runs once the lock is free" || fail "sync.sh did not run after the lock was freed"
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" TEST_LOCK_HELD=1 bash sync.sh > "$WORK/sync-held.out" 2>&1 ); CODE=$?
+{ [ "$CODE" = 0 ] && grep -q "^none" "$T/lock-seen"; } && ok "with TEST_LOCK_HELD=1 it leaves the lock to its parent" || fail "TEST_LOCK_HELD=1 sync.sh took a lock"
+# all.sh runs the real sync.sh: it must not wait on the lock all.sh itself holds.
+( cd "$T/tests" && PATH="$T/bin:$PATH" TEST_LOCK_FILE="$LOCK" TEST_LOCK_POLL=0.2 TEST_CASES_DIR=cases TEST_OUT_DIR="$T/out2" TEST_LINT_CMD=true timeout 60 bash all.sh > "$WORK/all-real-sync.out" 2>&1 ); CODE=$?
+{ [ "$CODE" = 0 ] && [ "$(tail -n 1 "$WORK/all-real-sync.out")" = "PASS  all" ] && grep -q "PASS  sync/sync.js" "$WORK/all-real-sync.out"; } && ok "all.sh runs sync.sh without deadlocking on its own lock" || fail "all.sh with the real sync.sh: exit $CODE: $(cat "$WORK/all-real-sync.out")"
 
 # ── machine-wide lock ────────────────────────────────────────────────────────
 # The holders below are made up: a lock naming a live process (a sleep) or one
@@ -122,26 +177,28 @@ echo "no lock is left behind after runs that passed or failed"
 [ ! -e "$LOCK" ] && ok "no lock after the earlier runs, including failing ones" || fail "lock left behind"
 
 echo "the default lock path does not depend on TMPDIR"
-if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
-    WANT_LOCK="$(cygpath -u "$LOCALAPPDATA")/Temp/machine-test-run.lock"
+# The real default lock (the user's temp folder) may be held by a live suite
+# this self-test must never touch or delete, so the default is derived inside
+# $WORK: on Git Bash/Windows from a made-up LOCALAPPDATA (the cygpath
+# derivation is what is under test), elsewhere through TEST_LOCK_TMP, which
+# stands in for /tmp.
+mkdir -p "$WORK/fakelocal/Temp" "$WORK/tmpA"
+if command -v cygpath > /dev/null 2>&1; then
+    LOCK_ENV=(LOCALAPPDATA="$(cygpath -w "$WORK/fakelocal")")
 else
-    WANT_LOCK=/tmp/machine-test-run.lock
+    LOCK_ENV=(TEST_LOCK_TMP="$WORK/fakelocal/Temp")
 fi
-if [ -e "$WANT_LOCK" ]; then
-    echo "  skip - a real test run holds $WANT_LOCK right now"
-else
-    SLOWD="$WORK/slow-cases"; mkdir -p "$SLOWD"
-    echo "setTimeout(() => {}, 15000);" > "$SLOWD/01-slow.js"
-    mkdir -p "$WORK/tmpA"
-    ( exec env -u TEST_LOCK_FILE TMPDIR="$WORK/tmpA" TEST_CASES_DIR="$SLOWD" TEST_OUT_DIR="$WORK/out-default-lock" TEST_JOBS=1 \
-        bash run.sh > "$WORK/default-lock.out" 2>&1 ) &
-    DL_PID=$!
-    for n in $(seq 1 50); do [ -s "$WANT_LOCK/info" ] && break; sleep 0.2; done
-    { [ -d "$WANT_LOCK" ] && grep -q "^pid=$DL_PID$" "$WANT_LOCK/info"; } && ok "lock is in the user's temp folder, not in the session's TMPDIR" || fail "lock not at $WANT_LOCK"
-    ls "$WORK/tmpA" | grep -q "machine-test-run" && fail "lock was created under TMPDIR" || ok "nothing created under TMPDIR"
-    kill -TERM "$DL_PID" 2>/dev/null; wait "$DL_PID" 2>/dev/null
-    [ ! -e "$WANT_LOCK" ] && ok "default lock released" || { fail "default lock left behind"; rm -rf "$WANT_LOCK"; }
-fi
+WANT_LOCK="$WORK/fakelocal/Temp/machine-test-run.lock"
+SLOWD="$WORK/slow-cases"; mkdir -p "$SLOWD"
+echo "setTimeout(() => {}, 15000);" > "$SLOWD/01-slow.js"
+( exec env -u TEST_LOCK_FILE "${LOCK_ENV[@]}" TMPDIR="$WORK/tmpA" TEST_CASES_DIR="$SLOWD" TEST_OUT_DIR="$WORK/out-default-lock" TEST_JOBS=1 \
+    bash run.sh > "$WORK/default-lock.out" 2>&1 ) &
+DL_PID=$!
+for n in $(seq 1 50); do [ -s "$WANT_LOCK/info" ] && break; sleep 0.2; done
+{ [ -d "$WANT_LOCK" ] && grep -q "^pid=$DL_PID$" "$WANT_LOCK/info"; } && ok "lock is in the user's temp folder, not in the session's TMPDIR" || fail "lock not at $WANT_LOCK"
+ls "$WORK/tmpA" | grep -q "machine-test-run" && fail "lock was created under TMPDIR" || ok "nothing created under TMPDIR"
+kill -TERM "$DL_PID" 2>/dev/null; wait "$DL_PID" 2>/dev/null
+[ ! -e "$WANT_LOCK" ] && ok "default lock released" || fail "default lock left behind"
 
 echo "a run holds the lock while it runs; SIGTERM stops its cases, publishes what it has and releases the lock"
 SLOW="$WORK/slow-cases2"; mkdir -p "$SLOW"
@@ -246,10 +303,10 @@ done
 echo "cases on one slot's Chrome: separate storage, and a killed Chrome is replaced"
 runner chrome TEST_CASES_DIR=selftest-chrome-cases TEST_SLOT_CHROME=1 TEST_JOBS=1 bash run.sh
 [ "$CODE" = 0 ] && ok "run with a crashed Chrome exits 0" || fail "chrome run exit $CODE"
-WS="$WORK/marker-chrome-ws"
-W1=$(sed -n 's/^01-storage-a //p' "$WS"); W2=$(sed -n 's/^02-storage-b //p' "$WS"); W3=$(sed -n 's/^03-crash //p' "$WS")
-W3R=$(sed -n 's/^03-crash-retry //p' "$WS"); W4=$(sed -n 's/^04-after-crash //p' "$WS")
-{ [ -n "$W1" ] && [ "$W1" = "$W2" ]; } && ok "01 and 02 ran on the same slot Chrome" || fail "01 and 02 did not share a Chrome ($W1 / $W2)"
+WS_FILE="$WORK/marker-chrome-ws"
+WS_A=$(sed -n 's/^01-storage-a //p' "$WS_FILE"); WS_B=$(sed -n 's/^02-storage-b //p' "$WS_FILE"); WS_CRASH=$(sed -n 's/^03-crash //p' "$WS_FILE")
+WS_CRASH_RETRY=$(sed -n 's/^03-crash-retry //p' "$WS_FILE"); WS_AFTER=$(sed -n 's/^04-after-crash //p' "$WS_FILE")
+{ [ -n "$WS_A" ] && [ "$WS_A" = "$WS_B" ]; } && ok "01 and 02 ran on the same slot Chrome" || fail "01 and 02 did not share a Chrome ($WS_A / $WS_B)"
 grep -q "storage was empty" "$WORK/out-chrome/01-storage-a.log" && grep -q "storage was empty" "$WORK/out-chrome/02-storage-b.log" \
     && ok "each case found the storage empty (the other's was in another context)" || fail "storage leaked between cases on one Chrome"
 grep -q "^RESULT: PASS" "$WORK/out-chrome/02-storage-b.log" && ok "02 passed" || fail "02 did not pass"
@@ -257,8 +314,8 @@ grep -q "SELFTEST-CRASH-FAILED" "$WORK/out-chrome/03-crash.log" && fail "Browser
 grep -q "SELFTEST-CRASH-CONFIRMED" "$WORK/out-chrome/03-crash.log" && ok "03's Chrome really crashed" || fail "03 never confirmed the crash"
 grep -q "^FLAKY" "$WORK/out-chrome/summary.txt" && grep -q "03-crash" "$WORK/out-chrome/summary.txt" && ok "the case on the crashed Chrome failed once and was retried (FLAKY)" || fail "03-crash was not retried to a pass"
 grep -q "the retry ran on a live Chrome" "$WORK/out-chrome/03-crash.log" && ok "the retry connected to a Chrome and opened a page" || fail "03's retry did not run on a live Chrome"
-{ [ -n "$W3" ] && [ -n "$W3R" ] && [ "$W3R" != "$W3" ]; } && ok "the retry got a fresh Chrome, not the crashed one" || fail "retry Chrome not fresh ($W3 / $W3R)"
-{ [ -n "$W4" ] && [ "$W4" != "$W1" ]; } && ok "the slot got a fresh Chrome after the crash" || fail "04 did not run on a replacement Chrome ($W1 / $W4)"
+{ [ -n "$WS_CRASH" ] && [ -n "$WS_CRASH_RETRY" ] && [ "$WS_CRASH_RETRY" != "$WS_CRASH" ]; } && ok "the retry got a fresh Chrome, not the crashed one" || fail "retry Chrome not fresh ($WS_CRASH / $WS_CRASH_RETRY)"
+{ [ -n "$WS_AFTER" ] && [ "$WS_AFTER" != "$WS_A" ]; } && ok "the slot got a fresh Chrome after the crash" || fail "04 did not run on a replacement Chrome ($WS_A / $WS_AFTER)"
 grep -q "^RESULT: PASS" "$WORK/out-chrome/04-after-crash.log" && ok "the next case on the slot passed" || fail "04 did not pass after the crash"
 
 # ── serial cases ─────────────────────────────────────────────────────────────
@@ -295,12 +352,28 @@ runner all-ok TEST_CASES="01-pass 03-flaky" TEST_LINT_CMD=true TEST_SYNC_CMD="ec
 has all-ok "sync-ran" && ok "sync's output is printed" || fail "sync's output missing"
 [ ! -d "$LOCK" ] && ok "the lock is released at the end" || fail "the lock is still held after all.sh"
 
-printf "echo start >> %s
-sleep 3
-echo end >> %s
-" "$ALOG" "$ALOG" > "$WORK/slow-sync.sh"
-runner all-overlap TEST_CASES="01-pass" TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/slow-sync.sh" bash all.sh
-[ "$CODE" = 0 ] && [ "$(tr '\n' ' ' < "$ALOG")" = "start end " ] && ok "sync ran under the lock all.sh holds (no deadlock)" || fail "sync stub run: exit $CODE, log: $(tr '\n' ' ' < "$ALOG" 2>/dev/null)"
+# Sync really runs alongside a case. Each side waits (up to 10 s) for a file the
+# other writes, so the two exit 0 only if they were running at the same time:
+# a sync that ran before or after the cases would time out and fail the run.
+OVD="$WORK/overlap-cases"; mkdir -p "$OVD"
+cat > "$OVD/01-overlap.js" <<'EOF'
+const fs = require('fs');
+fs.writeFileSync(process.env.OVERLAP_CASE_FILE, 'x');
+const began = Date.now();
+(function poll() {
+    if (fs.existsSync(process.env.OVERLAP_SYNC_FILE)) process.exit(0);
+    if (Date.now() - began > 10000) { console.error('sync never started'); process.exit(1); }
+    setTimeout(poll, 50);
+})();
+EOF
+cat > "$WORK/overlap-sync.sh" <<'EOF'
+: > "$OVERLAP_SYNC_FILE"
+for i in $(seq 1 200); do [ -e "$OVERLAP_CASE_FILE" ] && exit 0; sleep 0.05; done
+echo "no case ran while sync did"; exit 1
+EOF
+runner all-overlap TEST_CASES_DIR="$OVD" TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/overlap-sync.sh" \
+    OVERLAP_CASE_FILE="$WORK/overlap-case-started" OVERLAP_SYNC_FILE="$WORK/overlap-sync-started" bash all.sh
+[ "$CODE" = 0 ] && [ "$(tail -n 1 "$WORK/all-overlap.out")" = "PASS  all" ] && ok "sync and a case ran at the same time, under the one lock (no deadlock)" || fail "overlap run: exit $CODE: $(cat "$WORK/all-overlap.out")"
 
 runner all-sync-fail TEST_CASES="01-pass" TEST_LINT_CMD=true TEST_SYNC_CMD=false bash all.sh
 [ "$CODE" = 1 ] && [ "$(tail -n 1 "$WORK/all-sync-fail.out")" = "FAIL  sync" ] && ok "sync failing: exit 1, last line FAIL  sync" || fail "sync-fails run: exit $CODE, last line: $(tail -n 1 "$WORK/all-sync-fail.out")"
@@ -310,6 +383,43 @@ runner all-case-fail TEST_CASES="01-pass 02-fail" TEST_LINT_CMD=true TEST_SYNC_C
 
 runner all-lint-fail TEST_CASES="01-pass" TEST_LINT_CMD=false TEST_SYNC_CMD=true bash all.sh
 [ "$CODE" = 1 ] && [ "$(tail -n 1 "$WORK/all-lint-fail.out")" = "FAIL  lint" ] && ok "lint failing: exit 1, last line FAIL  lint" || fail "lint-fails run: exit $CODE, last line: $(tail -n 1 "$WORK/all-lint-fail.out")"
+
+echo "all.sh: serial cases wait for sync; one slot runs sync and the cases one after the other"
+# selftest-serial-cases: 02 and 03 are parallel (0.8 s), 01 is serial. The sync
+# stub takes 2 s, longer than the parallel batch, so a serial case that did not
+# wait for sync would start inside it.
+printf 'echo "start sync" >> "$SERIAL_LOG"\nsleep 2\necho "end sync" >> "$SERIAL_LOG"\n' > "$WORK/logging-sync.sh"
+line() { grep -n -x -- "$2" "$1" | head -n 1 | cut -d: -f1; }   # line <file> <exact text>
+SLOG="$WORK/all-serial-log"; : > "$SLOG"
+runner all-serial TEST_CASES_DIR=selftest-serial-cases SERIAL_LOG="$SLOG" TEST_JOBS=3 TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/logging-sync.sh" bash all.sh
+L_SYNC_START=$(line "$SLOG" "start sync"); L_SYNC_END=$(line "$SLOG" "end sync")
+L_SERIAL_START=$(line "$SLOG" "start 01-serial"); L_PAR_END=$(line "$SLOG" "end 03-par-b")
+{ [ "$CODE" = 0 ] && [ "$(tail -n 1 "$WORK/all-serial.out")" = "PASS  all" ]; } && ok "serial run through all.sh passes" || fail "all-serial run: exit $CODE"
+{ [ -n "$L_SYNC_START" ] && [ -n "$L_PAR_END" ] && [ "$L_SYNC_START" -lt "$L_PAR_END" ] && [ "$L_PAR_END" -lt "$L_SYNC_END" ]; } && ok "the parallel cases ran alongside sync" || fail "parallel cases did not overlap sync: $(tr '\n' ',' < "$SLOG")"
+{ [ -n "$L_SERIAL_START" ] && [ "$L_SERIAL_START" -gt "$L_SYNC_END" ]; } && ok "the serial case started only after sync ended" || fail "serial case ran while sync did: $(tr '\n' ',' < "$SLOG")"
+[ "$(grep -c "^PASSED\|^  PASSED\|/ 3 passed" "$WORK/out-all-serial/summary.txt")" -ge 1 ] && ok "one combined summary covers all three cases" || fail "no combined summary"
+
+SLOG="$WORK/all-one-slot-log"; : > "$SLOG"
+runner all-one-slot TEST_CASES_DIR=selftest-serial-cases SERIAL_LOG="$SLOG" TEST_JOBS=1 TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/logging-sync.sh" bash all.sh
+L_SYNC_START=$(line "$SLOG" "start sync"); L_SYNC_END=$(line "$SLOG" "end sync")
+{ [ "$CODE" = 0 ] && [ -n "$L_SYNC_START" ] && [ "$L_SYNC_END" = "$((L_SYNC_START + 1))" ]; } && ok "TEST_JOBS=1: nothing ran inside sync" || fail "TEST_JOBS=1 overlapped sync (exit $CODE): $(tr '\n' ',' < "$SLOG")"
+
+echo "all.sh: a TERM stops it at once, with sync's whole process tree and the lock"
+SLOWC="$WORK/term-cases"; mkdir -p "$SLOWC"
+echo "setInterval(() => {}, 1000);" > "$SLOWC/01-hang.js"
+printf 'sleep 300 &\necho $! > "$TERM_CHILD_FILE"\nwait\n' > "$WORK/hang-sync.sh"
+rm -f "$WORK/term-child"
+runner_bg term-all TEST_CASES_DIR="$SLOWC" TEST_JOBS=3 TEST_CASE_TIMEOUT=300 TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/hang-sync.sh" TERM_CHILD_FILE="$WORK/term-child" bash all.sh
+wait_file "$WORK/term-child" && ok "sync's grandchild process started" || fail "sync stub never started"
+sleep 1
+T0=$SECONDS
+kill -TERM "$BG_PID" 2>/dev/null
+wait "$BG_PID" 2>/dev/null
+T_TERM=$((SECONDS - T0))
+[ "$T_TERM" -le 8 ] && ok "all.sh ended ${T_TERM}s after the TERM" || fail "all.sh took ${T_TERM}s to stop"
+CHILD=$(cat "$WORK/term-child" 2>/dev/null)
+if [ -n "$CHILD" ] && kill -0 "$CHILD" 2>/dev/null; then fail "sync's grandchild (pid $CHILD) is still running"; kill -9 "$CHILD" 2>/dev/null; else ok "sync's whole process tree is gone"; fi
+[ ! -e "$LOCK" ] && ok "the lock is released" || fail "the lock is still held after the TERM"
 
 echo
 if [ "$FAILED" = 0 ]; then
