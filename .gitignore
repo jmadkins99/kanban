@@ -5,3 +5,6 @@ tests/node_modules/
 
 # The sync emulators' output (tests/sync.sh)
 tests/sync-emulators.log
+
+# The runner's output for the last run (tests/run.sh), replaced each run
+tests/.last-run/

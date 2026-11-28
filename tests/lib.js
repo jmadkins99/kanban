@@ -1,6 +1,7 @@
 // Shared test plumbing: a static server for the repo, a headless Chrome, and
 // a page opened on the app. Each case gets its own server port and its own
-// fresh Chrome profile, so localStorage never leaks between cases.
+// browser context (on the runner's slot Chrome, or a Chrome of its own when run
+// by hand), so localStorage never leaks between cases.
 
 const fs = require('fs');
 const http = require('http');
@@ -49,6 +50,46 @@ function serve(root) {
 // written against. A first visit now starts with 4 empty lists instead.
 const DEMO = require('./fixtures/demo-board.json');
 
+// One Chrome, started the way every test Chrome is started. Used by launch()
+// for a case run by hand, and by slot-chrome.js for the runner's slot Chromes.
+// Deliberately no fixed userDataDir (only run.sh passes one, unique to its
+// Chrome): a fixed one would make parallel cases share storage.
+function launchChrome(userDataDir) {
+    return puppeteer.launch({
+        ...(userDataDir ? { userDataDir } : {}),
+        executablePath: findChrome(),
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    });
+}
+
+// What a case gets from launch(): something with newPage() and close().
+//
+// Under run.sh, TEST_CHROME_WS names the slot's long-lived Chrome. A Chrome
+// exit costs seconds on Windows, a fresh browser context milliseconds, so the
+// runner keeps one Chrome per job slot for the whole run and each case
+// connects to it and works in a browser context of its own (own storage).
+// close() then closes only that context and disconnects; the Chrome lives on.
+// Run by hand (no TEST_CHROME_WS), launch() starts a Chrome of its own and
+// close() ends it.
+async function launch() {
+    const ws = process.env.TEST_CHROME_WS;
+    if (!ws) return launchChrome();
+    const shared = await puppeteer.connect({ browserWSEndpoint: ws });
+    let context;
+    try {
+        context = await shared.createBrowserContext();
+    } catch (err) {
+        await shared.disconnect();
+        throw err;
+    }
+    const closeContext = context.close.bind(context);
+    context.close = async () => {
+        try { await closeContext(); } finally { await shared.disconnect(); }
+    };
+    return context;
+}
+
 // Opens the app. `seed` (optional; a function, script text, or a list of them
 // run in order) runs before the app's own scripts on every load, e.g. to put
 // History entries into localStorage (see fakeClock, seedBoard). confirm() dialogs are
@@ -59,11 +100,7 @@ async function openApp(seed, { demo = true, root = ROOT } = {}) {
     const server = await serve(root);
     let browser;
     try {
-        browser = await puppeteer.launch({
-            executablePath: findChrome(),
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        });
+        browser = await launch();
         const page = await browser.newPage();
         const errors = [];
         page.on('pageerror', (e) => errors.push(e.message));
@@ -285,4 +322,4 @@ const iosTapper = async (page) => {
     };
 };
 
-module.exports = { WAIT_MS, openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
+module.exports = { WAIT_MS, launch, launchChrome, openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };

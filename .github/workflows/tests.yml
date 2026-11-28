@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  # The three test jobs run in parallel, so CI takes about as long as the
+  # The four test jobs run in parallel, so CI takes about as long as the
   # slowest. All are skipped on the merge push to main: the "protect main"
   # ruleset only lets a squash merge land from a branch that is up to date and
   # green, so a second run there tests the same code again, and a flake there
@@ -67,19 +67,38 @@ jobs:
         working-directory: tests
         run: bash sync.sh
 
+  # The runner's own self-test (tests/check-runner.sh): pass, fail, FLAKY,
+  # storage isolation on one Chrome, the TEST_CASES guard, the machine-wide
+  # lock, serial cases and a failed app open. Needs puppeteer-core and Chrome.
+  runner-selftest:
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install the test dependencies
+        working-directory: tests
+        run: npm ci --silent --no-audit --no-fund
+      - name: Runner self-test (tests/check-runner.sh, the same command as locally)
+        working-directory: tests
+        run: bash check-runner.sh
+
   # The check the "protect main" ruleset requires; its name must not change.
   # `always()` because a job skipped after a failed one would count as passing;
   # this one has to fail instead. The one skip it accepts is the merge push to
   # main, where the test jobs are skipped on purpose.
   test:
-    needs: [lint, cases, sync]
+    needs: [lint, cases, sync, runner-selftest]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: |
           merge_push="${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
           ok() { [ "$1" = success ] || { [ "$merge_push" = true ] && [ "$1" = skipped ]; }; }
-          ok "${{ needs.lint.result }}" && ok "${{ needs.cases.result }}" && ok "${{ needs.sync.result }}"
+          ok "${{ needs.lint.result }}" && ok "${{ needs.cases.result }}" && ok "${{ needs.sync.result }}" && ok "${{ needs.runner-selftest.result }}"
 
   # The site's files, packed as the "github-pages" artifact. A job of its own,
   # GitHub's starter layout: deploy-pages in the same job looked for the
