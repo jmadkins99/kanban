@@ -3,9 +3,8 @@
 // the card menu.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp } = require('../lib');
+const { openApp, sleep, WAIT_MS } = require('../lib');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const URL = 'http://127.0.0.1:9/a-link';
 
 (async () => {
@@ -26,9 +25,14 @@ const URL = 'http://127.0.0.1:9/a-link';
         assert.deepStrictEqual(look, { recoloured: true, cursor: 'pointer' }, 'the link looks like a link');
 
         // A plain click opens it in a new tab, and the card menu stays shut.
-        const opened = new Promise((r) => page.browser().once('targetcreated', (t) => r(t.url())));
+        let timer;
+        const opened = new Promise((resolve) => {
+            const seen = (t) => { if (t.url() == URL) { page.browser().off('targetcreated', seen); resolve(URL); } };
+            page.browser().on('targetcreated', seen);
+        });
+        const timeout = new Promise((resolve) => { timer = setTimeout(resolve, WAIT_MS, 'nothing opened'); });
         await page.click(card + ' .text a');
-        assert.strictEqual(await Promise.race([opened, sleep(3000).then(() => 'nothing opened')]), URL);
+        try { assert.strictEqual(await Promise.race([opened, timeout]), URL); } finally { clearTimeout(timer); }
         await sleep(450);
         assert.strictEqual(await page.evaluate((card) => $(card).hasClass('cm-open'), card), false, 'the card menu stays shut');
 

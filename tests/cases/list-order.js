@@ -6,7 +6,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openApp, settle, moveCard, sleep, seedBoard, clickAway, pickPriority, setPriority } = require('../lib');
+const { openApp, settle, moveCard, sleep, seedBoard, fakeClock, clickAway, pickPriority, setPriority } = require('../lib');
 
 // A board saved before Arrivals: Priorities, but no Arrival on any Card.
 const LISTS = [
@@ -20,7 +20,7 @@ const LISTS = [
 ];
 
 (async () => {
-    const app = await openApp(seedBoard({ id: 77, title: 'Saved earlier', lists: LISTS }), { demo: false });
+    const app = await openApp([fakeClock('2028-11-15 12:00'), seedBoard({ id: 77, title: 'Saved earlier', lists: LISTS })], { demo: false });
     const { page } = app;
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kanban-')), 'board.nbx');
     await page.setViewport({ width: 1280, height: 1000 });

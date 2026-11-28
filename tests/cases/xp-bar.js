@@ -6,7 +6,7 @@
 // preferences.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, moveCard } = require('../lib');
+const { WAIT_MS, openApp, moveCard } = require('../lib');
 
 (async () => {
     const app = await openApp(() => {});
@@ -45,7 +45,7 @@ const { openApp, moveCard } = require('../lib');
 
         // Submitting the day banks it; the Done list empties but the XP stays, through a reload.
         await page.evaluate(() => { NB.board.day = '2000-01-01'; rollDay(); });
-        await page.waitForFunction(() => NB.board.lists[2].notes.filter((n) => n.xp).length == 0, { timeout: 5000 });
+        await page.waitForFunction(() => NB.board.lists[2].notes.filter((n) => n.xp).length == 0, { timeout: WAIT_MS });
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'Submit Day keeps the XP');
         await app.reload();
         assert.strictEqual(await text(), 'Lvl 1, XP 7,500/11,500, 65%', 'banked XP survives a reload');

@@ -5,10 +5,10 @@
 // timer over.
 // Cards are saved as `notes`, Nullboard's name, so old boards, History days and export files load without a migration.
 const assert = require('assert');
-const { openApp, moveCard } = require('../lib');
+const { openApp, moveCard, fakeClock, advanceClock } = require('../lib');
 
 (async () => {
-    const app = await openApp(() => {});
+    const app = await openApp(fakeClock('2028-11-15 10:00', { freeze: true }));
     const { page } = app;
 
     const revision = () => page.evaluate(() => NB.board.revision);
@@ -41,7 +41,10 @@ const { openApp, moveCard } = require('../lib');
         await moveCard(page, 2, -1, -1);
         assert.strictEqual(await page.evaluate(() => XP.total()), 0, 'leaving Done takes the XP back');
         const back = await page.evaluate(() => { const n = NB.board.lists[1].notes; return n[n.length - 1]; });
-        assert.ok(Date.now() - back.wip < 5000 && !back.xp, 'back in WIP from 0: ' + JSON.stringify(back));
+        assert.ok(back.wip === await page.evaluate(() => Date.now()) && !back.xp, 'back in WIP from 0: ' + JSON.stringify(back));
+        // The clock moves on and the timer shows it, counting from 0.
+        await advanceClock(page, 5000);
+        await page.waitForFunction(() => $('.wrap .board .list').eq(1).find('.card').last().find('.wip-timer:visible').text() == '0m 5s');
         assert.strictEqual(await saved(1), await shown(1));
         assert.strictEqual(await saved(2), await shown(2));
 

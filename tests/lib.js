@@ -57,39 +57,47 @@ const DEMO = require('./fixtures/demo-board.json');
 // another folder, such as a worktree of an older commit (sync/skew.js).
 async function openApp(seed, { demo = true, root = ROOT } = {}) {
     const server = await serve(root);
-    const browser = await puppeteer.launch({
-        executablePath: findChrome(),
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    });
-    const page = await browser.newPage();
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-    page.on('dialog', (d) => d.accept());
-    for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
-    const url = `http://127.0.0.1:${server.address().port}/index.html`;
-    await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('.wrap .board');
-    if (demo) {
-        await page.evaluate((b) => {
-            b.id = NB.board.id;
-            b.revision = NB.board.revision;
-            NB.storage.saveBoard(b);
-            openBoard(b.id);
-        }, JSON.parse(JSON.stringify(DEMO)));
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            executablePath: findChrome(),
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        });
+        const page = await browser.newPage();
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        page.on('dialog', (d) => d.accept());
+        for (const s of [].concat(seed || [])) await page.evaluateOnNewDocument(s);
+        const url = `http://127.0.0.1:${server.address().port}/index.html`;
+        await page.goto(url, { waitUntil: 'load' });
+        await page.waitForSelector('.wrap .board');
+        if (demo) {
+            await page.evaluate((b) => {
+                b.id = NB.board.id;
+                b.revision = NB.board.revision;
+                NB.storage.saveBoard(b);
+                openBoard(b.id);
+            }, JSON.parse(JSON.stringify(DEMO)));
+        }
+        return {
+            page,
+            errors,
+            async reload() {
+                await page.reload({ waitUntil: 'load' });
+                await page.waitForSelector('.wrap .board');
+            },
+            async close() {
+                await browser.close();
+                server.close();
+            },
+        };
+    } catch (e) {
+        // A failed open must not leak the Chrome it launched.
+        if (browser) await browser.close().catch(() => {});
+        server.close();
+        throw e;
     }
-    return {
-        page,
-        errors,
-        async reload() {
-            await page.reload({ waitUntil: 'load' });
-            await page.waitForSelector('.wrap .board');
-        },
-        async close() {
-            await browser.close();
-            server.close();
-        },
-    };
 }
 
 // The auth emulator takes unsigned custom tokens, so a test can be any uid.
@@ -103,8 +111,14 @@ function token(uid) {
     }) + '.';
 }
 
+// How long a case waits for the page to show something, in ms.
+const WAIT_MS = 10000;
+
 // Lets jQuery animations (opacity fades before a removal) finish.
-const settle = (page) => page.evaluate(() => new Promise((r) => $(':animated').promise().done(() => setTimeout(r, 50))));
+const settle = (page) => page.evaluate((timeout) => new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('settle: animations still running after ' + timeout + ' ms')), timeout);
+    $(':animated').promise().done(() => setTimeout(() => { clearTimeout(t); resolve(); }, 50));
+}), WAIT_MS);
 
 // Moves Card `index` of List `list` (negative counts from the end) `steps`
 // Lists over, negative to the left, the way a person does: a tap on the Card,
@@ -129,27 +143,49 @@ const localParts = (at) => {
 
 // A seed for openApp that fakes the page's clock. It reads `start` (local,
 // e.g. '2028-11-15 10:00'; omitted, the real time) when the page loads, or
-// the time setClock last set, which a reload keeps, and runs on from there.
+// the time setClock last set, which a reload keeps, and runs on from there,
+// unless setClock froze it: a frozen clock stands still until the case moves
+// it, so a timer shows exactly what the case set, however slow the machine.
+// With { freeze: true } the first load starts frozen at `start`. A reload
+// before any setClock starts over at `start`.
 // The real Date stays reachable as window.RealDate.
-const fakeClock = (start) => `{
+const fakeClock = (start, { freeze = false } = {}) => `{
     const Real = Date, start = ${JSON.stringify(start ? localParts(start) : null)};
-    let at = null;
-    try { at = +localStorage.getItem('test.clock') || null; } catch (e) {}
-    window.clockSkew = (at || (start ? new Real(...start).getTime() : Real.now())) - Real.now();
+    let at = null, frozen = false;
+    try { at = +localStorage.getItem('test.clock') || null; frozen = localStorage.getItem('test.frozen') == '1'; } catch (e) {}
+    const first = at || (start ? new Real(...start).getTime() : Real.now());
+    window.clockSkew = first - Real.now();
+    window.clockFrozen = (at ? frozen : ${JSON.stringify(freeze)}) ? first : null;
+    const now = () => window.clockFrozen != null ? window.clockFrozen : Real.now() + window.clockSkew;
     window.Date = class extends Real {
-        constructor(...a) { super(...(a.length ? a : [Real.now() + window.clockSkew])); }
-        static now() { return Real.now() + window.clockSkew; }
+        constructor(...a) { super(...(a.length ? a : [now()])); }
+        static now() { return now(); }
     };
     window.RealDate = Real;
 }`;
 
 // Sets the faked clock (see fakeClock) to `at`, local like '2028-11-16 00:00'
-// or in ms, now and after a reload.
-const setClock = (page, at) => page.evaluate((at) => {
+// or in ms, now and after a reload. With { freeze: true } it then stands still.
+const setClock = (page, at, { freeze = false } = {}) => page.evaluate((at, freeze) => {
     const t = Array.isArray(at) ? new window.RealDate(...at).getTime() : at;
     localStorage.setItem('test.clock', String(t));
+    if (freeze) localStorage.setItem('test.frozen', '1'); else localStorage.removeItem('test.frozen');
     window.clockSkew = t - window.RealDate.now();
-}, typeof at == 'string' ? localParts(at) : at);
+    window.clockFrozen = freeze ? t : null;
+}, typeof at == 'string' ? localParts(at) : at, freeze);
+
+// Moves the faked clock on by `ms`, keeping it frozen if it was. The app's own
+// 250 ms tick picks it up, so wait for the screen to show the result.
+const advanceClock = async (page, ms) => {
+    const frozen = await page.evaluate(() => window.clockFrozen != null);
+    await setClock(page, (await page.evaluate(() => Date.now())) + ms, { freeze: frozen });
+};
+
+// A case whose result depends on real elapsed time (a CSS animation's length,
+// say) can't use the fake clock and must not run in parallel with others, where
+// load would skew it. It says so on a line near the top, with the reason:
+//     // @serial: <reason>
+// The runner runs such cases alone, after the parallel batch.
 
 // The tab coming back into view, as after a laptop wakes: the app runs its
 // minute's tick (Auto-submit, Recurring Cards moving to To-Do) at once.
@@ -181,7 +217,7 @@ const clickAway = async (page) => { await page.mouse.click(1270, 990); await sle
 // Card at selector `card`: a click on that Priority's button.
 const pickPriority = async (page, card, priority) => {
     const button = `${card} .prio-pick button[data-priority=${priority.toLowerCase()}]`;
-    await page.waitForSelector(button, { visible: true, timeout: 3000 });
+    await page.waitForSelector(button, { visible: true, timeout: WAIT_MS });
     await page.click(button);
     await sleep(50);
 };
@@ -190,7 +226,7 @@ const pickPriority = async (page, card, priority) => {
 // in editCard leads to, so a slow machine (a busy CI runner, two suites at
 // once) waits for it instead of clicking on.
 const cardHas = (page, card, cls) =>
-    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: 3000 }, card, cls);
+    page.waitForFunction((sel, cls) => $(sel).hasClass(cls), { timeout: WAIT_MS }, card, cls);
 
 // Opens the Card at selector `card` in the Card editor, the way a person
 // does: a tap on it, then Edit in its menu, once the menu has slid in.
@@ -249,4 +285,4 @@ const iosTapper = async (page) => {
     };
 };
 
-module.exports = { openApp, token, settle, moveCard, sleep, fakeClock, setClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
+module.exports = { WAIT_MS, openApp, token, settle, moveCard, sleep, fakeClock, setClock, advanceClock, wake, seedBoard, clickAway, pickPriority, editCard, setPriority, iosTapper };
