@@ -381,6 +381,61 @@ body:not(.card-editor-open) .board .head .menu:hover .teaser {
 	resize: none;
 }
 
+/* @section Group outline */
+/* A Group's outline (docs/adr/0004): one line around the run, in a dark
+   shade of the day's accent, drawn piece by piece from each Card's place
+   (orderCards sets group-first, group-middle, group-last). The first Card
+   draws the top and sides, a middle one the sides, the last the bottom and
+   sides; middle and last ones reach up across the 5px gap to the Card above.
+   A Group gets a wider gap above and below it, so two Groups next to each
+   other keep separate outlines. */
+.board {
+	--group-line: var(--accent-deep);
+}
+
+/* Not the Card editor, which keeps its own margin. */
+.board .card + .card.group-first:not(.in-editor),
+.board .card.group-last + .card:not(.in-editor) {
+	margin-top: 10px;
+}
+
+.board .card.group-first::before,
+.board .card.group-middle::before,
+.board .card.group-last::before {
+	content: '';
+	position: absolute;
+	left: -3px;
+	right: -3px;
+	top: -5px;
+	bottom: 0;
+	border: 2px solid var(--group-line);
+	border-top: none;
+	border-bottom: none;
+	pointer-events: none;
+}
+
+.board .card.group-first::before {
+	top: -3px;
+	border-top: 2px solid var(--group-line);
+	border-radius: 6px 6px 0 0;
+}
+
+.board .card.group-last::before {
+	bottom: -3px;
+	border-bottom: 2px solid var(--group-line);
+	border-radius: 0 0 6px 6px;
+}
+
+.board .card.in-editor::before {
+	display: none;
+}
+
+/* On the dark theme's near-black Lists the deepest shade barely shows, so
+   the line steps up to the family's mid shade there. */
+.theme-dark .board {
+	--group-line: var(--accent-muted);
+}
+
 /* @section Logo and config menu */
 /***/
 .logo {
