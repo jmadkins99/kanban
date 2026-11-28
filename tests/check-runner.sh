@@ -285,6 +285,32 @@ runner open TEST_CASES_DIR=selftest-open-cases TEST_SLOT_CHROME=1 TEST_JOBS=1 ba
 grep -q "slot Chrome: nothing left behind" "$WORK/out-open/01-open-throws.log" && ok "on a slot Chrome: no context or page left behind" || fail "slot Chrome check did not run"
 grep -q "own Chrome: exited" "$WORK/out-open/01-open-throws.log" && ok "on its own Chrome: the Chrome exited" || fail "own Chrome check did not run"
 
+# ── all.sh: lint, then sync alongside the cases, one lock ────────────────────
+# Lint and sync are stubs (TEST_LINT_CMD, TEST_SYNC_CMD); the cases are the
+# made-up ones. The sync stub logs when it starts and ends.
+echo "all.sh runs sync alongside the cases and fails if any part fails"
+ALOG="$WORK/all-sync.log"
+runner all-ok TEST_CASES="01-pass 03-flaky" TEST_LINT_CMD=true TEST_SYNC_CMD="echo sync-ran" bash all.sh
+[ "$CODE" = 0 ] && [ "$(tail -n 1 "$WORK/all-ok.out")" = "PASS  all" ] && ok "everything passing: exit 0, last line PASS  all" || fail "all-passing run: exit $CODE, last line: $(tail -n 1 "$WORK/all-ok.out")"
+has all-ok "sync-ran" && ok "sync's output is printed" || fail "sync's output missing"
+[ ! -d "$LOCK" ] && ok "the lock is released at the end" || fail "the lock is still held after all.sh"
+
+printf "echo start >> %s
+sleep 3
+echo end >> %s
+" "$ALOG" "$ALOG" > "$WORK/slow-sync.sh"
+runner all-overlap TEST_CASES="01-pass" TEST_LINT_CMD=true TEST_SYNC_CMD="bash $WORK/slow-sync.sh" bash all.sh
+[ "$CODE" = 0 ] && [ "$(tr '\n' ' ' < "$ALOG")" = "start end " ] && ok "sync ran under the lock all.sh holds (no deadlock)" || fail "sync stub run: exit $CODE, log: $(tr '\n' ' ' < "$ALOG" 2>/dev/null)"
+
+runner all-sync-fail TEST_CASES="01-pass" TEST_LINT_CMD=true TEST_SYNC_CMD=false bash all.sh
+[ "$CODE" = 1 ] && [ "$(tail -n 1 "$WORK/all-sync-fail.out")" = "FAIL  sync" ] && ok "sync failing: exit 1, last line FAIL  sync" || fail "sync-fails run: exit $CODE, last line: $(tail -n 1 "$WORK/all-sync-fail.out")"
+
+runner all-case-fail TEST_CASES="01-pass 02-fail" TEST_LINT_CMD=true TEST_SYNC_CMD=true bash all.sh
+[ "$CODE" = 1 ] && [ "$(tail -n 1 "$WORK/all-case-fail.out")" = "FAIL  run: 02-fail.js" ] && ok "a case failing: exit 1, last line names it" || fail "case-fails run: exit $CODE, last line: $(tail -n 1 "$WORK/all-case-fail.out")"
+
+runner all-lint-fail TEST_CASES="01-pass" TEST_LINT_CMD=false TEST_SYNC_CMD=true bash all.sh
+[ "$CODE" = 1 ] && [ "$(tail -n 1 "$WORK/all-lint-fail.out")" = "FAIL  lint" ] && ok "lint failing: exit 1, last line FAIL  lint" || fail "lint-fails run: exit $CODE, last line: $(tail -n 1 "$WORK/all-lint-fail.out")"
+
 echo
 if [ "$FAILED" = 0 ]; then
     echo "runner self-test: all checks passed"

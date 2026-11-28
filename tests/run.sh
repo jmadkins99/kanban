@@ -358,13 +358,23 @@ trap 'INTERRUPTED=1; exit 143' TERM
 cleanup() {
     local j
     for j in $(jobs -rp); do kill_tree "$j"; done
-    slot_stop
+    if declare -F slot_stop > /dev/null; then slot_stop; fi
     if [ "$INTERRUPTED" = 1 ] && [ "$FINISHED" = 0 ] && [ "$OUT_READY" = 1 ]; then publish_interrupted; fi
     release_lock
     rm -rf "$STATE" 2>/dev/null
 }
 trap cleanup EXIT
-acquire_lock
+# TEST_LOCK_HELD=1: a parent (all.sh) already holds the machine-wide lock for
+# this run, so this one neither takes nor waits for it. TEST_HOLD_LOCK=1 is how
+# that parent gets the lock: this process takes it, writes a line to the file
+# named by TEST_HOLD_LOCK_READY, and keeps it until its parent exits or kills
+# it. It runs no cases and leaves OUT_DIR alone.
+if [ "${TEST_LOCK_HELD:-}" != 1 ]; then acquire_lock; fi
+if [ "${TEST_HOLD_LOCK:-}" = 1 ]; then
+    echo held > "$TEST_HOLD_LOCK_READY"
+    while kill -0 "$PPID" 2> /dev/null; do sleep 0.5; done
+    exit 0
+fi
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 : > "$OUT_DIR/$OUT_MARKER"

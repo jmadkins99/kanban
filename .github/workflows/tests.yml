@@ -38,16 +38,23 @@ jobs:
         run: bash lint.sh
 
   cases:
+    name: cases (shard ${{ matrix.shard }}/4)
     if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest # ships Google Chrome at /usr/bin/google-chrome
     timeout-minutes: 15
+    strategy:
+      fail-fast: false # a red shard must not hide what the others found
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: E2E cases (tests/run.sh, the same command as locally)
+      - name: E2E cases, one shard of four (tests/run.sh, the same command as locally, plus TEST_SHARD)
         working-directory: tests
+        env:
+          TEST_SHARD: ${{ matrix.shard }}/4
         run: bash run.sh
 
   sync:
