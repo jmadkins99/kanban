@@ -55,8 +55,8 @@
        each day. Plain script ahead of the styles so the day's accent is set
        before first paint. -->
   <!-- Temporary: the phone-bug debug log (see js/debuglog.js). First, to catch every error. -->
-  <script src="js/debuglog.js?v=12"></script>
-  <script src="js/accentColor.js?v=12"></script>
+  <script src="js/debuglog.js?v=13"></script>
+  <script src="js/accentColor.js?v=13"></script>
   <script>
 	(function () {
 		var icon = document.querySelector("link[rel='icon']");
@@ -65,7 +65,7 @@
 		icon.setAttribute('href', icon.getAttribute('href').replace('%236a5a8a', '%23' + tint.slice(1)));
 	}());
   </script>
-  <link rel="stylesheet" href="css/kanban.css?v=12">
+  <link rel="stylesheet" href="css/kanban.css?v=13">
 
 </head>
 <body>
@@ -237,12 +237,12 @@
 
 </body>
 
-<script src="extras/jquery-3.6.0.min.js?v=12"></script>
+<script src="extras/jquery-3.6.0.min.js?v=13"></script>
 <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js">\x3C/script>')</script>
-<script src="js/priority.js?v=12"></script>
-<script src="js/schedule.js?v=12"></script>
-<script src="js/due.js?v=12"></script>
-<script src="js/group.js?v=12"></script>
+<script src="js/priority.js?v=13"></script>
+<script src="js/schedule.js?v=13"></script>
+<script src="js/due.js?v=13"></script>
+<script src="js/group.js?v=13"></script>
 
 <script type="text/javascript">
 
@@ -1453,7 +1453,10 @@
 		});
 	}
 
-	// Puts each List's Cards on screen in order, moving only the ones out of place.
+	// Puts each List's Cards on screen in order, moving only the ones out of
+	// place, and marks each with its place in its Group (group-first,
+	// group-middle or group-last, none outside one), which draws the Group's
+	// outline (css/kanban.css, Cards).
 	function orderCards()
 	{
 		var moment = dueMoment();
@@ -1461,10 +1464,12 @@
 			var $cards = $(this).find('.cards');
 			var cards = $cards.children('.card').get();
 			var saved = cards.map(function(c){ return Object.assign({}, cardMeta($(c)), { text: getText($(c).find('.text')) }); });
-			var want = Group.arrange(saved, listWhere($(this)).role, moment).map(function(a){ return cards[saved.indexOf(a.card)]; });
-			want.forEach(function(card, i){
+			Group.arrange(saved, listWhere($(this)).role, moment).forEach(function(a, i){
+				var card = cards[saved.indexOf(a.card)];
 				var at = $cards.children('.card')[i];
 				if (at !== card) $cards[0].insertBefore(card, at);
+				$(card).removeClass('group-first group-middle group-last');
+				if (a.place) $(card).addClass('group-' + a.place);
 			});
 		});
 	}
@@ -1877,6 +1882,7 @@
 		updateBoardIndex();
 		setupListScrolling();
 		markLists();
+		orderCards(); // the order is orderBoard's already; this marks the Groups
 		tickTimers();
 		if (window.XP) XP.render();
 
@@ -3677,11 +3683,11 @@
 
 </script>
 
-<script src="js/cardmenu.js?v=12"></script>
-<script src="js/celebrate.js?v=12"></script>
-<script src="js/ranks.js?v=12"></script>
-<script src="js/levelup.js?v=12"></script>
-<script src="js/xp.js?v=12"></script>
-<script src="js/sync.js?v=12"></script>
+<script src="js/cardmenu.js?v=13"></script>
+<script src="js/celebrate.js?v=13"></script>
+<script src="js/ranks.js?v=13"></script>
+<script src="js/levelup.js?v=13"></script>
+<script src="js/xp.js?v=13"></script>
+<script src="js/sync.js?v=13"></script>
 
 </html>
